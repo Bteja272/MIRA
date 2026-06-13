@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from app.services.rag_service import RAGService
+from app.services.langgraph_agent_service import LangGraphAgentService
 
 
 router = APIRouter(tags=["Query"])
@@ -12,5 +12,7 @@ class QueryRequest(BaseModel):
 
 
 @router.post("/query")
-def query_rag(request: QueryRequest):
-    return RAGService.query(request.query)
+def query_agent(request: QueryRequest):
+    return LangGraphAgentService.query(
+        request.query
+    )
