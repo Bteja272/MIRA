@@ -27,3 +27,4 @@ langgraph==0.2.76
 
 httpx==0.28.1
 PyYAML==6.0.3
+tavily-python

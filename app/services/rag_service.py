@@ -34,4 +34,4 @@ class RAGService:
             "answer": answer,
             "sources": chunks,
             "latency_seconds": latency,
-        }f
+        }
