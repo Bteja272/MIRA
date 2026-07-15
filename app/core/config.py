@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     chunk_size: int = 500
     chunk_overlap: int = 100
 
-    database_url: str = "postgresql://postgres:Postgres@localhost:5433/rag_ai_db"
+    database_url: str = "postgresql://postgres:Postgres@localhost:5434/mira_db"
 
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
 
