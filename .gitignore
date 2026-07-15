@@ -1,17 +1,57 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Virtual environment
-.venv/
-
-# Environment variables
+# Secrets
 .env
+.env.*
+!.env.example
+*.pem
+*.key
 
-# VS Code
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# IDE
 .vscode/
+.idea/
 
-# OS files
+# Uploaded documents and medical data
+uploads/
+documents/
+medical_records/
+patient_data/
+sample_data/private/
+
+# Generated files
+tmp/
+temp/
+logs/
+*.log
+audio_output/
+generated_audio/
+transcriptions/
+
+# Databases and Docker volumes
+postgres_data/
+*.db
+*.sqlite
+*.sql
+backups/
+
+# Models
+models/
+*.bin
+*.pt
+*.pth
+*.onnx
+*.gguf
+
+# Frontend
+node_modules/
+dist/
+build/
+
+# Operating system
 .DS_Store
+Thumbs.db
