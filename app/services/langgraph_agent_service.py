@@ -10,6 +10,7 @@ from app.services.web_search_service import WebSearchService
 
 class AgentState(TypedDict):
     query: str
+    document_id: str | None
     route: str
     result: dict
 
@@ -92,7 +93,10 @@ def fallback_classify(query: str) -> str:
 
 
 def rag_node(state: AgentState):
-    result = RAGService.query(state["query"])
+    result = RAGService.query(
+        query=state["query"],
+        document_id=state.get("document_id"),
+    )
     result["route"] = "rag"
 
     return {
@@ -151,10 +155,14 @@ agent_graph = graph.compile()
 
 class LangGraphAgentService:
     @staticmethod
-    def query(query: str):
+    def query(
+        query: str,
+        document_id: str | None = None,
+    ):
         result = agent_graph.invoke(
             {
                 "query": query,
+                "document_id": document_id,
                 "route": "",
                 "result": {},
             }
