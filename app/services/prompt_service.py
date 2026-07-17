@@ -1,67 +1,135 @@
+from typing import Any
+
+
 class PromptService:
     @staticmethod
-    def build_prompt(
-        query: str,
-        context_chunks: list[dict],
-        task: str = "question_answering",
+    def _build_source_block(
+        document: Any,
+        source_number: int,
     ) -> str:
-        formatted_sources = []
+        metadata = getattr(
+            document,
+            "metadata",
+            {},
+        ) or {}
 
-        for index, chunk in enumerate(
-            context_chunks,
-            start=1,
-        ):
-            page_number = chunk.get("page_number")
-            page_display = (
-                str(page_number)
-                if page_number is not None
-                else "N/A"
+        source = metadata.get(
+            "source",
+            "Unknown source",
+        )
+        page_number = metadata.get("page_number")
+        chunk_index = metadata.get("chunk_index")
+        similarity_score = metadata.get(
+            "similarity_score"
+        )
+
+        details = [
+            f"Source: {source}",
+        ]
+
+        if page_number is not None:
+            details.append(
+                f"Page: {page_number}"
             )
 
-            formatted_sources.append(
-                f"""
-[Source {index}]
-Filename: {chunk.get("source", "Unknown")}
-Document ID: {chunk.get("document_id", "Unknown")}
-Page: {page_display}
-Chunk index: {chunk.get("chunk_index", "Unknown")}
-Content:
-{chunk["text"]}
-""".strip()
+        if chunk_index is not None:
+            details.append(
+                f"Chunk: {chunk_index}"
             )
 
-        context_text = "\n\n".join(formatted_sources)
+        if similarity_score is not None:
+            details.append(
+                f"Similarity: {similarity_score}"
+            )
+
+        metadata_text = " | ".join(details)
+
+        return (
+            f"[Source {source_number}]\n"
+            f"{metadata_text}\n"
+            f"{document.page_content.strip()}"
+        )
+
+    @classmethod
+    def build_prompt(
+        cls,
+        query: str,
+        documents: list[Any],
+        task: str = "qa",
+    ) -> str:
+        source_blocks = [
+            cls._build_source_block(
+                document=document,
+                source_number=index,
+            )
+            for index, document in enumerate(
+                documents,
+                start=1,
+            )
+        ]
+
+        context = "\n\n".join(source_blocks)
 
         if task == "summarization":
             task_instruction = """
-Produce a clear summary of the complete provided document context.
-Combine information across all chunks and avoid repeating overlapping text.
-Organize the summary by the document's major topics.
-"""
+The supplied chunks represent the complete indexed document.
+
+Produce a clear summary of the document.
+
+General instructions:
+
+- Combine information across all chunks.
+- Remove duplication caused by overlapping chunks.
+- Preserve dates, names, diagnoses, medication names, dosages,
+  instructions, and numerical values exactly as documented.
+- Do not state that the context is incomplete merely because the
+  document is divided into multiple chunks.
+- Place source citations directly after the facts they support.
+- Do not place empty source markers at the end.
+
+For laboratory reports:
+
+- Use one bullet for each laboratory test.
+- Copy the test name exactly.
+- Copy the result and unit exactly.
+- Copy the reference range exactly.
+- Copy the documented flag exactly.
+- Do not calculate whether a result is above, below, or within range.
+- Do not reinterpret High, Low, or Normal flags.
+- Do not merge neighboring laboratory tests.
+
+Preferred laboratory format:
+
+- <Test name>
+  Result: <documented result and unit>
+  Reference range: <documented range>
+  Documented flag: <documented flag>
+""".strip()
         else:
             task_instruction = """
-Answer the user's question using the relevant provided excerpts.
-"""
-
-        prompt = f"""
-You are an AI assistant that answers questions using uploaded documents.
+Answer the user's question using only the supplied document context.
 
 Instructions:
-- Use only information contained in the provided context.
-- {task_instruction.strip()}
-- Cite supporting information using labels such as [Source 1].
-- Do not claim that no document was uploaded when context is provided.
-- If the context is incomplete, say that the provided excerpts are
-  insufficient to answer fully.
-- Do not invent facts that are absent from the context.
 
-Context:
-{context_text}
+- Cite the source immediately after the supported statement.
+- Preserve numerical values, units, dates, medication names, dosages,
+  reference ranges, and documented flags exactly.
+- Do not invent missing information.
+- For laboratory information, do not independently classify values as
+  high, low, normal, above, below, or within range.
+- When the requested information is not documented, state that it is
+  not documented in the supplied context.
+""".strip()
 
-User question:
+        return f"""
+TASK
+{task_instruction}
+
+DOCUMENT CONTEXT
+{context}
+
+USER QUESTION
 {query}
 
-Answer:
-"""
-
-        return prompt.strip()
+ANSWER
+""".strip()

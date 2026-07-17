@@ -51,25 +51,57 @@ def safety_response_node(state: AgentState):
 
 def classify_node(state: AgentState):
     query = state["query"]
+    query_lower = query.lower()
+
+    # A selected document always requires document retrieval.
+    if state.get("document_id"):
+        return {
+            **state,
+            "route": "rag",
+        }
+
+    document_keywords = (
+        "document",
+        "uploaded",
+        "upload",
+        "pdf",
+        "file",
+        "report",
+        "according to",
+        "source",
+        "summarize",
+        "summarise",
+        "summary",
+        "lab report",
+        "discharge summary",
+        "medical record",
+        "prescription",
+    )
+
+    if any(keyword in query_lower for keyword in document_keywords):
+        return {
+            **state,
+            "route": "rag",
+        }
 
     classifier_prompt = f"""
-You are a query-routing classifier for an agentic RAG system.
+You are a query-routing classifier for MIRA.
 
 Choose exactly one route:
 
 rag:
 Use this when the user asks about uploaded documents, PDFs, files,
-sources, medical records, lab reports, prescriptions, discharge
-summaries, or asks "according to the document".
+medical records, lab reports, prescriptions, discharge summaries,
+or information contained in an uploaded source.
 
 direct:
-Use this when the user asks a general explanation, coding concept,
-definition, medical term, or reasoning question that does not require
-uploaded documents or current external information.
+Use this for general explanations, definitions, medical terminology,
+coding concepts, or reasoning questions that do not require uploaded
+documents or current external information.
 
 web:
 Use this when the user asks for latest, current, recent, today, news,
-live, updated, or real-world information that may have changed recently.
+live, updated, or other information that may have changed recently.
 
 Return only one word:
 rag

@@ -2,8 +2,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = "RAG AI System"
-    app_version: str = "0.1.0"
+    app_name: str = "MIRA"
+    app_version: str = "0.2.0"
     environment: str = "development"
 
     llm_provider: str = "ollama"

@@ -1,46 +1,39 @@
 import time
 
 from app.core.config import settings
-from app.core.logger import logger
 from app.services.langchain_retriever_service import (
     LangChainRetrieverService,
 )
 from app.services.llm_service import LLMService
+from app.services.medical_prompt_service import (
+    MedicalPromptService,
+)
 from app.services.prompt_service import PromptService
 
 
 class RAGService:
     SUMMARY_KEYWORDS = (
         "summarize",
+        "summarise",
         "summary",
         "overview",
-        "give me a summary",
-        "summarise",
+        "give me an overview",
+        "provide an overview",
+        "what does this document say",
+        "what is in this document",
     )
 
     @classmethod
-    def _is_summary_request(cls, query: str) -> bool:
-        query_lower = query.lower()
+    def _is_summary_query(
+        cls,
+        query: str,
+    ) -> bool:
+        normalized_query = query.lower().strip()
 
         return any(
-            keyword in query_lower
+            keyword in normalized_query
             for keyword in cls.SUMMARY_KEYWORDS
         )
-
-    @staticmethod
-    def _empty_result(
-        query: str,
-        message: str,
-        latency: float,
-        document_id: str | None,
-    ) -> dict:
-        return {
-            "query": query,
-            "answer": message,
-            "document_id": document_id,
-            "sources": [],
-            "latency_seconds": latency,
-        }
 
     @classmethod
     def query(
@@ -48,81 +41,89 @@ class RAGService:
         query: str,
         document_id: str | None = None,
     ) -> dict:
-        start_time = time.time()
+        started_at = time.perf_counter()
+
+        is_summary = cls._is_summary_query(query)
         selected_document_id = document_id
-        is_summary = cls._is_summary_request(query)
 
-        if is_summary:
-            if selected_document_id is None:
-                selected_document_id = (
-                    LangChainRetrieverService
-                    .get_latest_document_id()
-                )
+        # Summaries should operate on one complete document.
+        if is_summary and not selected_document_id:
+            selected_document_id = (
+                LangChainRetrieverService
+                .get_latest_document_id()
+            )
 
-            if selected_document_id is None:
-                latency = round(time.time() - start_time, 3)
-
-                return cls._empty_result(
-                    query=query,
-                    message=(
-                        "No indexed document was found to summarize."
-                    ),
-                    latency=latency,
-                    document_id=None,
-                )
-
+        if is_summary and selected_document_id:
             documents = (
-                LangChainRetrieverService.retrieve_document(
-                    selected_document_id
+                LangChainRetrieverService
+                .retrieve_document(
+                    document_id=selected_document_id,
                 )
             )
             task = "summarization"
-
         else:
-            documents = LangChainRetrieverService.retrieve(
-                query=query,
-                top_k=settings.retrieval_top_k,
-                document_id=selected_document_id,
+            documents = (
+                LangChainRetrieverService.retrieve(
+                    query=query,
+                    top_k=settings.retrieval_top_k,
+                    document_id=selected_document_id,
+                )
             )
-            task = "question_answering"
+            task = "qa"
 
-        chunks = LangChainRetrieverService.to_source_dicts(
-            documents
-        )
+        if not documents:
+            answer = (
+                "I could not find relevant information in the "
+                "selected uploaded document."
+            )
 
-        if not chunks:
-            latency = round(time.time() - start_time, 3)
+            answer = (
+                MedicalPromptService
+                .ensure_disclaimer(answer)
+            )
 
-            return cls._empty_result(
-                query=query,
-                message=(
-                    "No relevant indexed document content was found."
+            return {
+                "query": query,
+                "answer": answer,
+                "document_id": selected_document_id,
+                "sources": [],
+                "latency_seconds": round(
+                    time.perf_counter() - started_at,
+                    3,
                 ),
-                latency=latency,
-                document_id=selected_document_id,
-            )
+            }
 
         prompt = PromptService.build_prompt(
             query=query,
-            context_chunks=chunks,
+            documents=documents,
             task=task,
         )
 
-        answer = LLMService.generate_response(prompt)
-        latency = round(time.time() - start_time, 3)
-
-        logger.info("Query processed")
-        logger.info(f"Query: {query}")
-        logger.info(
-            f"Document ID: {selected_document_id}"
+        answer = LLMService.generate_response(
+            prompt=prompt,
+            system_prompt=(
+                MedicalPromptService
+                .document_system_prompt()
+            ),
         )
-        logger.info(f"Retrieved chunks: {len(chunks)}")
-        logger.info(f"Latency: {latency}s")
+
+        answer = (
+            MedicalPromptService
+            .ensure_disclaimer(answer)
+        )
+
+        sources = (
+            LangChainRetrieverService
+            .to_source_dicts(documents)
+        )
 
         return {
             "query": query,
             "answer": answer,
             "document_id": selected_document_id,
-            "sources": chunks,
-            "latency_seconds": latency,
+            "sources": sources,
+            "latency_seconds": round(
+                time.perf_counter() - started_at,
+                3,
+            ),
         }
