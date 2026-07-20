@@ -9,11 +9,24 @@ from fastapi import (
     UploadFile,
 )
 
-from app.services.chunking_service import TextChunkingService
-from app.services.cleaner_service import TextCleanerService
-from app.services.document_classifier import DocumentClassifier
-from app.services.indexing_service import IndexingService
-from app.services.loader_service import DocumentLoaderService
+from app.services.chunking_service import (
+    TextChunkingService,
+)
+from app.services.cleaner_service import (
+    TextCleanerService,
+)
+from app.services.document_classifier import (
+    DocumentClassifier,
+)
+from app.services.document_service import (
+    DocumentService,
+)
+from app.services.indexing_service import (
+    IndexingService,
+)
+from app.services.loader_service import (
+    DocumentLoaderService,
+)
 
 
 router = APIRouter(
@@ -63,14 +76,17 @@ async def ingest_file(
         )
 
     document_id = str(uuid4())
+
     stored_filename = (
         f"{document_id}{extension}"
     )
+
     stored_path = (
-        UPLOAD_DIRECTORY / stored_filename
+        UPLOAD_DIRECTORY
+        / stored_filename
     )
 
-    file_hash = hashlib.sha256()
+    file_hash_builder = hashlib.sha256()
     file_size_bytes = 0
 
     try:
@@ -85,7 +101,10 @@ async def ingest_file(
 
                 file_size_bytes += len(data)
 
-                if file_size_bytes > MAX_UPLOAD_BYTES:
+                if (
+                    file_size_bytes
+                    > MAX_UPLOAD_BYTES
+                ):
                     raise HTTPException(
                         status_code=413,
                         detail=(
@@ -94,8 +113,47 @@ async def ingest_file(
                         ),
                     )
 
-                file_hash.update(data)
+                file_hash_builder.update(data)
                 destination.write(data)
+
+        if file_size_bytes == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="The uploaded file is empty.",
+            )
+
+        file_hash = (
+            file_hash_builder.hexdigest()
+        )
+
+        duplicate = (
+            DocumentService
+            .find_duplicate_by_hash(
+                file_hash=file_hash,
+                user_id=None,
+            )
+        )
+
+        if duplicate is not None:
+            stored_path.unlink(
+                missing_ok=True
+            )
+
+            return {
+                "duplicate": True,
+                "existing_document_id": (
+                    duplicate["document_id"]
+                ),
+                "filename": (
+                    duplicate["filename"]
+                ),
+                "document_type": (
+                    duplicate["document_type"]
+                ),
+                "message": (
+                    "This file has already been uploaded."
+                ),
+            }
 
         loaded_documents = (
             DocumentLoaderService.load_document(
@@ -152,22 +210,31 @@ async def ingest_file(
             IndexingService.index_document(
                 document_id=document_id,
                 source=original_filename,
-                original_filename=original_filename,
+                original_filename=(
+                    original_filename
+                ),
                 stored_filename=stored_filename,
                 document_type=document_type,
-                file_hash=file_hash.hexdigest(),
-                file_size_bytes=file_size_bytes,
+                file_hash=file_hash,
+                file_size_bytes=(
+                    file_size_bytes
+                ),
                 chunk_records=chunk_records,
                 user_id=None,
             )
         )
 
         return {
+            "duplicate": False,
             "document_id": document_id,
             "filename": original_filename,
             "document_type": document_type,
-            "file_size_bytes": file_size_bytes,
-            "chunks_indexed": chunks_indexed,
+            "file_size_bytes": (
+                file_size_bytes
+            ),
+            "chunks_indexed": (
+                chunks_indexed
+            ),
             "message": (
                 "Document indexed successfully"
             ),
