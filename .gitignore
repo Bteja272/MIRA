@@ -31,6 +31,7 @@ logs/
 audio_output/
 generated_audio/
 transcriptions/
+backups/
 
 # Databases and Docker volumes
 postgres_data/
