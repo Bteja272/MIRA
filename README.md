@@ -1,76 +1,156 @@
-# 🔍 Agentic RAG System
-### LangGraph-Powered Intelligent Query Routing
+# 🩺 MIRA
+### Medical Intelligence and Retrieval Assistant
 
-![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?style=flat&logo=fastapi&logoColor=white)
-![LangGraph](https://img.shields.io/badge/LangGraph-Agent%20Orchestration-FF6B6B?style=flat)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?style=flat&logo=fastapi&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-Agent_Orchestration-FF6B6B?style=flat)
 ![LangChain](https://img.shields.io/badge/LangChain-Retrieval-1C3C3C?style=flat)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791?style=flat&logo=postgresql&logoColor=white)
-![Ollama](https://img.shields.io/badge/LLM-Ollama%20%7C%20llama3.2-black?style=flat)
+![Ollama](https://img.shields.io/badge/LLM-Ollama_%7C_llama3.2-black?style=flat)
 ![Tavily](https://img.shields.io/badge/Search-Tavily-blue?style=flat)
-![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=flat&logo=docker&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green?style=flat)
+![Alembic](https://img.shields.io/badge/Migrations-Alembic-orange?style=flat)
+![Docker](https://img.shields.io/badge/Docker-PostgreSQL-2496ED?style=flat&logo=docker&logoColor=white)
+![Status](https://img.shields.io/badge/Status-Active_Development-yellow?style=flat)
 
-> Not every question needs document retrieval. Not every question can be answered from training data. This system knows the difference.
-
----
-
-## The Routing Problem
-
-Standard RAG systems send every query through the same retrieval pipeline — even when retrieval adds zero value. Ask "What is the capital of France?" and a fixed RAG system still searches your vector database, finds nothing relevant, and wastes 38ms before answering from LLM knowledge it already had.
-
-Ask "What happened in AI news today?" and a fixed RAG system answers from stale training data because it has no web search capability.
-
-This system routes intelligently:
-
-| Query | Route | Why |
-|---|---|---|
-| "Summarize the uploaded research paper" | RAG pipeline | Document-specific, needs retrieval |
-| "What is the capital of France?" | Direct LLM | General knowledge, no retrieval needed |
-| "What happened in AI news this week?" | Tavily web search | Real-time, beyond training data |
-
-**The result:** faster answers when retrieval isn't needed, grounded answers when it is, and live answers when neither is enough.
+> You upload your lab report. You ask: "What does my HbA1c result mean?" MIRA reads your specific document, explains what the lab documented, cites the exact source, and appends a medical disclaimer — without diagnosing you, recommending medication changes, or routing through a cloud API.
 
 ---
 
-## What Makes This Different From a Basic RAG Tutorial
+## What MIRA Is
 
-Most RAG implementations are fixed pipelines — query goes in, retrieved chunks come out, LLM generates. This is not that.
+MIRA is a **safety-first medical document intelligence platform**. It helps patients understand their own medical records by explaining what healthcare providers have already documented — in plain English, with every claim cited to its source.
 
-- **LangGraph state machine** not a simple if/else router — enables multi-step reasoning, conditional branching, and future parallel tool execution
-- **Three-tool agentic system** with LLM-based query classification deciding the execution path at runtime
-- **HNSW indexing** on pgvector not a flat cosine scan — sub-linear retrieval time at scale
-- **Source attribution** with per-chunk similarity scoring — every answer cites the exact document chunks used
-- **Latency tracked per pipeline phase** — retrieval, generation, and web search independently measured
+The critical distinction: MIRA explains what your documents say. It does not make new medical determinations.
+
+**What MIRA does:**
+- Summarize discharge summaries, lab reports, imaging reports, prescriptions, and visit notes
+- Explain medical terminology found in your documents
+- Compare two lab reports and show documented changes over time
+- Answer general health knowledge questions
+- Search current public medical guidelines
+
+**What MIRA never does:**
+- Diagnose conditions based on symptoms you describe
+- Recommend changing, stopping, or adjusting medications
+- Predict outcomes or prognosis
+- Answer without citing the source document
+- Skip the medical disclaimer on health-related responses
 
 ---
 
-## How It Works
+## Safety Architecture
+
+Medical-risk queries are blocked **before** the LangGraph agent, before retrieval, and before any LLM call. This is deterministic code — not a language model making a judgment call.
 
 ```
 User Query
      ↓
-LangGraph Agent Router  ← LLM-based query classification
+Deterministic Safety Guard
      │
-     ├──────────────────────────────────┐──────────────────────┐
-     ▼                                  ▼                      ▼
-RAG Tool                         Direct LLM Tool        Web Search Tool
-~38ms retrieval                  0ms retrieval           ~200ms search
-+ ~1400ms generation             + ~1400ms generation    + ~1400ms generation
-     │                                  │                      │
-LangChain Retriever               Ollama llama3.2        Tavily Search API
-     │                                                         │
-PostgreSQL + pgvector                               Live search results
-(HNSW cosine similarity)
-     │                                  │                      │
-     └──────────────────────────────────┴──────────────────────┘
-                              ▼
-                    Prompt Construction
-                              ▼
-                    Ollama LLM Generation
-                              ▼
-              Grounded Answer + Source Citations
+     ├── Emergency keyword detected   → "Call 911 immediately. Do not wait."
+     ├── Self-harm indicator          → Crisis resources + redirect
+     ├── Symptom diagnosis request    → "Contact your healthcare provider."
+     ├── Prognosis request            → "Only your physician can determine this."
+     └── Medication-change request    → "Never adjust medications without your doctor."
+     
+Allowed Query
+     ↓
+LangGraph Router
+     │
+     ├── Document-specific query     → RAG pipeline (pgvector retrieval)
+     ├── Multi-document comparison   → Full-document retrieval (all selected)
+     ├── General health knowledge    → Direct Ollama LLM
+     └── Current guidelines/news     → Tavily web search
+     ↓
+Deterministic disclaimer appended by application code
+     ↓
+Source-cited response
 ```
+
+The disclaimer is **never** generated by the LLM — it is appended by the application layer on every medical response, regardless of what the model returns.
+
+---
+
+## What Makes This Different From Generic RAG
+
+Most RAG systems retrieve the most similar chunks and pass them to a model. For medical documents this is insufficient.
+
+| Problem | How MIRA handles it |
+|---|---|
+| Similarity search omits sections | Document summary uses **complete-document retrieval**, not chunk similarity |
+| Multi-doc mixing | Document **boundaries preserved in every prompt** — diagnoses never cross-assigned |
+| Model classifies lab values | Model is **forbidden** from calling a value high/low/normal — only the lab's documented flag is used |
+| LLM could skip disclaimer | Disclaimer appended **deterministically by code** — not by the model |
+| Emergency queries reach LLM | **Pre-routing safety guard** blocks before any retrieval or generation |
+| Duplicate uploads pollute index | **SHA-256 hash detection** rejects exact duplicate files before ingestion |
+| Schema drift across environments | **Alembic migrations** track every schema change with version history |
+| Lines split across chunks | **Newline-aware chunking** preserves lab value line integrity |
+
+---
+
+## Routing Table
+
+| User request | Route | Why |
+|---|---|---|
+| "Summarize this uploaded lab report" | Full-document RAG | Similarity search alone omits sections |
+| "Compare these two blood test results" | Multi-document RAG | Preserves boundaries, retrieves complete content |
+| "What does HbA1c mean?" | Direct LLM | General knowledge, no document needed |
+| "Latest guidelines on metformin?" | Tavily web search | Current information, beyond training data |
+| "Should I stop taking this medication?" | Safety guard | Blocked before routing |
+| "I have chest pain right now" | Safety guard | Emergency response, no retrieval |
+
+---
+
+## Example Response — Lab Value Interpretation
+
+**Query:**
+```json
+{
+  "query": "According to this document, what do my lab results show?",
+  "document_id": "DOCUMENT_ID"
+}
+```
+
+**MIRA response (summarized):**
+```
+Based on your uploaded lab report (synthetic_lab_report.txt):
+
+Hemoglobin A1c
+  Result:          7.2 %
+  Reference range: 4.0 – 5.6 %
+  Documented flag: High
+
+[Source: synthetic_lab_report.txt · lab_report · chunk 1]
+
+---
+⚠️ MEDICAL NOTICE: This information explains what is documented in your
+uploaded medical records. It is not medical advice, diagnosis, or
+treatment guidance. Consult your healthcare provider for medical decisions.
+```
+
+The model is explicitly instructed not to independently label the value as "high" or "above normal." Only the laboratory's documented flag is reproduced.
+
+---
+
+## Multi-Document Comparison
+
+```json
+{
+  "query": "Compare these two lab reports.",
+  "document_ids": ["DOCUMENT_ID_1", "DOCUMENT_ID_2"]
+}
+```
+
+MIRA:
+1. Validates every selected document exists
+2. Retrieves the complete indexed content of each — not just similar chunks
+3. Preserves document boundaries throughout the prompt
+4. Produces a separate summary per document
+5. Generates a cross-document comparison
+6. Never infers medical changes unless comparable values and dates are explicitly documented
+7. Labels every source with filename, document ID, type, and chunk position
+
+Current limit: 5 documents per request in local development.
 
 ---
 
@@ -79,18 +159,27 @@ PostgreSQL + pgvector                               Live search results
 ```
 PDF / TXT Upload
      ↓
-Text Extraction
+Filename and extension validation
      ↓
-Cleaning + Normalization
+25 MB upload size limit
      ↓
-Fixed-size chunking (512 tokens, 64 overlap)
+SHA-256 duplicate detection  ← rejects exact duplicates before processing
+     ↓
+Text extraction (pypdf)
+     ↓
+Line-preserving text cleaning  ← preserves lab value line structure
+     ↓
+Newline-aware overlapping chunking  ← never splits a lab value mid-line
+     ↓
+Medical document classification
      ↓
 SentenceTransformers all-MiniLM-L6-v2 embeddings (384 dimensions)
      ↓
-PostgreSQL + pgvector with HNSW index
+PostgreSQL + pgvector · HNSW cosine index
 ```
 
-Chunks scoring below **0.7 cosine similarity** are filtered from context before generation — reducing hallucination risk from low-relevance retrievals.
+**Supported document types:**
+`lab_report` · `discharge_summary` · `prescription` · `imaging_report` · `pathology_report` · `visit_note` · `vaccination_record` · `insurance_document` · `unknown`
 
 ---
 
@@ -98,170 +187,210 @@ Chunks scoring below **0.7 cosine similarity** are filtered from context before 
 
 | Layer | Technology |
 |---|---|
-| Backend API | FastAPI (async, Python) |
-| Agent Orchestration | LangGraph |
-| Retrieval Framework | LangChain |
-| Embeddings | SentenceTransformers — `all-MiniLM-L6-v2` |
-| Vector Database | PostgreSQL + `pgvector` (HNSW index) |
-| LLM | Ollama — `llama3.2` (local inference) |
-| Web Search | Tavily Search API |
+| Backend API | FastAPI |
+| Agent orchestration | LangGraph |
+| Retrieval abstraction | LangChain |
+| Embeddings | SentenceTransformers `all-MiniLM-L6-v2` |
+| Vector database | PostgreSQL + pgvector |
+| Vector index | HNSW cosine |
 | ORM | SQLAlchemy |
-| Containerization | Docker |
+| Schema migrations | Alembic |
+| Local LLM | Ollama · llama3.2 |
+| Web search | Tavily |
+| Document parsing | pypdf |
+| Database container | Docker Compose |
+| Testing | Python unittest |
 
 ---
 
 ## 🏗️ Key Technical Decisions
 
-**Why LangGraph over a simple if/else router?**
-A conditional router is a dead end — it handles three routes today and requires a rewrite to add a fourth. LangGraph models the agent as a stateful directed graph: adding a new tool is adding a new node and edge, not restructuring control flow. It also enables future multi-step reasoning where one tool's output informs the next tool's input — impossible with a router.
+**Why deterministic safety before LangGraph routing?**
+Medical-risk classification should not depend on a language model correctly identifying an emergency or a diagnosis request. A model can be misled by phrasing. A keyword guard cannot.
 
-**Why agentic routing over fixed RAG?**
-Fixed RAG retrieves documents for every query regardless of relevance. For general knowledge questions this wastes 38ms and potentially injects irrelevant context that degrades answer quality. For real-time questions it fails entirely. Agentic routing eliminates both failure modes.
+**Why complete-document retrieval for summaries?**
+Similarity search against a generic "summarize this document" query does not reliably surface all sections. A lab report's reference ranges may not score highly against that query. Complete retrieval ensures nothing is omitted.
 
-**Why pgvector over Pinecone or Weaviate?**
-pgvector co-locates the vector store with relational metadata — chunk text, document ID, source filename — in a single PostgreSQL database. No cross-service round trips for metadata lookups, no separate infrastructure to manage. For a self-hosted system the operational simplicity outweighs the horizontal scaling advantages of managed vector databases.
+**Why preserve document boundaries in multi-document prompts?**
+Without explicit boundaries, the model may associate a diagnosis, lab value, medication, or date from one document with a different patient's record. Every chunk is labeled with its source document.
 
-**Why HNSW indexing?**
-HNSW (Hierarchical Navigable Small World) provides approximate nearest-neighbor search in sub-linear time — O(log n) versus O(n) for flat cosine scan. At small corpora the difference is negligible; at thousands of chunks it's the difference between 38ms and 380ms retrieval latency.
+**Why forbid the model from classifying lab values?**
+The laboratory's documented flag (H, L, N, CRITICAL) reflects clinical context the model does not have — patient age, sex, medications, and prior results. The model reproduces the flag; it does not interpret it.
 
-**Why Ollama + llama3.2 over OpenAI?**
-Zero API costs, full data privacy, and no rate limits during development. The architecture supports swapping in any OpenAI-compatible endpoint — the LLM is a pluggable component, not a hard dependency.
+**Why line-preserving cleaning and newline-aware chunking?**
+Lab reports place the test name, result, unit, reference range, and flag on separate lines. Character-based chunking splits these across chunk boundaries, breaking the association between a value and its test name.
 
-**Why `all-MiniLM-L6-v2`?**
-384-dimensional embeddings — compact enough for fast similarity search, expressive enough for strong semantic matching. Benchmark performance on semantic textual similarity tasks is comparable to models twice its size at a fraction of the inference cost.
+**Why Alembic instead of `Base.metadata.create_all()`?**
+`create_all()` creates missing tables but silently ignores existing ones. Alembic tracks schema history and applies controlled incremental migrations — critical for any project expecting to evolve its data model.
+
+**Why SHA-256 duplicate detection?**
+Re-ingesting the same file creates duplicate chunks and corrupts retrieval. SHA-256 detection rejects identical files before any processing occurs.
+
+**Why Ollama locally?**
+Zero per-request API cost, full local data privacy, no rate limits during development. The LLM layer is replaceable for production deployment.
 
 ---
 
 ## 🚀 Quick Start
 
 ```bash
-# Clone and set up environment
-git clone https://github.com/Bteja272/rag-ai-system.git
-cd rag-ai-system
+# 1. Clone and set up environment
+git clone https://github.com/Bteja272/MIRA.git
+cd MIRA
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# Configure environment
-cp .env.example .env
-# Add your TAVILY_API_KEY to .env
+# 2. Configure environment
+cp .env.example .env   # add DATABASE_URL and TAVILY_API_KEY
 
-# Start PostgreSQL + pgvector
-docker-compose up -d
-python scripts/init_db.py
+# 3. Start PostgreSQL
+docker compose up -d
 
-# Start Ollama (Windows host)
-ollama run llama3.2
+# 4. Apply migrations
+python -m alembic -c alembic.ini upgrade head
 
-# Start API
-uvicorn app.main:app --reload
+# 5. Start Ollama (Windows host / separate terminal)
+ollama pull llama3.2 && ollama serve
+
+# 6. Run tests
+python -m unittest discover -s tests -v
+
+# 7. Start API
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
-API at `http://localhost:8000` · Docs at `http://localhost:8000/docs`
+API: `http://127.0.0.1:8001` · Docs: `http://127.0.0.1:8001/docs`
 
 ---
 
 ## 🔌 API Reference
 
 ### Ingest a document
-
 ```bash
-curl -X POST http://localhost:8000/ingest \
-  -F "file=@sample_data/intro_to_rag.pdf"
+curl -X POST http://127.0.0.1:8001/ingest \
+  -F "file=@sample_data/synthetic_lab_report.txt"
 ```
 ```json
 {
-  "status": "success",
-  "filename": "intro_to_rag.pdf",
-  "chunks_indexed": 42,
-  "latency_ms": 1840
+  "duplicate": false,
+  "document_id": "4fe8c6d0-...",
+  "filename": "synthetic_lab_report.txt",
+  "document_type": "lab_report",
+  "chunks_indexed": 2,
+  "message": "Document indexed successfully"
 }
 ```
 
-### Query — agent routes automatically
-
+### Query one document
 ```bash
-curl -X POST http://localhost:8000/query \
+curl -X POST http://127.0.0.1:8001/query \
   -H "Content-Type: application/json" \
-  -d '{"query": "What is Retrieval-Augmented Generation?"}'
-```
-```json
-{
-  "query": "What is Retrieval-Augmented Generation?",
-  "route": "rag",
-  "answer": "Retrieval-Augmented Generation (RAG) is an AI framework...",
-  "sources": [
-    {
-      "chunk_id": "a3f2c1",
-      "document": "intro_to_rag.pdf",
-      "excerpt": "RAG combines the strengths of retrieval systems...",
-      "similarity_score": 0.921
-    }
-  ],
-  "retrieval_latency_ms": 38,
-  "generation_latency_ms": 1420,
-  "total_latency_ms": 1458
-}
+  -d '{"query": "Summarize this document.", "document_id": "DOCUMENT_ID"}'
 ```
 
-The `route` field tells you which tool handled the query: `rag` · `direct_llm` · `web_search`
+### Compare multiple documents
+```bash
+curl -X POST http://127.0.0.1:8001/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Compare these and identify differences.", "document_ids": ["ID_1","ID_2"]}'
+```
+
+### Document management
+```bash
+curl http://127.0.0.1:8001/documents                    # list all
+curl http://127.0.0.1:8001/documents/DOCUMENT_ID        # metadata
+curl -X DELETE http://127.0.0.1:8001/documents/DOCUMENT_ID  # permanent delete
+```
+
+Deletion removes: original file · database row · chunks · vector embeddings.
 
 ---
 
 ## 📁 Project Structure
 
 ```
-rag-ai-system/
+MIRA/
+├── alembic/
+│   ├── env.py
+│   └── versions/              Migration history
 ├── app/
 │   ├── main.py
 │   ├── api/routes/
-│   │   ├── ingest.py                    Document ingestion endpoint
-│   │   └── query.py                     Agentic RAG query endpoint
+│   │   ├── documents.py       List, read, delete documents
+│   │   ├── health.py
+│   │   ├── ingest.py          Upload and index documents
+│   │   └── query.py           Single and multi-document queries
 │   ├── core/
-│   │   ├── config.py                    Environment settings
-│   │   └── logging.py                   Per-phase latency tracking
+│   │   ├── config.py
+│   │   └── logger.py
 │   ├── db/
-│   │   ├── session.py                   SQLAlchemy session
-│   │   └── models.py                    Document chunk ORM models
-│   ├── schemas/
-│   │   ├── ingest.py
-│   │   └── query.py
+│   │   ├── models.py
+│   │   └── session.py
 │   └── services/
-│       ├── ingestion.py                 Chunking and preprocessing
-│       ├── embedding.py                 SentenceTransformers inference
-│       ├── retrieval.py                 pgvector similarity search
-│       ├── langchain_retriever_service.py  LangChain abstraction layer
-│       ├── direct_llm_service.py        Direct Ollama generation
+│       ├── safety_guard.py              Pre-routing safety check
+│       ├── document_classifier.py       Medical document type detection
+│       ├── cleaner_service.py           Line-preserving text cleaning
+│       ├── chunking_service.py          Newline-aware chunking
+│       ├── embedding_service.py         SentenceTransformers inference
+│       ├── langchain_retriever_service.py
+│       ├── langgraph_agent_service.py   Agent graph and routing
+│       ├── rag_service.py               Single and multi-document RAG
+│       ├── retrieval_service.py         pgvector similarity search
+│       ├── direct_llm_service.py        Ollama direct generation
 │       ├── web_search_service.py        Tavily integration
-│       ├── llm_service.py               LLM inference interface
-│       ├── prompt_service.py            Context injection and prompt building
-│       └── langgraph_agent_service.py   Agent graph and routing logic
-├── scripts/
-│   ├── init_db.py                       pgvector schema initialization
-│   └── test_pipeline.py                 End-to-end smoke test
-├── requirements.txt
+│       ├── medical_prompt_service.py    Medical-specific prompts + disclaimer
+│       └── document_service.py          Document CRUD and deletion
+├── sample_data/
+│   ├── synthetic_lab_report.txt
+│   └── synthetic_discharge_summary.txt
+├── tests/
 ├── docker-compose.yml
-└── .env.example
+├── alembic.ini
+└── requirements.txt
 ```
 
 ---
 
-## 🗺️ Roadmap
+## ✅ Status
 
-- [ ] **Hybrid search** — BM25 keyword search combined with vector search for improved recall on exact-match queries
-- [ ] **Cross-encoder reranking** — second-pass reranking of retrieved chunks for precision improvement
-- [ ] **RAGAS evaluation** — automated faithfulness, answer relevance, and context precision scoring on test query sets
-- [ ] **Conversation memory** — multi-turn query sessions with LangGraph state persistence
-- [ ] **Redis response caching** — cache frequent query responses to reduce LLM inference calls
-- [ ] **Multi-format ingestion** — `.docx`, `.md`, and web URL support
-- [ ] **Cloud LLM fallback** — OpenAI-compatible endpoint as alternative to local Ollama
-- [ ] **API authentication** — API key middleware for endpoint protection
+**Complete:**
+FastAPI backend · PostgreSQL + pgvector + HNSW · PDF and TXT ingestion · Line-preserving cleaning · Newline-aware chunking · Medical document classification · Source-cited RAG · Direct LLM route · Tavily web search · Pre-routing safety guard · Deterministic disclaimer · SHA-256 duplicate detection · Permanent document deletion · Alembic migrations · Multi-document selection · Combined overview · Cross-document comparison · Python unittest suite
+
+**Roadmap:**
+- [ ] Structured lab value extraction into dedicated table
+- [ ] Medical NER (spaCy + en_ner_bc5cdr_md)
+- [ ] Deterministic response validation layer
+- [ ] Conversation memory with session isolation
+- [ ] Voice interface (Java audio → Whisper → Coqui TTS)
+- [ ] React frontend with document library and voice input
+- [ ] Authentication and per-user document ownership
+- [ ] Hybrid BM25 + vector search
+- [ ] Cross-encoder reranking
+- [ ] RAGAS evaluation pipeline
+- [ ] Production deployment
+
+---
+
+## 🔒 Privacy Notice
+
+MIRA is a local development system. It is not ready for real patient records or external users.
+
+Before supporting multiple users with real medical documents, the system requires authentication, per-user document ownership enforcement, authorization checks on every operation, encrypted transport, encrypted storage, audit logging, and production hardening.
+
+**Use only synthetic medical documents during the current development stage.**
+
+---
+
+## Medical Notice
+
+MIRA provides educational explanations of supplied documents. It does not replace a licensed healthcare professional and must not be used for diagnosis, treatment decisions, medication changes, emergency triage, or prognosis.
 
 ---
 
 ## 📝 License
 
-MIT License
+MIT
 
 ---
 
-> Built as a production-style Agentic RAG platform demonstrating LangGraph state-machine orchestration, LangChain-compatible pgvector retrieval with HNSW indexing, local LLM inference via Ollama, and Tavily-powered real-time web search — with intelligent routing that eliminates unnecessary retrieval for every query.
+> Built as a safety-first medical document intelligence platform combining LangGraph routing, LangChain-compatible pgvector retrieval, Alembic-managed schema migrations, SHA-256 duplicate detection, multi-document comparison with preserved boundaries, deterministic safety guardrails, and local Ollama inference — with medical disclaimers enforced by application code, never by the language model.

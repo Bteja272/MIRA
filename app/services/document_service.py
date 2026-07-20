@@ -3,7 +3,10 @@ from uuid import uuid4
 
 from sqlalchemy import func, select
 
-from app.db.models import Document, DocumentChunk
+from app.db.models import (
+    Document,
+    DocumentChunk,
+)
 from app.db.session import SessionLocal
 
 
@@ -14,11 +17,11 @@ class DocumentService:
         user_id: str | None,
     ):
         """
-        Restrict operations to one user.
+        Restrict document operations to one user.
 
         During local development, documents have user_id=None.
-        Once authentication is implemented, every call must supply
-        the authenticated user's ID.
+        Authentication will later replace this with the
+        authenticated user's ID.
         """
         if user_id is None:
             return statement.where(
@@ -33,7 +36,9 @@ class DocumentService:
     def _chunk_count_subquery():
         return (
             select(
-                func.count(DocumentChunk.id)
+                func.count(
+                    DocumentChunk.id
+                )
             )
             .where(
                 DocumentChunk.document_id
@@ -49,10 +54,18 @@ class DocumentService:
         chunk_count: int,
     ) -> dict:
         return {
-            "document_id": document.document_id,
-            "filename": document.original_filename,
-            "document_type": document.document_type,
-            "file_size_bytes": document.file_size_bytes,
+            "document_id": (
+                document.document_id
+            ),
+            "filename": (
+                document.original_filename
+            ),
+            "document_type": (
+                document.document_type
+            ),
+            "file_size_bytes": (
+                document.file_size_bytes
+            ),
             "chunk_count": chunk_count,
             "uploaded_at": (
                 document.created_at.isoformat()
@@ -100,7 +113,10 @@ class DocumentService:
                         row_chunk_count or 0
                     ),
                 )
-                for document, row_chunk_count in rows
+                for (
+                    document,
+                    row_chunk_count,
+                ) in rows
             ]
 
         finally:
@@ -117,11 +133,15 @@ class DocumentService:
             .label("chunk_count")
         )
 
-        statement = select(
-            Document,
-            chunk_count,
-        ).where(
-            Document.document_id == document_id
+        statement = (
+            select(
+                Document,
+                chunk_count,
+            )
+            .where(
+                Document.document_id
+                == document_id
+            )
         )
 
         statement = cls._apply_user_scope(
@@ -150,12 +170,65 @@ class DocumentService:
 
             response.update(
                 {
-                    "source": document.source,
-                    "file_hash": document.file_hash,
+                    "source": (
+                        document.source
+                    ),
+                    "file_hash": (
+                        document.file_hash
+                    ),
                 }
             )
 
             return response
+
+        finally:
+            db.close()
+
+    @classmethod
+    def get_existing_document_ids(
+        cls,
+        document_ids: list[str],
+        user_id: str | None = None,
+    ) -> list[str]:
+        """
+        Return selected document IDs that exist in the
+        current user's document scope.
+        """
+        if not document_ids:
+            return []
+
+        statement = (
+            select(
+                Document.document_id
+            )
+            .where(
+                Document.document_id.in_(
+                    document_ids
+                )
+            )
+        )
+
+        statement = cls._apply_user_scope(
+            statement=statement,
+            user_id=user_id,
+        )
+
+        db = SessionLocal()
+
+        try:
+            found_ids = set(
+                db.scalars(
+                    statement
+                ).all()
+            )
+
+            # Preserve the order selected by the caller.
+            return [
+                document_id
+                for document_id
+                in document_ids
+                if document_id in found_ids
+            ]
 
         finally:
             db.close()
@@ -166,14 +239,12 @@ class DocumentService:
         file_hash: str,
         user_id: str | None = None,
     ) -> dict | None:
-        """
-        Find an existing document with the same SHA-256 hash for the
-        current user.
-        """
-        statement = select(
-            Document
-        ).where(
-            Document.file_hash == file_hash
+        statement = (
+            select(Document)
+            .where(
+                Document.file_hash
+                == file_hash
+            )
         )
 
         statement = cls._apply_user_scope(
@@ -181,24 +252,37 @@ class DocumentService:
             user_id=user_id,
         )
 
-        statement = statement.order_by(
-            Document.created_at.desc()
-        ).limit(1)
+        statement = (
+            statement
+            .order_by(
+                Document.created_at.desc()
+            )
+            .limit(1)
+        )
 
         db = SessionLocal()
 
         try:
-            document = db.scalar(statement)
+            document = db.scalar(
+                statement
+            )
 
             if document is None:
                 return None
 
             return {
-                "document_id": document.document_id,
-                "filename": document.original_filename,
-                "document_type": document.document_type,
+                "document_id": (
+                    document.document_id
+                ),
+                "filename": (
+                    document.original_filename
+                ),
+                "document_type": (
+                    document.document_type
+                ),
                 "uploaded_at": (
-                    document.created_at.isoformat()
+                    document.created_at
+                    .isoformat()
                     if document.created_at
                     else None
                 ),
@@ -212,9 +296,6 @@ class DocumentService:
         upload_directory: Path,
         stored_filename: str,
     ) -> Path:
-        """
-        Resolve a stored filename safely inside uploaded_files.
-        """
         if not stored_filename:
             raise ValueError(
                 "Stored filename is missing."
@@ -239,9 +320,13 @@ class DocumentService:
             / stored_filename
         ).resolve()
 
-        if stored_path.parent != base_directory:
+        if (
+            stored_path.parent
+            != base_directory
+        ):
             raise ValueError(
-                "Stored file is outside the upload directory."
+                "Stored file is outside "
+                "the upload directory."
             )
 
         return stored_path
@@ -254,16 +339,17 @@ class DocumentService:
         user_id: str | None = None,
     ) -> dict | None:
         """
-        Delete the document row, its chunks and embeddings, and its
-        physical uploaded file.
+        Permanently delete the document, its chunks,
+        embeddings, and physical stored file.
 
-        Chunk rows are removed through the database foreign-key
-        ON DELETE CASCADE constraint.
+        Chunk rows are removed through ON DELETE CASCADE.
         """
-        statement = select(
-            Document
-        ).where(
-            Document.document_id == document_id
+        statement = (
+            select(Document)
+            .where(
+                Document.document_id
+                == document_id
+            )
         )
 
         statement = cls._apply_user_scope(
@@ -272,11 +358,14 @@ class DocumentService:
         )
 
         db = SessionLocal()
+
         original_path: Path | None = None
         staged_path: Path | None = None
 
         try:
-            document = db.scalar(statement)
+            document = db.scalar(
+                statement
+            )
 
             if document is None:
                 return None
@@ -297,16 +386,17 @@ class DocumentService:
                     )
                 )
 
-            # Temporarily rename the file before changing the database.
-            # This prevents a partially deleted visible upload.
             if (
                 original_path is not None
                 and original_path.exists()
             ):
-                staged_path = original_path.with_name(
-                    (
-                        f".{original_path.name}."
-                        f"{uuid4().hex}.deleting"
+                staged_path = (
+                    original_path.with_name(
+                        (
+                            f".{original_path.name}."
+                            f"{uuid4().hex}."
+                            "deleting"
+                        )
                     )
                 )
 
@@ -320,7 +410,6 @@ class DocumentService:
         except Exception:
             db.rollback()
 
-            # Restore the file when the database deletion fails.
             if (
                 staged_path is not None
                 and staged_path.exists()
@@ -344,12 +433,14 @@ class DocumentService:
         ):
             try:
                 staged_path.unlink()
+
             except OSError as exc:
                 file_deleted = False
 
                 raise RuntimeError(
-                    "Database records were deleted, but the "
-                    "physical file could not be removed."
+                    "Database records were deleted, "
+                    "but the physical file could "
+                    "not be removed."
                 ) from exc
 
         return {
