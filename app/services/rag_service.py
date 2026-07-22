@@ -1,6 +1,13 @@
+import re
 import time
 
 from app.core.config import settings
+from app.services.document_merge_service import (
+    DocumentMergeService,
+)
+from app.services.document_service import (
+    DocumentService,
+)
 from app.services.langchain_retriever_service import (
     LangChainRetrieverService,
 )
@@ -12,6 +19,9 @@ from app.services.medical_prompt_service import (
 )
 from app.services.prompt_service import (
     PromptService,
+)
+from app.services.response_validation_service import (
+    ResponseValidationService,
 )
 
 
@@ -42,6 +52,23 @@ class RAGService:
         "earlier",
         "later",
     )
+
+    DOCUMENT_IDENTIFICATION_QUERIES = {
+        "what are the selected documents",
+        "what are the two selected documents",
+        "which documents are selected",
+        "which files are selected",
+        "what documents did i select",
+        "what files did i select",
+        "list selected documents",
+        "list the selected documents",
+        "what are the documents uploaded",
+        "what are the two documents uploaded",
+        "which documents were uploaded",
+        "which files were uploaded",
+        "list uploaded documents",
+        "list the uploaded documents",
+    }
 
     @staticmethod
     def _normalize_document_ids(
@@ -74,6 +101,37 @@ class RAGService:
 
         return selected
 
+    @staticmethod
+    def _normalize_query_text(
+        query: str,
+    ) -> str:
+        normalized = re.sub(
+            r"[^a-z0-9\s]",
+            " ",
+            query.lower(),
+        )
+
+        return " ".join(
+            normalized.split()
+        )
+
+    @classmethod
+    def _is_document_identification_query(
+        cls,
+        query: str,
+    ) -> bool:
+        normalized_query = (
+            cls._normalize_query_text(
+                query
+            )
+        )
+
+        return (
+            normalized_query
+            in cls
+            .DOCUMENT_IDENTIFICATION_QUERIES
+        )
+
     @classmethod
     def _is_summary_query(
         cls,
@@ -104,6 +162,185 @@ class RAGService:
             in cls.COMPARISON_KEYWORDS
         )
 
+    @staticmethod
+    def _format_document_type(
+        document_type: str | None,
+    ) -> str:
+        if not document_type:
+            return "Document"
+
+        if document_type.lower() == "unknown":
+            return "Document"
+
+        return (
+            document_type
+            .replace("_", " ")
+            .strip()
+            .capitalize()
+        )
+
+    @classmethod
+    def _document_identification_response(
+        cls,
+        query: str,
+        selected_ids: list[str],
+        started_at: float,
+    ) -> dict:
+        document_records: list[dict] = []
+
+        for (
+            document_position,
+            selected_id,
+        ) in enumerate(
+            selected_ids,
+            start=1,
+        ):
+            document = (
+                DocumentService
+                .get_document(
+                    document_id=(
+                        selected_id
+                    ),
+                    user_id=None,
+                )
+            )
+
+            if document is None:
+                continue
+
+            document_records.append(
+                {
+                    **document,
+                    "document_position": (
+                        document_position
+                    ),
+                }
+            )
+
+        selected_document_id = (
+            selected_ids[0]
+            if len(selected_ids) == 1
+            else None
+        )
+
+        if not document_records:
+            answer = (
+                "No selected documents "
+                "were found."
+            )
+
+            return {
+                "query": query,
+                "answer": answer,
+                "document_id": (
+                    selected_document_id
+                ),
+                "document_ids": (
+                    selected_ids
+                ),
+                "selected_document_count": (
+                    len(selected_ids)
+                ),
+                "sources": [],
+                "latency_seconds": round(
+                    time.perf_counter()
+                    - started_at,
+                    3,
+                ),
+            }
+
+        heading = (
+            "The selected document is:"
+            if len(document_records) == 1
+            else (
+                "The selected documents "
+                "are:"
+            )
+        )
+
+        answer_lines = [
+            heading,
+            "",
+        ]
+
+        sources: list[dict] = []
+
+        for (
+            source_number,
+            document,
+        ) in enumerate(
+            document_records,
+            start=1,
+        ):
+            filename = document.get(
+                "filename"
+            ) or "Unknown filename"
+
+            formatted_type = (
+                cls._format_document_type(
+                    document.get(
+                        "document_type"
+                    )
+                )
+            )
+
+            answer_lines.append(
+                (
+                    f"{source_number}. "
+                    f"{filename} — "
+                    f"{formatted_type}"
+                )
+            )
+
+            sources.append(
+                {
+                    "source_number": (
+                        source_number
+                    ),
+                    "chunk_id": None,
+                    "document_id": (
+                        document.get(
+                            "document_id"
+                        )
+                    ),
+                    "source": filename,
+                    "document_type": (
+                        document.get(
+                            "document_type"
+                        )
+                    ),
+                    "document_position": (
+                        document.get(
+                            "document_position"
+                        )
+                    ),
+                    "page_number": None,
+                    "chunk_index": None,
+                    "similarity_score": None,
+                    "text": None,
+                }
+            )
+
+        return {
+            "query": query,
+            "answer": "\n".join(
+                answer_lines
+            ).strip(),
+            "document_id": (
+                selected_document_id
+            ),
+            "document_ids": selected_ids,
+            "selected_document_count": (
+                len(selected_ids)
+            ),
+            "sources": sources,
+            "latency_seconds": round(
+                time.perf_counter()
+                - started_at,
+                3,
+            ),
+        }
+
     @classmethod
     def query(
         cls,
@@ -121,6 +358,26 @@ class RAGService:
                 document_ids=document_ids,
             )
         )
+
+        if (
+            selected_ids
+            and cls
+            ._is_document_identification_query(
+                query
+            )
+        ):
+            return (
+                cls
+                ._document_identification_response(
+                    query=query,
+                    selected_ids=(
+                        selected_ids
+                    ),
+                    started_at=(
+                        started_at
+                    ),
+                )
+            )
 
         is_summary = (
             cls._is_summary_query(
@@ -151,7 +408,7 @@ class RAGService:
                 ]
 
         if len(selected_ids) > 1:
-            documents = (
+            retrieved_documents = (
                 LangChainRetrieverService
                 .retrieve_documents(
                     document_ids=(
@@ -174,7 +431,7 @@ class RAGService:
             len(selected_ids) == 1
             and is_summary
         ):
-            documents = (
+            retrieved_documents = (
                 LangChainRetrieverService
                 .retrieve_document(
                     document_id=(
@@ -187,7 +444,7 @@ class RAGService:
             task = "summarization"
 
         else:
-            documents = (
+            retrieved_documents = (
                 LangChainRetrieverService
                 .retrieve(
                     query=query,
@@ -210,7 +467,7 @@ class RAGService:
             else None
         )
 
-        if not documents:
+        if not retrieved_documents:
             answer = (
                 "I could not find relevant "
                 "information in the selected "
@@ -244,10 +501,19 @@ class RAGService:
                 ),
             }
 
+        prompt_documents = (
+            DocumentMergeService
+            .merge_documents(
+                retrieved_documents
+            )
+        )
+
         prompt = (
             PromptService.build_prompt(
                 query=query,
-                documents=documents,
+                documents=(
+                    prompt_documents
+                ),
                 task=task,
             )
         )
@@ -263,16 +529,25 @@ class RAGService:
         )
 
         answer = (
+            ResponseValidationService
+            .sanitize_document_answer(
+                answer
+            )
+        )
+
+        answer = (
             MedicalPromptService
             .ensure_disclaimer(
                 answer
             )
         )
 
+        # Sources now match the source numbers used in the prompt.
+        # Each source represents one complete merged document.
         sources = (
             LangChainRetrieverService
             .to_source_dicts(
-                documents
+                prompt_documents
             )
         )
 
