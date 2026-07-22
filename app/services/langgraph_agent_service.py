@@ -1,28 +1,37 @@
-from typing import Any, TypedDict
+from typing import (
+    Any,
+    TypedDict,
+)
 
-from langgraph.graph import END, StateGraph
+from langgraph.graph import (
+    END,
+    StateGraph,
+)
 
 from app.services.direct_llm_service import (
     DirectLLMService,
 )
-from app.services.llm_service import LLMService
-from app.services.rag_service import RAGService
-from app.services.safety_guard import SafetyGuard
+from app.services.llm_service import (
+    LLMService,
+)
+from app.services.rag_service import (
+    RAGService,
+)
+from app.services.safety_guard import (
+    SafetyGuard,
+)
 from app.services.web_search_service import (
     WebSearchService,
 )
 
 
-class AgentState(TypedDict, total=False):
-    """
-    State shared across the LangGraph workflow.
-
-    document_ids must be declared here. Otherwise, LangGraph may discard
-    it when the graph processes the initial input.
-    """
-
+class AgentState(
+    TypedDict,
+    total=False,
+):
     query: str
     document_ids: list[str]
+    user_id: str | None
 
     route: str
     result: dict
@@ -37,15 +46,18 @@ def _decision_value(
     names: tuple[str, ...],
     default: Any = None,
 ) -> Any:
-    """
-    Read a value from either a dictionary or dataclass-like object.
-    """
     for name in names:
-        if isinstance(decision, dict):
+        if isinstance(
+            decision,
+            dict,
+        ):
             if name in decision:
                 return decision[name]
 
-        elif hasattr(decision, name):
+        elif hasattr(
+            decision,
+            name,
+        ):
             return getattr(
                 decision,
                 name,
@@ -57,10 +69,6 @@ def _decision_value(
 def _run_safety_guard(
     query: str,
 ):
-    """
-    Support the current SafetyGuard without depending on one specific
-    public method name.
-    """
     for method_name in (
         "evaluate",
         "assess",
@@ -76,15 +84,18 @@ def _run_safety_guard(
             return method(query)
 
     raise RuntimeError(
-        "SafetyGuard must expose evaluate(), assess(), or check()."
+        "SafetyGuard must expose "
+        "evaluate(), assess(), or check()."
     )
 
 
 def safety_node(
     state: AgentState,
 ) -> dict:
-    decision = _run_safety_guard(
-        state["query"]
+    decision = (
+        _run_safety_guard(
+            state["query"]
+        )
     )
 
     allowed = _decision_value(
@@ -117,15 +128,15 @@ def safety_node(
         "",
     )
 
-    # Return only updated fields. LangGraph retains query and
-    # document_ids because both are declared in AgentState.
     return {
         "safety_status": (
             "allowed"
             if bool(allowed)
             else "blocked"
         ),
-        "safety_category": str(category),
+        "safety_category": str(
+            category
+        ),
         "safety_response": str(
             response or ""
         ),
@@ -136,7 +147,9 @@ def safety_route(
     state: AgentState,
 ) -> str:
     if (
-        state.get("safety_status")
+        state.get(
+            "safety_status"
+        )
         == "blocked"
     ):
         return "blocked"
@@ -148,7 +161,9 @@ def safety_block_node(
     state: AgentState,
 ) -> dict:
     selected_ids = (
-        state.get("document_ids")
+        state.get(
+            "document_ids"
+        )
         or []
     )
 
@@ -165,13 +180,17 @@ def safety_block_node(
                 if len(selected_ids) == 1
                 else None
             ),
-            "document_ids": selected_ids,
+            "document_ids": (
+                selected_ids
+            ),
             "selected_document_count": (
                 len(selected_ids)
             ),
             "sources": [],
-            "safety_category": state.get(
-                "safety_category"
+            "safety_category": (
+                state.get(
+                    "safety_category"
+                )
             ),
         },
     }
@@ -180,7 +199,9 @@ def safety_block_node(
 def fallback_classify(
     query: str,
 ) -> str:
-    normalized_query = query.lower()
+    normalized_query = (
+        query.lower()
+    )
 
     document_keywords = (
         "document",
@@ -220,13 +241,15 @@ def fallback_classify(
 
     if any(
         keyword in normalized_query
-        for keyword in document_keywords
+        for keyword
+        in document_keywords
     ):
         return "rag"
 
     if any(
         keyword in normalized_query
-        for keyword in web_keywords
+        for keyword
+        in web_keywords
     ):
         return "web"
 
@@ -239,18 +262,21 @@ def classify_node(
     query = state["query"]
 
     selected_ids = (
-        state.get("document_ids")
+        state.get(
+            "document_ids"
+        )
         or []
     )
 
-    # Explicit document selection always uses RAG.
     if selected_ids:
         return {
             "route": "rag",
         }
 
     deterministic_route = (
-        fallback_classify(query)
+        fallback_classify(
+            query
+        )
     )
 
     if deterministic_route in {
@@ -258,7 +284,9 @@ def classify_node(
         "web",
     }:
         return {
-            "route": deterministic_route,
+            "route": (
+                deterministic_route
+            ),
         }
 
     classifier_prompt = f"""
@@ -288,11 +316,16 @@ User query:
 
     try:
         route = (
-            LLMService.generate_response(
-                prompt=classifier_prompt,
+            LLMService
+            .generate_response(
+                prompt=(
+                    classifier_prompt
+                ),
                 system_prompt=(
-                    "You are a strict query-routing classifier. "
-                    "Return only rag, direct, or web."
+                    "You are a strict "
+                    "query-routing classifier. "
+                    "Return only rag, direct, "
+                    "or web."
                 ),
             )
             .strip()
@@ -304,7 +337,9 @@ User query:
             "direct",
             "web",
         }:
-            route = deterministic_route
+            route = (
+                deterministic_route
+            )
 
     except Exception:
         route = deterministic_route
@@ -327,13 +362,18 @@ def rag_node(
     state: AgentState,
 ) -> dict:
     selected_ids = (
-        state.get("document_ids")
+        state.get(
+            "document_ids"
+        )
         or []
     )
 
     result = RAGService.query(
         query=state["query"],
         document_ids=selected_ids,
+        user_id=state.get(
+            "user_id"
+        ),
     )
 
     return {
@@ -344,8 +384,10 @@ def rag_node(
 def direct_node(
     state: AgentState,
 ) -> dict:
-    result = DirectLLMService.query(
-        state["query"]
+    result = (
+        DirectLLMService.query(
+            state["query"]
+        )
     )
 
     return {
@@ -356,8 +398,10 @@ def direct_node(
 def web_node(
     state: AgentState,
 ) -> dict:
-    result = WebSearchService.query(
-        state["query"]
+    result = (
+        WebSearchService.query(
+            state["query"]
+        )
     )
 
     return {
@@ -442,14 +486,18 @@ graph_builder.add_edge(
     END,
 )
 
-agent_graph = graph_builder.compile()
+agent_graph = (
+    graph_builder.compile()
+)
 
 
 class LangGraphAgentService:
     @staticmethod
     def _normalize_document_ids(
         document_id: str | None = None,
-        document_ids: list[str] | None = None,
+        document_ids: (
+            list[str] | None
+        ) = None,
     ) -> list[str]:
         selected_ids: list[str] = []
         candidates: list[str] = []
@@ -465,11 +513,14 @@ class LangGraphAgentService:
             )
 
         for candidate in candidates:
-            cleaned = candidate.strip()
+            cleaned = (
+                candidate.strip()
+            )
 
             if (
                 cleaned
-                and cleaned not in selected_ids
+                and cleaned
+                not in selected_ids
             ):
                 selected_ids.append(
                     cleaned
@@ -482,20 +533,33 @@ class LangGraphAgentService:
         cls,
         query: str,
         document_id: str | None = None,
-        document_ids: list[str] | None = None,
+        document_ids: (
+            list[str] | None
+        ) = None,
+        user_id: str | None = None,
     ) -> dict:
         selected_ids = (
-            cls._normalize_document_ids(
-                document_id=document_id,
-                document_ids=document_ids,
+            cls
+            ._normalize_document_ids(
+                document_id=(
+                    document_id
+                ),
+                document_ids=(
+                    document_ids
+                ),
             )
         )
 
-        final_state = agent_graph.invoke(
-            {
-                "query": query,
-                "document_ids": selected_ids,
-            }
+        final_state = (
+            agent_graph.invoke(
+                {
+                    "query": query,
+                    "document_ids": (
+                        selected_ids
+                    ),
+                    "user_id": user_id,
+                }
+            )
         )
 
         result = final_state.get(
@@ -503,13 +567,14 @@ class LangGraphAgentService:
             {},
         )
 
-        if not isinstance(result, dict):
+        if not isinstance(
+            result,
+            dict,
+        ):
             result = {
                 "answer": str(result),
             }
 
-        # Use assignment rather than setdefault so stale or incorrect
-        # values cannot override the actual request selection.
         result["query"] = query
 
         result["document_id"] = (

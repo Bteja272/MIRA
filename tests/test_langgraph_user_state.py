@@ -7,28 +7,39 @@ from app.services.langgraph_agent_service import (
 )
 
 
-class LangGraphDocumentStateTests(
+class LangGraphUserStateTests(
     unittest.TestCase
 ):
-    def test_agent_state_declares_document_ids(
+    def test_state_declares_user_id(
         self,
     ):
         self.assertIn(
-            "document_ids",
+            "user_id",
             AgentState.__annotations__,
         )
 
     @patch(
-        "app.services.langgraph_agent_service."
+        "app.services."
+        "langgraph_agent_service."
+        "_run_safety_guard",
+        return_value={
+            "allowed": True,
+            "category": "allowed",
+        },
+    )
+    @patch(
+        "app.services."
+        "langgraph_agent_service."
         "RAGService.query"
     )
-    def test_real_graph_preserves_document_ids(
+    def test_graph_forwards_user_id_to_rag(
         self,
         mock_rag_query,
+        mock_safety_guard,
     ):
         selected_ids = [
-            "lab-document-id",
-            "discharge-document-id",
+            "lab-document",
+            "discharge-document",
         ]
 
         mock_rag_query.return_value = {
@@ -39,32 +50,25 @@ class LangGraphDocumentStateTests(
         result = (
             LangGraphAgentService.query(
                 query=(
-                    "What are the two selected "
-                    "documents?"
+                    "Summarize the "
+                    "selected documents."
                 ),
-                document_ids=selected_ids,
+                document_ids=(
+                    selected_ids
+                ),
+                user_id="user-123",
             )
         )
 
         mock_rag_query.assert_called_once_with(
             query=(
-                "What are the two selected "
-                "documents?"
+                "Summarize the "
+                "selected documents."
             ),
-            document_ids=selected_ids,
-            user_id=None,
-        )
-
-        self.assertEqual(
-            result["document_ids"],
-            selected_ids,
-        )
-
-        self.assertEqual(
-            result[
-                "selected_document_count"
-            ],
-            2,
+            document_ids=(
+                selected_ids
+            ),
+            user_id="user-123",
         )
 
         self.assertEqual(

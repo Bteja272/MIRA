@@ -1,4 +1,8 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    status,
+)
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -7,7 +11,12 @@ from pydantic import (
     model_validator,
 )
 
-from app.services.document_service import DocumentService
+from app.api.dependencies.auth import (
+    CurrentUser,
+)
+from app.services.document_service import (
+    DocumentService,
+)
 from app.services.langgraph_agent_service import (
     LangGraphAgentService,
 )
@@ -32,11 +41,11 @@ class QueryRequest(BaseModel):
         max_length=4000,
     )
 
-    # Backward-compatible single-document field.
     document_id: str | None = None
 
-    # Preferred field for one or multiple documents.
-    document_ids: list[str] | None = None
+    document_ids: (
+        list[str] | None
+    ) = None
 
     @field_validator("query")
     @classmethod
@@ -75,7 +84,8 @@ class QueryRequest(BaseModel):
 
             if (
                 cleaned
-                and cleaned not in selected_ids
+                and cleaned
+                not in selected_ids
             ):
                 selected_ids.append(
                     cleaned
@@ -87,8 +97,9 @@ class QueryRequest(BaseModel):
         ):
             raise ValueError(
                 "A maximum of "
-                f"{MAX_SELECTED_DOCUMENTS} documents "
-                "can be selected in one query."
+                f"{MAX_SELECTED_DOCUMENTS} "
+                "documents can be selected "
+                "in one query."
             )
 
         self.document_ids = (
@@ -98,52 +109,54 @@ class QueryRequest(BaseModel):
         return self
 
 
-@router.post("")
+@router.post(
+    "",
+    summary="Query owned documents or MIRA",
+)
 def query_agent(
     request: QueryRequest,
+    current_user: CurrentUser,
 ) -> dict:
     selected_ids = (
-        request.document_ids or []
+        request.document_ids
+        or []
     )
 
     if selected_ids:
         existing_ids = (
             DocumentService
             .get_existing_document_ids(
-                document_ids=selected_ids,
-                user_id=None,
+                document_ids=(
+                    selected_ids
+                ),
+                user_id=(
+                    current_user.user_id
+                ),
             )
         )
 
-        existing_id_set = set(
-            existing_ids
-        )
-
-        missing_ids = [
-            document_id
-            for document_id in selected_ids
-            if document_id
-            not in existing_id_set
-        ]
-
-        if missing_ids:
+        if len(existing_ids) != len(
+            selected_ids
+        ):
+            # Do not reveal whether the ID exists
+            # under another account.
             raise HTTPException(
                 status_code=(
                     status.HTTP_404_NOT_FOUND
                 ),
-                detail={
-                    "message": (
-                        "One or more selected "
-                        "documents were not found."
-                    ),
-                    "missing_document_ids": (
-                        missing_ids
-                    ),
-                },
+                detail=(
+                    "One or more selected "
+                    "documents were not found."
+                ),
             )
 
-    # Critical: forward the normalized document list.
-    return LangGraphAgentService.query(
-        query=request.query,
-        document_ids=selected_ids,
+    return (
+        LangGraphAgentService
+        .query(
+            query=request.query,
+            document_ids=selected_ids,
+            user_id=(
+                current_user.user_id
+            ),
+        )
     )

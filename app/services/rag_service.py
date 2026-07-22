@@ -185,6 +185,7 @@ class RAGService:
         query: str,
         selected_ids: list[str],
         started_at: float,
+        user_id: str | None,
     ) -> dict:
         document_records: list[dict] = []
 
@@ -201,7 +202,7 @@ class RAGService:
                     document_id=(
                         selected_id
                     ),
-                    user_id=None,
+                    user_id=user_id,
                 )
             )
 
@@ -347,6 +348,7 @@ class RAGService:
         query: str,
         document_id: str | None = None,
         document_ids: list[str] | None = None,
+        user_id: str | None = None,
     ) -> dict:
         started_at = (
             time.perf_counter()
@@ -376,6 +378,7 @@ class RAGService:
                     started_at=(
                         started_at
                     ),
+                    user_id=user_id,
                 )
             )
 
@@ -398,7 +401,7 @@ class RAGService:
             latest_document_id = (
                 LangChainRetrieverService
                 .get_latest_document_id(
-                    user_id=None
+                    user_id=user_id,
                 )
             )
 
@@ -414,7 +417,7 @@ class RAGService:
                     document_ids=(
                         selected_ids
                     ),
-                    user_id=None,
+                    user_id=user_id,
                 )
             )
 
@@ -437,7 +440,7 @@ class RAGService:
                     document_id=(
                         selected_ids[0]
                     ),
-                    user_id=None,
+                    user_id=user_id,
                 )
             )
 
@@ -455,7 +458,7 @@ class RAGService:
                     document_ids=(
                         selected_ids or None
                     ),
-                    user_id=None,
+                    user_id=user_id,
                 )
             )
 

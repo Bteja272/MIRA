@@ -9,6 +9,12 @@ from fastapi import (
     UploadFile,
 )
 
+from app.api.dependencies.auth import (
+    CurrentUser,
+)
+from app.core.notices import (
+    DEVELOPMENT_PRIVACY_NOTICE,
+)
 from app.services.chunking_service import (
     TextChunkingService,
 )
@@ -34,7 +40,10 @@ router = APIRouter(
     tags=["ingestion"],
 )
 
-UPLOAD_DIRECTORY = Path("uploaded_files")
+UPLOAD_DIRECTORY = Path(
+    "uploaded_files"
+)
+
 UPLOAD_DIRECTORY.mkdir(
     parents=True,
     exist_ok=True,
@@ -45,11 +54,20 @@ ALLOWED_EXTENSIONS = {
     ".txt",
 }
 
-MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+MAX_UPLOAD_BYTES = (
+    25 * 1024 * 1024
+)
 
 
-@router.post("")
+@router.post(
+    "",
+    summary="Upload and index a medical document",
+    description=(
+        DEVELOPMENT_PRIVACY_NOTICE
+    ),
+)
 async def ingest_file(
+    current_user: CurrentUser,
     file: UploadFile = File(...),
 ) -> dict:
     original_filename = Path(
@@ -59,7 +77,9 @@ async def ingest_file(
     if not original_filename:
         raise HTTPException(
             status_code=400,
-            detail="A valid filename is required.",
+            detail=(
+                "A valid filename is required."
+            ),
         )
 
     extension = Path(
@@ -71,11 +91,14 @@ async def ingest_file(
             status_code=400,
             detail=(
                 "Unsupported file type. "
-                "Only PDF and TXT files are allowed."
+                "Only PDF and TXT files "
+                "are allowed."
             ),
         )
 
-    document_id = str(uuid4())
+    document_id = str(
+        uuid4()
+    )
 
     stored_filename = (
         f"{document_id}{extension}"
@@ -86,11 +109,16 @@ async def ingest_file(
         / stored_filename
     )
 
-    file_hash_builder = hashlib.sha256()
+    file_hash_builder = (
+        hashlib.sha256()
+    )
+
     file_size_bytes = 0
 
     try:
-        with stored_path.open("wb") as destination:
+        with stored_path.open(
+            "wb"
+        ) as destination:
             while True:
                 data = await file.read(
                     1024 * 1024
@@ -99,7 +127,9 @@ async def ingest_file(
                 if not data:
                     break
 
-                file_size_bytes += len(data)
+                file_size_bytes += len(
+                    data
+                )
 
                 if (
                     file_size_bytes
@@ -108,29 +138,40 @@ async def ingest_file(
                     raise HTTPException(
                         status_code=413,
                         detail=(
-                            "The uploaded file exceeds "
-                            "the 25 MB limit."
+                            "The uploaded file "
+                            "exceeds the 25 MB "
+                            "limit."
                         ),
                     )
 
-                file_hash_builder.update(data)
-                destination.write(data)
+                file_hash_builder.update(
+                    data
+                )
+
+                destination.write(
+                    data
+                )
 
         if file_size_bytes == 0:
             raise HTTPException(
                 status_code=400,
-                detail="The uploaded file is empty.",
+                detail=(
+                    "The uploaded file is empty."
+                ),
             )
 
         file_hash = (
-            file_hash_builder.hexdigest()
+            file_hash_builder
+            .hexdigest()
         )
 
         duplicate = (
             DocumentService
             .find_duplicate_by_hash(
                 file_hash=file_hash,
-                user_id=None,
+                user_id=(
+                    current_user.user_id
+                ),
             )
         )
 
@@ -142,24 +183,33 @@ async def ingest_file(
             return {
                 "duplicate": True,
                 "existing_document_id": (
-                    duplicate["document_id"]
+                    duplicate[
+                        "document_id"
+                    ]
                 ),
                 "filename": (
                     duplicate["filename"]
                 ),
                 "document_type": (
-                    duplicate["document_type"]
+                    duplicate[
+                        "document_type"
+                    ]
                 ),
                 "message": (
-                    "This file has already been uploaded."
+                    "This file has already "
+                    "been uploaded to your "
+                    "account."
                 ),
             }
 
         loaded_documents = (
-            DocumentLoaderService.load_document(
+            DocumentLoaderService
+            .load_document(
                 file_path=stored_path,
                 document_id=document_id,
-                source_name=original_filename,
+                source_name=(
+                    original_filename
+                ),
             )
         )
 
@@ -167,7 +217,8 @@ async def ingest_file(
 
         for document in loaded_documents:
             cleaned_text = (
-                TextCleanerService.clean_text(
+                TextCleanerService
+                .clean_text(
                     document.text
                 )
             )
@@ -175,27 +226,37 @@ async def ingest_file(
             if not cleaned_text:
                 continue
 
-            document.text = cleaned_text
-            cleaned_documents.append(document)
+            document.text = (
+                cleaned_text
+            )
+
+            cleaned_documents.append(
+                document
+            )
 
         if not cleaned_documents:
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    "No readable text was found "
-                    "in the uploaded document."
+                    "No readable text was "
+                    "found in the uploaded "
+                    "document."
                 ),
             )
 
         complete_text = "\n\n".join(
             document.text
-            for document in cleaned_documents
+            for document
+            in cleaned_documents
         )
 
         document_type = (
-            DocumentClassifier.classify(
+            DocumentClassifier
+            .classify(
                 text=complete_text,
-                filename=original_filename,
+                filename=(
+                    original_filename
+                ),
             )
         )
 
@@ -207,28 +268,41 @@ async def ingest_file(
         )
 
         chunks_indexed = (
-            IndexingService.index_document(
+            IndexingService
+            .index_document(
                 document_id=document_id,
                 source=original_filename,
                 original_filename=(
                     original_filename
                 ),
-                stored_filename=stored_filename,
-                document_type=document_type,
+                stored_filename=(
+                    stored_filename
+                ),
+                document_type=(
+                    document_type
+                ),
                 file_hash=file_hash,
                 file_size_bytes=(
                     file_size_bytes
                 ),
-                chunk_records=chunk_records,
-                user_id=None,
+                chunk_records=(
+                    chunk_records
+                ),
+                user_id=(
+                    current_user.user_id
+                ),
             )
         )
 
         return {
             "duplicate": False,
             "document_id": document_id,
-            "filename": original_filename,
-            "document_type": document_type,
+            "filename": (
+                original_filename
+            ),
+            "document_type": (
+                document_type
+            ),
             "file_size_bytes": (
                 file_size_bytes
             ),
@@ -236,7 +310,11 @@ async def ingest_file(
                 chunks_indexed
             ),
             "message": (
-                "Document indexed successfully"
+                "Document indexed "
+                "successfully."
+            ),
+            "development_notice": (
+                DEVELOPMENT_PRIVACY_NOTICE
             ),
         }
 
@@ -244,6 +322,7 @@ async def ingest_file(
         stored_path.unlink(
             missing_ok=True
         )
+
         raise
 
     except Exception as exc:
