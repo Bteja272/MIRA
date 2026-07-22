@@ -1,3 +1,4 @@
+from pydantic import SecretStr
 from pydantic_settings import (
     BaseSettings,
     SettingsConfigDict,
@@ -24,8 +25,8 @@ class Settings(BaseSettings):
     chunk_size: int = 500
     chunk_overlap: int = 100
 
-    # Required from .env. No password is stored in source code.
     database_url: str
+    sql_echo: bool = False
 
     embedding_model_name: str = (
         "sentence-transformers/"
@@ -33,6 +34,10 @@ class Settings(BaseSettings):
     )
 
     tavily_api_key: str = ""
+
+    jwt_secret_key: SecretStr
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
 
     model_config = SettingsConfigDict(
         env_file=".env",

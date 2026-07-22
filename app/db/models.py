@@ -1,17 +1,78 @@
+from __future__ import annotations
+
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     DateTime,
     ForeignKey,
     Integer,
     String,
     Text,
+    true,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from app.db.base import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    user_id: Mapped[str] = mapped_column(
+        String,
+        unique=True,
+        index=True,
+        nullable=False,
+    )
+
+    email: Mapped[str] = mapped_column(
+        String(320),
+        unique=True,
+        index=True,
+        nullable=False,
+    )
+
+    password_hash: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+    )
+
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=true(),
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+
+    documents: Mapped[list[Document]] = relationship(
+        back_populates="user",
+    )
 
 
 class Document(Base):
@@ -30,14 +91,18 @@ class Document(Base):
         nullable=False,
     )
 
-    # This will be populated after authentication is implemented.
+    # Remains nullable temporarily because existing synthetic
+    # development documents have no owner.
     user_id: Mapped[str | None] = mapped_column(
         String,
+        ForeignKey(
+            "users.user_id",
+            ondelete="RESTRICT",
+        ),
         index=True,
         nullable=True,
     )
 
-    # Kept for compatibility with the existing retrieval layer.
     source: Mapped[str] = mapped_column(
         String,
         nullable=False,
@@ -78,7 +143,11 @@ class Document(Base):
         default=datetime.utcnow,
     )
 
-    chunks: Mapped[list["DocumentChunk"]] = relationship(
+    user: Mapped[User | None] = relationship(
+        back_populates="documents",
+    )
+
+    chunks: Mapped[list[DocumentChunk]] = relationship(
         back_populates="document",
         cascade="all, delete-orphan",
         passive_deletes=True,

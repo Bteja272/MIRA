@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 
+from app.api.routes.auth import (
+    router as auth_router,
+)
 from app.api.routes.documents import (
     router as documents_router,
 )
@@ -13,6 +16,9 @@ from app.api.routes.query import (
     router as query_router,
 )
 from app.core.config import settings
+from app.core.notices import (
+    DEVELOPMENT_PRIVACY_NOTICE,
+)
 
 
 OPENAPI_TAGS = [
@@ -20,6 +26,13 @@ OPENAPI_TAGS = [
         "name": "health",
         "description": (
             "Application and dependency health checks."
+        ),
+    },
+    {
+        "name": "authentication",
+        "description": (
+            "Public account registration, login, "
+            "and authenticated account information."
         ),
     },
     {
@@ -51,10 +64,10 @@ app = FastAPI(
     version=settings.app_version,
     description=(
         "MIRA is a safety-oriented medical-document assistant "
-        "for private document ingestion, retrieval, "
-        "summarization, comparison, and educational explanation. "
-        "The current system is intended for development and "
-        "testing and is not a clinical decision-making system."
+        "for document ingestion, retrieval, summarization, "
+        "comparison, and educational explanation.\n\n"
+        f"**Development notice:** "
+        f"{DEVELOPMENT_PRIVACY_NOTICE}"
     ),
     openapi_tags=OPENAPI_TAGS,
     docs_url="/docs",
@@ -65,6 +78,10 @@ app = FastAPI(
 
 app.include_router(
     health_router
+)
+
+app.include_router(
+    auth_router
 )
 
 app.include_router(
@@ -94,4 +111,7 @@ def root() -> dict:
         "environment": settings.environment,
         "documentation": "/docs",
         "openapi_schema": "/openapi.json",
+        "development_notice": (
+            DEVELOPMENT_PRIVACY_NOTICE
+        ),
     }
