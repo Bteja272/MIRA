@@ -1,451 +1,447 @@
+import re
 from pathlib import Path
-from uuid import uuid4
-
-from sqlalchemy import func, select
-
-from app.db.models import (
-    Document,
-    DocumentChunk,
-)
-from app.db.session import SessionLocal
 
 
-class DocumentService:
+class DocumentClassifier:
+    """
+    Deterministic medical-document classifier.
+
+    Classification priorities:
+
+    1. Extracted document contents
+    2. Filename as a secondary tie-breaker
+    3. Unknown when content evidence is insufficient
+
+    A filename alone cannot classify a document.
+    """
+
+    UNKNOWN_TYPE = "unknown"
+
+    SUPPORTED_TYPES = {
+        "lab_report",
+        "discharge_summary",
+        "prescription",
+        "imaging_report",
+        "pathology_report",
+        "visit_note",
+        "vaccination_record",
+        "insurance_document",
+        UNKNOWN_TYPE,
+    }
+
+    STRONG_MARKER_WEIGHT = 5
+    SUPPORTING_MARKER_WEIGHT = 1
+
+    MINIMUM_SUPPORTING_MATCHES = 3
+
+    STRONG_MARKERS = {
+        "discharge_summary": (
+            "discharge summary",
+            "discharge diagnosis",
+            "discharge diagnoses",
+            "discharge instructions",
+            "date of discharge",
+            "discharge date",
+            "medications listed at discharge",
+        ),
+        "lab_report": (
+            "laboratory results",
+            "laboratory report",
+            "reference range",
+            "specimen collected",
+            "test results",
+        ),
+        "prescription": (
+            "prescription",
+            "prescribed by",
+            "rx number",
+            "refills remaining",
+            "prescriber information",
+        ),
+        "imaging_report": (
+            "radiology report",
+            "imaging report",
+            "radiologic findings",
+            "diagnostic imaging",
+            "impression:",
+            "technique:",
+        ),
+        "pathology_report": (
+            "pathology report",
+            "surgical pathology",
+            "histopathology",
+            "microscopic description",
+            "final pathologic diagnosis",
+        ),
+        "visit_note": (
+            "progress note",
+            "clinical note",
+            "visit note",
+            "history of present illness",
+            "office visit",
+        ),
+        "vaccination_record": (
+            "vaccination record",
+            "immunization record",
+            "vaccine administered",
+            "immunization history",
+        ),
+        "insurance_document": (
+            "explanation of benefits",
+            "insurance claim",
+            "member id",
+            "amount billed",
+            "patient responsibility",
+        ),
+    }
+
+    SUPPORTING_MARKERS = {
+        "lab_report": (
+            "hemoglobin",
+            "glucose",
+            "cholesterol",
+            "result:",
+            "flag:",
+            "mg/dl",
+            "mmol/l",
+            "specimen",
+        ),
+        "discharge_summary": (
+            "admission date",
+            "follow-up instructions",
+            "follow-up",
+            "discharge medication",
+            "hospital course",
+            "condition at discharge",
+            "attending physician",
+        ),
+        "prescription": (
+            "dosage",
+            "take one",
+            "tablet",
+            "capsule",
+            "refill",
+            "quantity",
+            "pharmacy",
+        ),
+        "imaging_report": (
+            "mri",
+            "ct scan",
+            "x-ray",
+            "xray",
+            "ultrasound",
+            "findings",
+            "contrast",
+        ),
+        "pathology_report": (
+            "specimen",
+            "diagnosis",
+            "gross description",
+            "biopsy",
+            "malignant",
+            "benign",
+        ),
+        "visit_note": (
+            "chief complaint",
+            "assessment",
+            "plan",
+            "physical examination",
+            "vital signs",
+            "review of systems",
+        ),
+        "vaccination_record": (
+            "vaccine",
+            "dose",
+            "manufacturer",
+            "lot number",
+            "administered",
+            "administration site",
+        ),
+        "insurance_document": (
+            "claim number",
+            "deductible",
+            "copay",
+            "provider charge",
+            "patient responsibility",
+            "allowed amount",
+        ),
+    }
+
+    FILENAME_MARKERS = {
+        "lab_report": (
+            "lab",
+            "laboratory",
+            "bloodwork",
+        ),
+        "discharge_summary": (
+            "discharge",
+        ),
+        "prescription": (
+            "prescription",
+            "medication",
+            "rx",
+        ),
+        "imaging_report": (
+            "imaging",
+            "radiology",
+            "mri",
+            "ct",
+            "xray",
+        ),
+        "pathology_report": (
+            "pathology",
+            "biopsy",
+        ),
+        "visit_note": (
+            "visit",
+            "progress note",
+            "clinical note",
+        ),
+        "vaccination_record": (
+            "vaccination",
+            "immunization",
+            "vaccine",
+        ),
+        "insurance_document": (
+            "insurance",
+            "claim",
+            "eob",
+        ),
+    }
+
     @staticmethod
-    def _apply_user_scope(
-        statement,
-        user_id: str | None,
-    ):
-        """
-        Restrict document operations to one user.
-
-        During local development, documents have user_id=None.
-        Authentication will later replace this with the
-        authenticated user's ID.
-        """
-        if user_id is None:
-            return statement.where(
-                Document.user_id.is_(None)
-            )
-
-        return statement.where(
-            Document.user_id == user_id
+    def _normalize_text(
+        value: str,
+    ) -> str:
+        normalized = (
+            value
+            .replace("\r\n", "\n")
+            .replace("\r", "\n")
+            .lower()
         )
 
+        normalized = re.sub(
+            r"[ \t]+",
+            " ",
+            normalized,
+        )
+
+        return normalized.strip()
+
     @staticmethod
-    def _chunk_count_subquery():
+    def _normalize_filename(
+        filename: str | None,
+    ) -> str:
+        if not filename:
+            return ""
+
+        stem = Path(filename).stem.lower()
+
+        normalized = re.sub(
+            r"[^a-z0-9]+",
+            " ",
+            stem,
+        )
+
+        return " ".join(
+            normalized.split()
+        )
+
+    @classmethod
+    def _filename_contains_marker(
+        cls,
+        normalized_filename: str,
+        marker: str,
+    ) -> bool:
+        normalized_marker = (
+            cls._normalize_filename(
+                marker
+            )
+        )
+
+        if (
+            not normalized_filename
+            or not normalized_marker
+        ):
+            return False
+
+        pattern = (
+            rf"(?<![a-z0-9])"
+            rf"{re.escape(normalized_marker)}"
+            rf"(?![a-z0-9])"
+        )
+
         return (
-            select(
-                func.count(
-                    DocumentChunk.id
-                )
+            re.search(
+                pattern,
+                normalized_filename,
             )
-            .where(
-                DocumentChunk.document_id
-                == Document.document_id
-            )
-            .correlate(Document)
-            .scalar_subquery()
+            is not None
         )
-
-    @staticmethod
-    def _to_response(
-        document: Document,
-        chunk_count: int,
-    ) -> dict:
-        return {
-            "document_id": (
-                document.document_id
-            ),
-            "filename": (
-                document.original_filename
-            ),
-            "document_type": (
-                document.document_type
-            ),
-            "file_size_bytes": (
-                document.file_size_bytes
-            ),
-            "chunk_count": chunk_count,
-            "uploaded_at": (
-                document.created_at.isoformat()
-                if document.created_at
-                else None
-            ),
-        }
 
     @classmethod
-    def list_documents(
+    def classify(
         cls,
-        user_id: str | None = None,
-    ) -> list[dict]:
-        chunk_count = (
-            cls._chunk_count_subquery()
-            .label("chunk_count")
+        text: str,
+        filename: str | None = None,
+    ) -> str:
+        normalized_text = (
+            cls._normalize_text(
+                text or ""
+            )
         )
 
-        statement = select(
-            Document,
-            chunk_count,
+        normalized_filename = (
+            cls._normalize_filename(
+                filename
+            )
         )
 
-        statement = cls._apply_user_scope(
-            statement=statement,
-            user_id=user_id,
-        )
+        if not normalized_text:
+            return cls.UNKNOWN_TYPE
 
-        statement = statement.order_by(
-            Document.created_at.desc(),
-            Document.id.desc(),
-        )
+        evidence: dict[str, dict] = {}
 
-        db = SessionLocal()
-
-        try:
-            rows = db.execute(
-                statement
-            ).all()
-
-            return [
-                cls._to_response(
-                    document=document,
-                    chunk_count=int(
-                        row_chunk_count or 0
-                    ),
-                )
-                for (
-                    document,
-                    row_chunk_count,
-                ) in rows
+        for document_type in (
+            cls.STRONG_MARKERS
+        ):
+            strong_matches = [
+                marker
+                for marker
+                in cls.STRONG_MARKERS[
+                    document_type
+                ]
+                if marker in normalized_text
             ]
 
-        finally:
-            db.close()
-
-    @classmethod
-    def get_document(
-        cls,
-        document_id: str,
-        user_id: str | None = None,
-    ) -> dict | None:
-        chunk_count = (
-            cls._chunk_count_subquery()
-            .label("chunk_count")
-        )
-
-        statement = (
-            select(
-                Document,
-                chunk_count,
-            )
-            .where(
-                Document.document_id
-                == document_id
-            )
-        )
-
-        statement = cls._apply_user_scope(
-            statement=statement,
-            user_id=user_id,
-        )
-
-        db = SessionLocal()
-
-        try:
-            row = db.execute(
-                statement
-            ).one_or_none()
-
-            if row is None:
-                return None
-
-            document, row_chunk_count = row
-
-            response = cls._to_response(
-                document=document,
-                chunk_count=int(
-                    row_chunk_count or 0
-                ),
-            )
-
-            response.update(
-                {
-                    "source": (
-                        document.source
-                    ),
-                    "file_hash": (
-                        document.file_hash
-                    ),
-                }
-            )
-
-            return response
-
-        finally:
-            db.close()
-
-    @classmethod
-    def get_existing_document_ids(
-        cls,
-        document_ids: list[str],
-        user_id: str | None = None,
-    ) -> list[str]:
-        """
-        Return selected document IDs that exist in the
-        current user's document scope.
-        """
-        if not document_ids:
-            return []
-
-        statement = (
-            select(
-                Document.document_id
-            )
-            .where(
-                Document.document_id.in_(
-                    document_ids
-                )
-            )
-        )
-
-        statement = cls._apply_user_scope(
-            statement=statement,
-            user_id=user_id,
-        )
-
-        db = SessionLocal()
-
-        try:
-            found_ids = set(
-                db.scalars(
-                    statement
-                ).all()
-            )
-
-            # Preserve the order selected by the caller.
-            return [
-                document_id
-                for document_id
-                in document_ids
-                if document_id in found_ids
+            supporting_matches = [
+                marker
+                for marker
+                in cls.SUPPORTING_MARKERS[
+                    document_type
+                ]
+                if marker in normalized_text
             ]
 
-        finally:
-            db.close()
+            filename_matches = [
+                marker
+                for marker
+                in cls.FILENAME_MARKERS[
+                    document_type
+                ]
+                if cls._filename_contains_marker(
+                    normalized_filename=(
+                        normalized_filename
+                    ),
+                    marker=marker,
+                )
+            ]
 
-    @classmethod
-    def find_duplicate_by_hash(
-        cls,
-        file_hash: str,
-        user_id: str | None = None,
-    ) -> dict | None:
-        statement = (
-            select(Document)
-            .where(
-                Document.file_hash
-                == file_hash
-            )
-        )
-
-        statement = cls._apply_user_scope(
-            statement=statement,
-            user_id=user_id,
-        )
-
-        statement = (
-            statement
-            .order_by(
-                Document.created_at.desc()
-            )
-            .limit(1)
-        )
-
-        db = SessionLocal()
-
-        try:
-            document = db.scalar(
-                statement
+            content_score = (
+                len(strong_matches)
+                * cls.STRONG_MARKER_WEIGHT
+                + len(supporting_matches)
+                * cls.SUPPORTING_MARKER_WEIGHT
             )
 
-            if document is None:
-                return None
+            has_content_evidence = (
+                bool(strong_matches)
+                or len(supporting_matches)
+                >= cls
+                .MINIMUM_SUPPORTING_MATCHES
+            )
 
-            return {
-                "document_id": (
-                    document.document_id
+            evidence[document_type] = {
+                "content_score": (
+                    content_score
                 ),
-                "filename": (
-                    document.original_filename
+                "strong_match_count": (
+                    len(strong_matches)
                 ),
-                "document_type": (
-                    document.document_type
+                "supporting_match_count": (
+                    len(supporting_matches)
                 ),
-                "uploaded_at": (
-                    document.created_at
-                    .isoformat()
-                    if document.created_at
-                    else None
+                "filename_hint": (
+                    1
+                    if filename_matches
+                    else 0
+                ),
+                "has_content_evidence": (
+                    has_content_evidence
                 ),
             }
 
-        finally:
-            db.close()
+        eligible_types = [
+            document_type
+            for (
+                document_type,
+                result,
+            ) in evidence.items()
+            if result[
+                "has_content_evidence"
+            ]
+        ]
 
-    @staticmethod
-    def _resolve_stored_path(
-        upload_directory: Path,
-        stored_filename: str,
-    ) -> Path:
-        if not stored_filename:
-            raise ValueError(
-                "Stored filename is missing."
-            )
+        if not eligible_types:
+            return cls.UNKNOWN_TYPE
 
-        if (
-            "/" in stored_filename
-            or "\\" in stored_filename
-            or Path(stored_filename).name
-            != stored_filename
-        ):
-            raise ValueError(
-                "Unsafe stored filename."
-            )
-
-        base_directory = (
-            upload_directory.resolve()
+        ranked_types = sorted(
+            eligible_types,
+            key=lambda document_type: (
+                evidence[document_type][
+                    "content_score"
+                ],
+                evidence[document_type][
+                    "strong_match_count"
+                ],
+                evidence[document_type][
+                    "filename_hint"
+                ],
+                evidence[document_type][
+                    "supporting_match_count"
+                ],
+            ),
+            reverse=True,
         )
 
-        stored_path = (
-            base_directory
-            / stored_filename
-        ).resolve()
+        best_type = ranked_types[0]
+        best_result = evidence[best_type]
 
-        if (
-            stored_path.parent
-            != base_directory
-        ):
-            raise ValueError(
-                "Stored file is outside "
-                "the upload directory."
+        if len(ranked_types) > 1:
+            second_type = ranked_types[1]
+            second_result = evidence[
+                second_type
+            ]
+
+            best_rank = (
+                best_result["content_score"],
+                best_result[
+                    "strong_match_count"
+                ],
+                best_result["filename_hint"],
+                best_result[
+                    "supporting_match_count"
+                ],
             )
 
-        return stored_path
-
-    @classmethod
-    def delete_document(
-        cls,
-        document_id: str,
-        upload_directory: Path,
-        user_id: str | None = None,
-    ) -> dict | None:
-        """
-        Permanently delete the document, its chunks,
-        embeddings, and physical stored file.
-
-        Chunk rows are removed through ON DELETE CASCADE.
-        """
-        statement = (
-            select(Document)
-            .where(
-                Document.document_id
-                == document_id
-            )
-        )
-
-        statement = cls._apply_user_scope(
-            statement=statement,
-            user_id=user_id,
-        )
-
-        db = SessionLocal()
-
-        original_path: Path | None = None
-        staged_path: Path | None = None
-
-        try:
-            document = db.scalar(
-                statement
+            second_rank = (
+                second_result[
+                    "content_score"
+                ],
+                second_result[
+                    "strong_match_count"
+                ],
+                second_result[
+                    "filename_hint"
+                ],
+                second_result[
+                    "supporting_match_count"
+                ],
             )
 
-            if document is None:
-                return None
+            # Avoid making an arbitrary classification when the
+            # available evidence is exactly tied.
+            if best_rank == second_rank:
+                return cls.UNKNOWN_TYPE
 
-            original_filename = (
-                document.original_filename
-            )
-
-            if document.stored_filename:
-                original_path = (
-                    cls._resolve_stored_path(
-                        upload_directory=(
-                            upload_directory
-                        ),
-                        stored_filename=(
-                            document.stored_filename
-                        ),
-                    )
-                )
-
-            if (
-                original_path is not None
-                and original_path.exists()
-            ):
-                staged_path = (
-                    original_path.with_name(
-                        (
-                            f".{original_path.name}."
-                            f"{uuid4().hex}."
-                            "deleting"
-                        )
-                    )
-                )
-
-                original_path.replace(
-                    staged_path
-                )
-
-            db.delete(document)
-            db.commit()
-
-        except Exception:
-            db.rollback()
-
-            if (
-                staged_path is not None
-                and staged_path.exists()
-                and original_path is not None
-                and not original_path.exists()
-            ):
-                staged_path.replace(
-                    original_path
-                )
-
-            raise
-
-        finally:
-            db.close()
-
-        file_deleted = True
-
-        if (
-            staged_path is not None
-            and staged_path.exists()
-        ):
-            try:
-                staged_path.unlink()
-
-            except OSError as exc:
-                file_deleted = False
-
-                raise RuntimeError(
-                    "Database records were deleted, "
-                    "but the physical file could "
-                    "not be removed."
-                ) from exc
-
-        return {
-            "document_id": document_id,
-            "filename": original_filename,
-            "deleted": True,
-            "file_deleted": file_deleted,
-        }
+        return best_type
