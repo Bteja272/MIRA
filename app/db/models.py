@@ -93,14 +93,14 @@ class Document(Base):
 
     # Remains nullable temporarily because existing synthetic
     # development documents have no owner.
-    user_id: Mapped[str | None] = mapped_column(
+    user_id: Mapped[str] = mapped_column(
         String,
         ForeignKey(
             "users.user_id",
             ondelete="RESTRICT",
         ),
         index=True,
-        nullable=True,
+        nullable=False,
     )
 
     source: Mapped[str] = mapped_column(
@@ -143,7 +143,7 @@ class Document(Base):
         default=datetime.utcnow,
     )
 
-    user: Mapped[User | None] = relationship(
+    user: Mapped[User ] = relationship(
         back_populates="documents",
     )
 
