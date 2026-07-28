@@ -19,6 +19,9 @@ from app.core.config import settings
 from app.core.notices import (
     DEVELOPMENT_PRIVACY_NOTICE,
 )
+from app.api.routes.extractions import (
+    router as extractions_router,
+)
 
 
 OPENAPI_TAGS = [
@@ -94,6 +97,9 @@ app.include_router(
 
 app.include_router(
     documents_router
+)
+app.include_router(
+    extractions_router
 )
 
 

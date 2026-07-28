@@ -5,14 +5,21 @@ from app.core.config import settings
 
 class TextChunkingService:
     @staticmethod
-    def _get_value(document: Any, field_name: str):
+    def _get_value(
+        document: Any,
+        field_name: str,
+    ):
         """
         Read a field from either an object or a dictionary.
         """
         if isinstance(document, dict):
             return document.get(field_name)
 
-        return getattr(document, field_name, None)
+        return getattr(
+            document,
+            field_name,
+            None,
+        )
 
     @staticmethod
     def _split_long_line(
@@ -39,17 +46,27 @@ class TextChunkingService:
 
             if (
                 current_words
-                and current_length + additional_length > chunk_size
+                and current_length
+                + additional_length
+                > chunk_size
             ):
-                parts.append(" ".join(current_words))
+                parts.append(
+                    " ".join(current_words)
+                )
+
                 current_words = [word]
                 current_length = len(word)
+
             else:
                 current_words.append(word)
-                current_length += additional_length
+                current_length += (
+                    additional_length
+                )
 
         if current_words:
-            parts.append(" ".join(current_words))
+            parts.append(
+                " ".join(current_words)
+            )
 
         return parts
 
@@ -76,7 +93,11 @@ class TextChunkingService:
             if selected:
                 line_length += 1
 
-            if selected_length + line_length > overlap:
+            if (
+                selected_length
+                + line_length
+                > overlap
+            ):
                 break
 
             selected.insert(0, line)
@@ -92,20 +113,31 @@ class TextChunkingService:
         overlap: int | None = None,
     ) -> list[str]:
         """
-        Divide text into chunks without splitting ordinary lines or words.
+        Divide text without splitting ordinary lines or words.
         """
-        chunk_size = chunk_size or settings.chunk_size
+        resolved_chunk_size = (
+            chunk_size
+            if chunk_size is not None
+            else settings.chunk_size
+        )
 
-        if overlap is None:
-            overlap = settings.chunk_overlap
+        resolved_overlap = (
+            overlap
+            if overlap is not None
+            else settings.chunk_overlap
+        )
 
-        if chunk_size <= 0:
-            raise ValueError("chunk_size must be greater than zero")
+        if resolved_chunk_size <= 0:
+            raise ValueError(
+                "chunk_size must be greater than zero"
+            )
 
-        if overlap < 0:
-            raise ValueError("overlap cannot be negative")
+        if resolved_overlap < 0:
+            raise ValueError(
+                "overlap cannot be negative"
+            )
 
-        if overlap >= chunk_size:
+        if resolved_overlap >= resolved_chunk_size:
             raise ValueError(
                 "overlap must be smaller than chunk_size"
             )
@@ -124,7 +156,9 @@ class TextChunkingService:
             prepared_lines.extend(
                 cls._split_long_line(
                     line=line,
-                    chunk_size=chunk_size,
+                    chunk_size=(
+                        resolved_chunk_size
+                    ),
                 )
             )
 
@@ -132,52 +166,66 @@ class TextChunkingService:
         current_lines: list[str] = []
 
         for line in prepared_lines:
-            candidate_lines = [*current_lines, line]
-            candidate_text = "\n".join(candidate_lines)
+            candidate_text = "\n".join(
+                [*current_lines, line]
+            )
 
             if (
                 current_lines
-                and len(candidate_text) > chunk_size
+                and len(candidate_text)
+                > resolved_chunk_size
             ):
                 completed_chunk = "\n".join(
                     current_lines
                 ).strip()
 
                 if completed_chunk:
-                    chunks.append(completed_chunk)
+                    chunks.append(
+                        completed_chunk
+                    )
 
-                overlap_lines = cls._get_overlap_lines(
-                    lines=current_lines,
-                    overlap=overlap,
+                overlap_lines = (
+                    cls._get_overlap_lines(
+                        lines=current_lines,
+                        overlap=resolved_overlap,
+                    )
                 )
 
-                # Do not retain overlap when it would prevent the new
-                # complete line from fitting inside the next chunk.
                 overlap_candidate = "\n".join(
                     [*overlap_lines, line]
                 )
 
-                if len(overlap_candidate) > chunk_size:
+                if (
+                    len(overlap_candidate)
+                    > resolved_chunk_size
+                ):
                     current_lines = []
+
                 else:
-                    current_lines = overlap_lines
+                    current_lines = (
+                        overlap_lines
+                    )
 
             current_lines.append(line)
 
-        final_chunk = "\n".join(current_lines).strip()
+        final_chunk = "\n".join(
+            current_lines
+        ).strip()
 
         if final_chunk:
             chunks.append(final_chunk)
 
-        # Remove accidental consecutive duplicates.
         deduplicated_chunks: list[str] = []
 
         for chunk in chunks:
             if (
                 not deduplicated_chunks
-                or deduplicated_chunks[-1] != chunk
+                or deduplicated_chunks[-1]
+                != chunk
             ):
-                deduplicated_chunks.append(chunk)
+                deduplicated_chunks.append(
+                    chunk
+                )
 
         return deduplicated_chunks
 
@@ -187,23 +235,30 @@ class TextChunkingService:
         documents: list[Any],
     ) -> list[dict]:
         """
-        Convert loaded page documents into records for indexing.
+        Convert loaded pages into globally ordered index records.
+
+        chunk_index is global within a document. This prevents chunks from
+        different pages from receiving the same ordering value.
         """
         chunk_records: list[dict] = []
+        next_chunk_index = 0
 
         for document in documents:
             document_id = cls._get_value(
                 document,
                 "document_id",
             )
+
             source = cls._get_value(
                 document,
                 "source",
             )
+
             page_number = cls._get_value(
                 document,
                 "page_number",
             )
+
             text = cls._get_value(
                 document,
                 "text",
@@ -229,20 +284,30 @@ class TextChunkingService:
                 else 0
             )
 
-            for chunk_index, chunk in enumerate(chunks):
+            for local_chunk_index, chunk in enumerate(
+                chunks
+            ):
                 chunk_records.append(
                     {
                         "chunk_id": (
                             f"{document_id}_"
                             f"{page_token}_"
-                            f"{chunk_index}"
+                            f"{local_chunk_index}"
                         ),
-                        "document_id": document_id,
+                        "document_id": (
+                            document_id
+                        ),
                         "source": source,
-                        "page_number": page_number,
-                        "chunk_index": chunk_index,
+                        "page_number": (
+                            page_number
+                        ),
+                        "chunk_index": (
+                            next_chunk_index
+                        ),
                         "text": chunk,
                     }
                 )
+
+                next_chunk_index += 1
 
         return chunk_records

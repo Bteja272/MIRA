@@ -11,6 +11,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     true,
 )
 from sqlalchemy.orm import (
@@ -78,6 +79,17 @@ class User(Base):
 class Document(Base):
     __tablename__ = "documents"
 
+    __table_args__ = (
+        UniqueConstraint(
+            "document_id",
+            "user_id",
+            name=(
+                "uq_documents_"
+                "document_id_user_id"
+            ),
+        ),
+    )
+
     id: Mapped[int] = mapped_column(
         Integer,
         primary_key=True,
@@ -91,8 +103,7 @@ class Document(Base):
         nullable=False,
     )
 
-    # Remains nullable temporarily because existing synthetic
-    # development documents have no owner.
+    # Every document must belong to an authenticated user.
     user_id: Mapped[str] = mapped_column(
         String,
         ForeignKey(
@@ -143,7 +154,7 @@ class Document(Base):
         default=datetime.utcnow,
     )
 
-    user: Mapped[User ] = relationship(
+    user: Mapped[User] = relationship(
         back_populates="documents",
     )
 
@@ -209,3 +220,8 @@ class DocumentChunk(Base):
     document: Mapped[Document] = relationship(
         back_populates="chunks",
     )
+
+
+from app.db.extraction_models import (
+    DocumentExtraction,
+)
