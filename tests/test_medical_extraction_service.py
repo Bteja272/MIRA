@@ -242,7 +242,7 @@ class MedicalExtractionServiceTests(
         MedicalExtractionService,
         "_load_document_context",
     )
-    def test_unverifiable_candidate_is_rejected(
+    def test_unverifiable_candidate_is_removed_without_repair(
         self,
         mock_load_context,
         mock_generate_response,
@@ -277,17 +277,87 @@ class MedicalExtractionServiceTests(
             invalid_response
         )
 
-        with self.assertRaises(
-            MedicalExtractionValidationError
-        ):
-            MedicalExtractionService.extract(
-                document_id="document-123",
-                user_id="user-123",
-            )
+        extraction = MedicalExtractionService.extract(
+            document_id="document-123",
+            user_id="user-123",
+        )
 
         self.assertEqual(
+            len(extraction.lab_results),
+            1,
+        )
+        self.assertEqual(
+            extraction.lab_results[0].test_name,
+            "Hemoglobin",
+        )
+        self.assertEqual(
             mock_generate_response.call_count,
-            2,
+            1,
+        )
+        self.assertTrue(
+            any(
+                warning.code
+                == "unsupported_candidate_facts_removed"
+                for warning in extraction.warnings
+            )
+        )
+
+
+    @patch(
+        "app.services.medical_extraction_service."
+        "LLMService.generate_response"
+    )
+    @patch.object(
+        MedicalExtractionService,
+        "_load_document_context",
+    )
+    def test_unsupported_optional_field_is_removed(
+        self,
+        mock_load_context,
+        mock_generate_response,
+    ) -> None:
+        mock_load_context.return_value = (
+            self.document,
+            self.chunks,
+        )
+        mock_generate_response.return_value = (
+            json.dumps(
+                {
+                    "patient": {},
+                    "providers": [
+                        {
+                            "name": "Dr. Example",
+                            "role": None,
+                            "organization": "Invented Clinic",
+                        }
+                    ],
+                    "diagnoses": [],
+                    "medications": [],
+                    "lab_results": [],
+                    "procedures": [],
+                    "follow_up_instructions": [],
+                }
+            )
+        )
+
+        extraction = MedicalExtractionService.extract(
+            document_id="document-123",
+            user_id="user-123",
+        )
+
+        self.assertIsNone(
+            extraction.providers[0].organization
+        )
+        self.assertTrue(
+            any(
+                warning.code
+                == "unsupported_candidate_fields_removed"
+                for warning in extraction.warnings
+            )
+        )
+        self.assertEqual(
+            mock_generate_response.call_count,
+            1,
         )
 
     @patch.object(

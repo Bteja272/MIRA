@@ -173,6 +173,10 @@ class DeterministicMedicalExtractionService:
         "patient id",
         "phone",
         "report date",
+        "reference range",
+        "ref range",
+        "normal range",
+        "range",
         "room number",
         "service date",
     }

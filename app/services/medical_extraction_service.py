@@ -44,6 +44,10 @@ from app.services.deterministic_medical_extraction_service import (
     DeterministicMedicalExtractionService,
 )
 from app.services.llm_service import LLMService
+from app.services.medical_extraction_hardening_service import (
+    MedicalExtractionHardeningError,
+    MedicalExtractionHardeningService,
+)
 from app.services.medical_extraction_merge_service import (
     MedicalExtractionMergeService,
 )
@@ -103,6 +107,24 @@ class MedicalExtractionService:
         "%B %d %Y",
         "%b %d %Y",
     )
+
+    ROUTE_ALIASES: dict[str, tuple[str, ...]] = {
+        "oral": ("oral", "orally", "by mouth", "po"),
+        "intravenous": ("intravenous", "intravenously", "iv"),
+        "intramuscular": ("intramuscular", "intramuscularly", "im"),
+        "subcutaneous": ("subcutaneous", "subcutaneously", "subq", "sq"),
+        "topical": ("topical", "topically"),
+        "inhaled": ("inhaled", "inhalation"),
+    }
+
+    FREQUENCY_ALIASES: dict[str, tuple[str, ...]] = {
+        "daily": ("daily", "once daily", "qd"),
+        "once daily": ("once daily", "daily", "qd"),
+        "twice daily": ("twice daily", "bid"),
+        "three times daily": ("three times daily", "tid"),
+        "nightly": ("nightly", "qhs", "at bedtime"),
+        "as needed": ("as needed", "prn"),
+    }
 
     @staticmethod
     def _elapsed_ms(started_at: float) -> float:
@@ -584,13 +606,16 @@ class MedicalExtractionService:
         chunks: list[dict[str, Any]],
         anchors: list[str],
         fact_name: str,
+        preferred_anchors: list[str] | None = None,
     ) -> SourceEvidence:
         if not anchors:
             raise MedicalExtractionValidationError(
                 f"The candidate {fact_name} has no searchable value."
             )
 
+        preferred = preferred_anchors or []
         best_match: tuple[
+            int,
             int,
             dict[str, Any],
             str,
@@ -639,7 +664,13 @@ class MedicalExtractionService:
                     ):
                         continue
 
+                    preferred_matches = sum(
+                        1
+                        for anchor in preferred
+                        if anchor in normalized_quote
+                    )
                     match = (
+                        -preferred_matches,
                         len(quote),
                         chunk,
                         quote,
@@ -647,7 +678,8 @@ class MedicalExtractionService:
 
                     if (
                         best_match is None
-                        or match[0] < best_match[0]
+                        or match[:2]
+                        < best_match[:2]
                     ):
                         best_match = match
 
@@ -657,7 +689,7 @@ class MedicalExtractionService:
                 "against the document text."
             )
 
-        _, chunk, quote = best_match
+        _, _, chunk, quote = best_match
 
         return SourceEvidence(
             document_id=str(
@@ -675,6 +707,93 @@ class MedicalExtractionService:
             ),
             quoted_text=quote,
         )
+
+    @classmethod
+    def _value_supported_in_quote(
+        cls,
+        value: str | None,
+        quote: str,
+        *,
+        aliases: tuple[str, ...] = (),
+    ) -> bool:
+        if value is None:
+            return True
+
+        normalized_quote = cls._normalize_match_text(
+            quote
+        )
+        normalized_value = cls._normalize_match_text(
+            value
+        )
+
+        if (
+            normalized_value
+            and normalized_value
+            in normalized_quote
+        ):
+            return True
+
+        return any(
+            cls._normalize_match_text(alias)
+            in normalized_quote
+            for alias in aliases
+            if cls._normalize_match_text(alias)
+        )
+
+    @classmethod
+    def _aliases_for(
+        cls,
+        value: str | None,
+        alias_map: dict[
+            str,
+            tuple[str, ...],
+        ],
+    ) -> tuple[str, ...]:
+        normalized_value = (
+            cls._normalize_match_text(
+                value or ""
+            )
+        )
+
+        for canonical, aliases in (
+            alias_map.items()
+        ):
+            options = {
+                cls._normalize_match_text(
+                    canonical
+                ),
+                *(
+                    cls._normalize_match_text(
+                        alias
+                    )
+                    for alias in aliases
+                ),
+            }
+
+            if normalized_value in options:
+                return aliases
+
+        return ()
+
+    @classmethod
+    def _supported_optional_value(
+        cls,
+        value: str | None,
+        quote: str,
+        *,
+        aliases: tuple[str, ...] = (),
+    ) -> tuple[str | None, bool]:
+        if value is None:
+            return None, False
+
+        if cls._value_supported_in_quote(
+            value,
+            quote,
+            aliases=aliases,
+        ):
+            return value, False
+
+        return None, True
 
     @classmethod
     def _parse_date(
@@ -917,27 +1036,50 @@ class MedicalExtractionService:
         candidate: CandidateProviderInformation,
         document: dict[str, Any],
         chunks: list[dict[str, Any]],
-    ) -> ProviderInformation:
+    ) -> tuple[ProviderInformation, int]:
         source = cls._find_source(
             document=document,
             chunks=chunks,
             anchors=cls._candidate_anchors(
                 candidate.name,
-                candidate.role,
-                candidate.organization,
+            ),
+            preferred_anchors=(
+                cls._candidate_anchors(
+                    candidate.role,
+                    candidate.organization,
+                )
             ),
             fact_name=(
                 f"provider '{candidate.name}'"
             ),
         )
 
-        return ProviderInformation(
-            name=candidate.name,
-            role=candidate.role,
-            organization=candidate.organization,
-            confidence=0.88,
-            extraction_method=ExtractionMethod.LLM,
-            sources=[source],
+        role, role_removed = (
+            cls._supported_optional_value(
+                candidate.role,
+                source.quoted_text,
+            )
+        )
+        organization, organization_removed = (
+            cls._supported_optional_value(
+                candidate.organization,
+                source.quoted_text,
+            )
+        )
+
+        return (
+            ProviderInformation(
+                name=candidate.name,
+                role=role,
+                organization=organization,
+                confidence=0.88,
+                extraction_method=(
+                    ExtractionMethod.LLM
+                ),
+                sources=[source],
+            ),
+            int(role_removed)
+            + int(organization_removed),
         )
 
     @classmethod
@@ -946,31 +1088,47 @@ class MedicalExtractionService:
         candidate: CandidateDiagnosisInformation,
         document: dict[str, Any],
         chunks: list[dict[str, Any]],
-    ) -> DiagnosisInformation:
+    ) -> tuple[DiagnosisInformation, int]:
         source = cls._find_source(
             document=document,
             chunks=chunks,
             anchors=cls._candidate_anchors(
                 candidate.name,
                 candidate.code,
-                candidate.code_system,
+            ),
+            preferred_anchors=(
+                cls._candidate_anchors(
+                    candidate.code_system,
+                )
             ),
             fact_name=(
                 f"diagnosis '{candidate.name}'"
             ),
         )
 
-        return DiagnosisInformation(
-            name=candidate.name,
-            code=candidate.code,
-            code_system=candidate.code_system,
-            status=cls._diagnosis_status(
-                candidate.status,
+        code_system, code_system_removed = (
+            cls._supported_optional_value(
+                candidate.code_system,
                 source.quoted_text,
+            )
+        )
+
+        return (
+            DiagnosisInformation(
+                name=candidate.name,
+                code=candidate.code,
+                code_system=code_system,
+                status=cls._diagnosis_status(
+                    candidate.status,
+                    source.quoted_text,
+                ),
+                confidence=0.86,
+                extraction_method=(
+                    ExtractionMethod.LLM
+                ),
+                sources=[source],
             ),
-            confidence=0.86,
-            extraction_method=ExtractionMethod.LLM,
-            sources=[source],
+            int(code_system_removed),
         )
 
     @classmethod
@@ -979,37 +1137,93 @@ class MedicalExtractionService:
         candidate: CandidateMedicationInformation,
         document: dict[str, Any],
         chunks: list[dict[str, Any]],
-    ) -> MedicationInformation:
+    ) -> tuple[MedicationInformation, int]:
         source = cls._find_source(
             document=document,
             chunks=chunks,
             anchors=cls._candidate_anchors(
                 candidate.name,
-                candidate.dose,
-                candidate.route,
-                candidate.frequency,
-                candidate.duration,
-                candidate.instructions,
+            ),
+            preferred_anchors=(
+                cls._candidate_anchors(
+                    candidate.dose,
+                    candidate.route,
+                    candidate.frequency,
+                    candidate.duration,
+                    candidate.instructions,
+                )
             ),
             fact_name=(
                 f"medication '{candidate.name}'"
             ),
         )
 
-        return MedicationInformation(
-            name=candidate.name,
-            dose=candidate.dose,
-            route=candidate.route,
-            frequency=candidate.frequency,
-            duration=candidate.duration,
-            instructions=candidate.instructions,
-            status=cls._medication_status(
-                candidate.status,
+        dose, dose_removed = (
+            cls._supported_optional_value(
+                candidate.dose,
                 source.quoted_text,
+            )
+        )
+        route, route_removed = (
+            cls._supported_optional_value(
+                candidate.route,
+                source.quoted_text,
+                aliases=cls._aliases_for(
+                    candidate.route,
+                    cls.ROUTE_ALIASES,
+                ),
+            )
+        )
+        frequency, frequency_removed = (
+            cls._supported_optional_value(
+                candidate.frequency,
+                source.quoted_text,
+                aliases=cls._aliases_for(
+                    candidate.frequency,
+                    cls.FREQUENCY_ALIASES,
+                ),
+            )
+        )
+        duration, duration_removed = (
+            cls._supported_optional_value(
+                candidate.duration,
+                source.quoted_text,
+            )
+        )
+        instructions, instructions_removed = (
+            cls._supported_optional_value(
+                candidate.instructions,
+                source.quoted_text,
+            )
+        )
+
+        return (
+            MedicationInformation(
+                name=candidate.name,
+                dose=dose,
+                route=route,
+                frequency=frequency,
+                duration=duration,
+                instructions=instructions,
+                status=cls._medication_status(
+                    candidate.status,
+                    source.quoted_text,
+                ),
+                confidence=0.88,
+                extraction_method=(
+                    ExtractionMethod.LLM
+                ),
+                sources=[source],
             ),
-            confidence=0.88,
-            extraction_method=ExtractionMethod.LLM,
-            sources=[source],
+            sum(
+                (
+                    int(dose_removed),
+                    int(route_removed),
+                    int(frequency_removed),
+                    int(duration_removed),
+                    int(instructions_removed),
+                )
+            ),
         )
 
     @classmethod
@@ -1018,15 +1232,19 @@ class MedicalExtractionService:
         candidate: CandidateLabResultInformation,
         document: dict[str, Any],
         chunks: list[dict[str, Any]],
-    ) -> LabResultInformation:
+    ) -> tuple[LabResultInformation, int]:
         source = cls._find_source(
             document=document,
             chunks=chunks,
             anchors=cls._candidate_anchors(
                 candidate.test_name,
                 candidate.raw_value,
-                candidate.unit,
-                candidate.reference_range,
+            ),
+            preferred_anchors=(
+                cls._candidate_anchors(
+                    candidate.unit,
+                    candidate.reference_range,
+                )
             ),
             fact_name=(
                 "lab result "
@@ -1034,38 +1252,64 @@ class MedicalExtractionService:
             ),
         )
 
+        unit, unit_removed = (
+            cls._supported_optional_value(
+                candidate.unit,
+                source.quoted_text,
+            )
+        )
+        reference_range, range_removed = (
+            cls._supported_optional_value(
+                candidate.reference_range,
+                source.quoted_text,
+            )
+        )
+
         collected_at = None
+        collected_at_removed = False
 
         if candidate.collected_at is not None:
-            collected_at = cls._sourced_date_value(
-                raw_value=candidate.collected_at,
-                document=document,
-                chunks=chunks,
-                fact_name=(
-                    "lab collection date"
-                ),
-                confidence=0.86,
-            )
+            try:
+                collected_at = (
+                    cls._sourced_date_value(
+                        raw_value=(
+                            candidate.collected_at
+                        ),
+                        document=document,
+                        chunks=chunks,
+                        fact_name=(
+                            "lab collection date"
+                        ),
+                        confidence=0.86,
+                    )
+                )
+            except MedicalExtractionValidationError:
+                collected_at_removed = True
 
-        return LabResultInformation(
-            test_name=candidate.test_name,
-            raw_value=candidate.raw_value,
-            numeric_value=cls._numeric_value(
-                candidate.raw_value
+        return (
+            LabResultInformation(
+                test_name=candidate.test_name,
+                raw_value=candidate.raw_value,
+                numeric_value=cls._numeric_value(
+                    candidate.raw_value
+                ),
+                unit=unit,
+                reference_range=reference_range,
+                flag=cls._lab_flag(
+                    candidate.flag,
+                    source.quoted_text,
+                    candidate.raw_value,
+                ),
+                collected_at=collected_at,
+                confidence=0.90,
+                extraction_method=(
+                    ExtractionMethod.LLM
+                ),
+                sources=[source],
             ),
-            unit=candidate.unit,
-            reference_range=(
-                candidate.reference_range
-            ),
-            flag=cls._lab_flag(
-                candidate.flag,
-                source.quoted_text,
-                candidate.raw_value,
-            ),
-            collected_at=collected_at,
-            confidence=0.90,
-            extraction_method=ExtractionMethod.LLM,
-            sources=[source],
+            int(unit_removed)
+            + int(range_removed)
+            + int(collected_at_removed),
         )
 
     @classmethod
@@ -1074,37 +1318,63 @@ class MedicalExtractionService:
         candidate: CandidateProcedureInformation,
         document: dict[str, Any],
         chunks: list[dict[str, Any]],
-    ) -> ProcedureInformation:
+    ) -> tuple[ProcedureInformation, int]:
         source = cls._find_source(
             document=document,
             chunks=chunks,
             anchors=cls._candidate_anchors(
                 candidate.name,
-                candidate.result,
+            ),
+            preferred_anchors=(
+                cls._candidate_anchors(
+                    candidate.result,
+                    candidate.procedure_date,
+                )
             ),
             fact_name=(
                 f"procedure '{candidate.name}'"
             ),
         )
 
+        result, result_removed = (
+            cls._supported_optional_value(
+                candidate.result,
+                source.quoted_text,
+            )
+        )
+
         procedure_date = None
+        procedure_date_removed = False
 
         if candidate.procedure_date is not None:
-            procedure_date = cls._sourced_date_value(
-                raw_value=candidate.procedure_date,
-                document=document,
-                chunks=chunks,
-                fact_name="procedure date",
-                confidence=0.85,
-            )
+            try:
+                procedure_date = (
+                    cls._sourced_date_value(
+                        raw_value=(
+                            candidate.procedure_date
+                        ),
+                        document=document,
+                        chunks=chunks,
+                        fact_name="procedure date",
+                        confidence=0.85,
+                    )
+                )
+            except MedicalExtractionValidationError:
+                procedure_date_removed = True
 
-        return ProcedureInformation(
-            name=candidate.name,
-            procedure_date=procedure_date,
-            result=candidate.result,
-            confidence=0.86,
-            extraction_method=ExtractionMethod.LLM,
-            sources=[source],
+        return (
+            ProcedureInformation(
+                name=candidate.name,
+                procedure_date=procedure_date,
+                result=result,
+                confidence=0.86,
+                extraction_method=(
+                    ExtractionMethod.LLM
+                ),
+                sources=[source],
+            ),
+            int(result_removed)
+            + int(procedure_date_removed),
         )
 
     @classmethod
@@ -1113,25 +1383,48 @@ class MedicalExtractionService:
         candidate: CandidateFollowUpInstruction,
         document: dict[str, Any],
         chunks: list[dict[str, Any]],
-    ) -> FollowUpInstruction:
+    ) -> tuple[FollowUpInstruction, int]:
         source = cls._find_source(
             document=document,
             chunks=chunks,
             anchors=cls._candidate_anchors(
                 candidate.instruction,
-                candidate.timeframe,
-                candidate.specialty,
+            ),
+            preferred_anchors=(
+                cls._candidate_anchors(
+                    candidate.timeframe,
+                    candidate.specialty,
+                )
             ),
             fact_name="follow-up instruction",
         )
 
-        return FollowUpInstruction(
-            instruction=candidate.instruction,
-            timeframe=candidate.timeframe,
-            specialty=candidate.specialty,
-            confidence=0.86,
-            extraction_method=ExtractionMethod.LLM,
-            sources=[source],
+        timeframe, timeframe_removed = (
+            cls._supported_optional_value(
+                candidate.timeframe,
+                source.quoted_text,
+            )
+        )
+        specialty, specialty_removed = (
+            cls._supported_optional_value(
+                candidate.specialty,
+                source.quoted_text,
+            )
+        )
+
+        return (
+            FollowUpInstruction(
+                instruction=candidate.instruction,
+                timeframe=timeframe,
+                specialty=specialty,
+                confidence=0.86,
+                extraction_method=(
+                    ExtractionMethod.LLM
+                ),
+                sources=[source],
+            ),
+            int(timeframe_removed)
+            + int(specialty_removed),
         )
 
     @classmethod
@@ -1143,34 +1436,59 @@ class MedicalExtractionService:
         chunks: list[dict[str, Any]],
     ) -> MedicalDocumentExtraction:
         confidence_values: list[float] = []
+        warnings: list[ExtractionWarning] = []
+        removed_fact_count = 0
+        removed_field_count = 0
+
+        def capture_optional_fact(
+            builder,
+        ):
+            nonlocal removed_fact_count
+
+            try:
+                return builder()
+            except MedicalExtractionValidationError:
+                removed_fact_count += 1
+                return None
 
         patient_name = None
         if candidate.patient.name is not None:
-            patient_name = cls._sourced_text_value(
-                value=candidate.patient.name,
-                document=document,
-                chunks=chunks,
-                fact_name="patient name",
-                confidence=0.90,
+            patient_name = capture_optional_fact(
+                lambda: cls._sourced_text_value(
+                    value=candidate.patient.name,
+                    document=document,
+                    chunks=chunks,
+                    fact_name="patient name",
+                    confidence=0.90,
+                )
             )
-            confidence_values.append(
-                patient_name.confidence
-            )
+
+            if patient_name is not None:
+                confidence_values.append(
+                    patient_name.confidence
+                )
 
         date_of_birth = None
         if candidate.patient.date_of_birth is not None:
-            date_of_birth = cls._sourced_date_value(
-                raw_value=(
-                    candidate.patient.date_of_birth
-                ),
-                document=document,
-                chunks=chunks,
-                fact_name="patient date of birth",
-                confidence=0.90,
+            date_of_birth = capture_optional_fact(
+                lambda: cls._sourced_date_value(
+                    raw_value=(
+                        candidate.patient
+                        .date_of_birth
+                    ),
+                    document=document,
+                    chunks=chunks,
+                    fact_name=(
+                        "patient date of birth"
+                    ),
+                    confidence=0.90,
+                )
             )
-            confidence_values.append(
-                date_of_birth.confidence
-            )
+
+            if date_of_birth is not None:
+                confidence_values.append(
+                    date_of_birth.confidence
+                )
 
         medical_record_number = None
         if (
@@ -1179,22 +1497,29 @@ class MedicalExtractionService:
             is not None
         ):
             medical_record_number = (
-                cls._sourced_text_value(
-                    value=(
-                        candidate.patient
-                        .medical_record_number
-                    ),
-                    document=document,
-                    chunks=chunks,
-                    fact_name=(
-                        "medical record number"
-                    ),
-                    confidence=0.90,
+                capture_optional_fact(
+                    lambda: (
+                        cls._sourced_text_value(
+                            value=(
+                                candidate.patient
+                                .medical_record_number
+                            ),
+                            document=document,
+                            chunks=chunks,
+                            fact_name=(
+                                "medical record number"
+                            ),
+                            confidence=0.90,
+                        )
+                    )
                 )
             )
-            confidence_values.append(
-                medical_record_number.confidence
-            )
+
+            if medical_record_number is not None:
+                confidence_values.append(
+                    medical_record_number
+                    .confidence
+                )
 
         patient = PatientInformation(
             name=patient_name,
@@ -1206,83 +1531,105 @@ class MedicalExtractionService:
 
         document_date = None
         if candidate.document_date is not None:
-            document_date = cls._sourced_date_value(
-                raw_value=candidate.document_date,
-                document=document,
-                chunks=chunks,
-                fact_name="document date",
-                confidence=0.88,
-            )
-            confidence_values.append(
-                document_date.confidence
+            document_date = capture_optional_fact(
+                lambda: cls._sourced_date_value(
+                    raw_value=candidate.document_date,
+                    document=document,
+                    chunks=chunks,
+                    fact_name="document date",
+                    confidence=0.88,
+                )
             )
 
-        providers = [
-            cls._convert_provider(
-                provider,
-                document,
-                chunks,
-            )
-            for provider in candidate.providers
-        ]
+            if document_date is not None:
+                confidence_values.append(
+                    document_date.confidence
+                )
 
-        diagnoses = [
-            cls._convert_diagnosis(
-                diagnosis,
-                document,
-                chunks,
-            )
-            for diagnosis in candidate.diagnoses
-        ]
-
-        medications = [
-            cls._convert_medication(
-                medication,
-                document,
-                chunks,
-            )
-            for medication in candidate.medications
-        ]
-
-        lab_results = [
-            cls._convert_lab_result(
-                lab_result,
-                document,
-                chunks,
-            )
-            for lab_result in candidate.lab_results
-        ]
-
-        procedures = [
-            cls._convert_procedure(
-                procedure,
-                document,
-                chunks,
-            )
-            for procedure in candidate.procedures
-        ]
-
-        follow_up_instructions = [
-            cls._convert_follow_up(
-                instruction,
-                document,
-                chunks,
-            )
-            for instruction
-            in candidate.follow_up_instructions
-        ]
-
-        for collection in (
-            providers,
-            diagnoses,
-            medications,
-            lab_results,
-            procedures,
-            follow_up_instructions,
+        def convert_collection(
+            candidates,
+            converter,
         ):
-            confidence_values.extend(
-                item.confidence
-                for item in collection
+            nonlocal removed_fact_count
+            nonlocal removed_field_count
+            converted = []
+
+            for item in candidates:
+                try:
+                    result, field_count = (
+                        converter(
+                            item,
+                            document,
+                            chunks,
+                        )
+                    )
+                except MedicalExtractionValidationError:
+                    removed_fact_count += 1
+                    continue
+
+                converted.append(result)
+                removed_field_count += (
+                    field_count
+                )
+                confidence_values.append(
+                    result.confidence
+                )
+
+            return converted
+
+        providers = convert_collection(
+            candidate.providers,
+            cls._convert_provider,
+        )
+        diagnoses = convert_collection(
+            candidate.diagnoses,
+            cls._convert_diagnosis,
+        )
+        medications = convert_collection(
+            candidate.medications,
+            cls._convert_medication,
+        )
+        lab_results = convert_collection(
+            candidate.lab_results,
+            cls._convert_lab_result,
+        )
+        procedures = convert_collection(
+            candidate.procedures,
+            cls._convert_procedure,
+        )
+        follow_up_instructions = (
+            convert_collection(
+                candidate.follow_up_instructions,
+                cls._convert_follow_up,
+            )
+        )
+
+        if removed_fact_count:
+            warnings.append(
+                ExtractionWarning(
+                    code=(
+                        "unsupported_candidate_facts_removed"
+                    ),
+                    message=(
+                        f"{removed_fact_count} unsupported candidate "
+                        "fact(s) were removed during evidence "
+                        "verification."
+                    ),
+                )
+            )
+
+        if removed_field_count:
+            warnings.append(
+                ExtractionWarning(
+                    code=(
+                        "unsupported_candidate_fields_removed"
+                    ),
+                    message=(
+                        f"{removed_field_count} unsupported optional "
+                        "field(s) were removed during evidence "
+                        "verification."
+                    ),
+                )
             )
 
         has_facts = bool(confidence_values)
@@ -1308,9 +1655,9 @@ class MedicalExtractionService:
                 )
             ),
             status=(
-                ExtractionStatus.COMPLETED
-                if has_facts
-                else ExtractionStatus.PARTIAL
+                ExtractionStatus.PARTIAL
+                if warnings or not has_facts
+                else ExtractionStatus.COMPLETED
             ),
             patient=patient,
             document_date=document_date,
@@ -1322,6 +1669,7 @@ class MedicalExtractionService:
             follow_up_instructions=(
                 follow_up_instructions
             ),
+            warnings=warnings,
             extraction_confidence=(
                 extraction_confidence
             ),
@@ -1699,8 +2047,27 @@ class MedicalExtractionService:
                     )
                 )
 
+                # Validate trusted source metadata against the original
+                # indexed chunks before using source quotes for final
+                # fact-level hardening.
                 cls._validate_evidence(
                     extraction=merged_extraction,
+                    chunks=chunks,
+                    chunk_map=chunk_map,
+                    normalized_chunk_map=(
+                        normalized_chunk_map
+                    ),
+                )
+
+                hardened_extraction = (
+                    MedicalExtractionHardeningService
+                    .finalize(merged_extraction)
+                )
+
+                # Finalization currently preserves source objects, but
+                # revalidate the returned boundary object defensively.
+                cls._validate_evidence(
+                    extraction=hardened_extraction,
                     chunks=chunks,
                     chunk_map=chunk_map,
                     normalized_chunk_map=(
@@ -1727,10 +2094,11 @@ class MedicalExtractionService:
                         timings,
                     )
 
-                return merged_extraction
+                return hardened_extraction
 
             except (
                 MedicalExtractionValidationError,
+                MedicalExtractionHardeningError,
                 ValidationError,
                 ValueError,
             ) as exc:

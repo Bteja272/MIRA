@@ -17,6 +17,19 @@ from app.schemas.medical_extraction import (
 )
 
 
+MAX_CANDIDATES_PER_CATEGORY = 50
+PLACEHOLDER_VALUES = {
+    "",
+    "null",
+    "none",
+    "n/a",
+    "na",
+    "unknown",
+    "not available",
+    "not provided",
+}
+
+
 def _unwrap_fact_value(value: Any) -> Any:
     if isinstance(value, dict):
         return (
@@ -36,6 +49,10 @@ def _clean_text(
 
     if isinstance(value, str):
         cleaned = value.strip()
+
+        if cleaned.casefold() in PLACEHOLDER_VALUES:
+            return None
+
         return cleaned or None
 
     if (
@@ -53,7 +70,7 @@ def _as_candidate_list(value: Any) -> list[Any]:
         return []
 
     if isinstance(value, list):
-        return value
+        return value[:MAX_CANDIDATES_PER_CATEGORY]
 
     if isinstance(value, dict):
         return [value]
