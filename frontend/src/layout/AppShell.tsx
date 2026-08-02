@@ -12,19 +12,31 @@ function navClassName({
   isActive: boolean;
 }): string {
   return isActive
-    ? "app-nav__link app-nav__link--active"
+    ? (
+      "app-nav__link "
+      + "app-nav__link--active"
+    )
     : "app-nav__link";
 }
 
 export function AppShell() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const {
+    user,
+    logout,
+  } = useAuth();
+
+  const navigate =
+    useNavigate();
 
   function handleLogout(): void {
     logout();
-    navigate("/login", {
-      replace: true,
-    });
+
+    navigate(
+      "/login",
+      {
+        replace: true,
+      },
+    );
   }
 
   return (
@@ -35,7 +47,10 @@ export function AppShell() {
             Medical Intelligence & Retrieval
             Assistant
           </p>
-          <h1 className="app-title">MIRA</h1>
+
+          <h1 className="app-title">
+            MIRA
+          </h1>
         </div>
 
         <div className="account-panel">
@@ -67,19 +82,25 @@ export function AppShell() {
               Overview
             </NavLink>
 
-            <span className="app-nav__link app-nav__link--disabled">
+            <NavLink
+              to="/documents"
+              className={navClassName}
+            >
               Documents
-              <small>Batch 3B</small>
-            </span>
+            </NavLink>
 
             <span className="app-nav__link app-nav__link--disabled">
               Ask MIRA
-              <small>Batch 3C</small>
+              <small>
+                Batch 3C
+              </small>
             </span>
 
             <span className="app-nav__link app-nav__link--disabled">
               Extractions
-              <small>Batch 3D</small>
+              <small>
+                Batch 3D
+              </small>
             </span>
           </nav>
 

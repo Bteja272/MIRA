@@ -1,30 +1,35 @@
+import { Link } from "react-router";
+
 import { useAuth } from "../auth/AuthProvider";
 
 const cards = [
   {
     title: "Documents",
     body: (
-      "Upload PDF or TXT medical documents, " +
-      "review metadata, and permanently delete " +
-      "stored records."
+      "Upload PDF or TXT medical documents, "
+      + "review metadata, and permanently delete "
+      + "stored records."
     ),
-    phase: "Next: Batch 3B",
+    phase: "Available",
+    path: "/documents",
   },
   {
     title: "Ask MIRA",
     body: (
-      "Select up to five owned documents and ask " +
-      "source-grounded questions."
+      "Select up to five owned documents and ask "
+      + "source-grounded questions."
     ),
     phase: "Next: Batch 3C",
+    path: null,
   },
   {
     title: "Structured extraction",
     body: (
-      "Generate patient, diagnosis, medication, " +
-      "provider, follow-up, and evidence fields."
+      "Generate patient, diagnosis, medication, "
+      + "provider, follow-up, and evidence fields."
     ),
     phase: "Next: Batch 3D",
+    path: null,
   },
 ];
 
@@ -36,12 +41,17 @@ export function DashboardPage() {
       <header className="page-header">
         <div>
           <p className="eyebrow">
-            Frontend foundation
+            Frontend workspace
           </p>
-          <h2>Backend-connected workspace</h2>
+
+          <h2>
+            Backend-connected workspace
+          </h2>
+
           <p>
-            Signed in as {user?.email}. Authentication
-            and protected routing are active.
+            Signed in as {user?.email}.
+            Authentication and protected routing
+            are active.
           </p>
         </div>
 
@@ -51,18 +61,31 @@ export function DashboardPage() {
       </header>
 
       <div className="feature-grid">
-        {cards.map((card) => (
-          <article
-            className="feature-card"
-            key={card.title}
-          >
-            <span className="feature-card__phase">
-              {card.phase}
-            </span>
-            <h3>{card.title}</h3>
-            <p>{card.body}</p>
-          </article>
-        ))}
+        {cards.map(
+          (card) => (
+            <article
+              className="feature-card"
+              key={card.title}
+            >
+              <span className="feature-card__phase">
+                {card.phase}
+              </span>
+
+              <h3>{card.title}</h3>
+
+              <p>{card.body}</p>
+
+              {card.path && (
+                <Link
+                  className="feature-card__link"
+                  to={card.path}
+                >
+                  Open documents
+                </Link>
+              )}
+            </article>
+          ),
+        )}
       </div>
 
       <section className="safety-panel">
@@ -70,7 +93,10 @@ export function DashboardPage() {
           <p className="eyebrow">
             Development boundary
           </p>
-          <h3>Use synthetic documents only</h3>
+
+          <h3>
+            Use synthetic documents only
+          </h3>
         </div>
 
         <p>

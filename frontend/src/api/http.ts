@@ -1,6 +1,9 @@
-import { clearAccessToken, getAccessToken } from "../auth/tokenStorage";
+import {
+  clearAccessToken,
+  getAccessToken,
+} from "../auth/tokenStorage";
 
-const API_BASE_URL = (
+export const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ??
   "http://127.0.0.1:8001"
 ).replace(/\/+$/, "");
@@ -25,7 +28,7 @@ export class ApiError extends Error {
   }
 }
 
-function extractErrorMessage(
+export function extractApiErrorMessage(
   body: unknown,
   fallback: string,
 ): string {
@@ -34,7 +37,9 @@ function extractErrorMessage(
     typeof body === "object" &&
     "detail" in body
   ) {
-    const detail = (body as FastApiErrorBody).detail;
+    const detail = (
+      body as FastApiErrorBody
+    ).detail;
 
     if (typeof detail === "string") {
       return detail;
@@ -63,6 +68,17 @@ function extractErrorMessage(
         return messages.join(" ");
       }
     }
+
+    if (
+      detail &&
+      typeof detail === "object"
+    ) {
+      return JSON.stringify(detail);
+    }
+  }
+
+  if (typeof body === "string" && body.trim()) {
+    return body.trim();
   }
 
   return fallback;
@@ -72,11 +88,17 @@ export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const headers = new Headers(init.headers);
+  const headers = new Headers(
+    init.headers,
+  );
+
   const token = getAccessToken();
 
   if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+    headers.set(
+      "Authorization",
+      `Bearer ${token}`,
+    );
   }
 
   if (
@@ -84,7 +106,10 @@ export async function apiRequest<T>(
     !(init.body instanceof FormData) &&
     !headers.has("Content-Type")
   ) {
-    headers.set("Content-Type", "application/json");
+    headers.set(
+      "Content-Type",
+      "application/json",
+    );
   }
 
   let response: Response;
@@ -106,12 +131,18 @@ export async function apiRequest<T>(
   }
 
   const contentType =
-    response.headers.get("content-type") ?? "";
+    response.headers.get(
+      "content-type",
+    ) ?? "";
 
   let body: unknown = null;
 
   if (response.status !== 204) {
-    if (contentType.includes("application/json")) {
+    if (
+      contentType.includes(
+        "application/json",
+      )
+    ) {
       body = await response.json();
     } else {
       body = await response.text();
@@ -124,9 +155,13 @@ export async function apiRequest<T>(
     }
 
     throw new ApiError(
-      extractErrorMessage(
+      extractApiErrorMessage(
         body,
-        `Request failed with status ${response.status}.`,
+        (
+          "Request failed with status "
+          + response.status
+          + "."
+        ),
       ),
       response.status,
       body,

@@ -5,6 +5,7 @@ import {
 import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { AppShell } from "./layout/AppShell";
 import { DashboardPage } from "./pages/DashboardPage";
+import { DocumentsPage } from "./pages/DocumentsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -18,7 +19,15 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <DashboardPage />,
+            element: (
+              <DashboardPage />
+            ),
+          },
+          {
+            path: "documents",
+            element: (
+              <DocumentsPage />
+            ),
           },
         ],
       },
