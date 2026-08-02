@@ -1,10 +1,19 @@
-from fastapi import FastAPI
+from fastapi import (
+    FastAPI,
+    Request,
+)
+from fastapi.middleware.cors import (
+    CORSMiddleware,
+)
 
 from app.api.routes.auth import (
     router as auth_router,
 )
 from app.api.routes.documents import (
     router as documents_router,
+)
+from app.api.routes.extractions import (
+    router as extractions_router,
 )
 from app.api.routes.health import (
     router as health_router,
@@ -19,16 +28,14 @@ from app.core.config import settings
 from app.core.notices import (
     DEVELOPMENT_PRIVACY_NOTICE,
 )
-from app.api.routes.extractions import (
-    router as extractions_router,
-)
 
 
 OPENAPI_TAGS = [
     {
         "name": "health",
         "description": (
-            "Application and dependency health checks."
+            "Application liveness and dependency "
+            "readiness checks."
         ),
     },
     {
@@ -59,6 +66,13 @@ OPENAPI_TAGS = [
             "uploaded documents."
         ),
     },
+    {
+        "name": "extractions",
+        "description": (
+            "Generate, retrieve, replace, and delete "
+            "structured medical extractions."
+        ),
+    },
 ]
 
 
@@ -79,28 +93,63 @@ app = FastAPI(
 )
 
 
-app.include_router(
-    health_router
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=(
+        settings.cors_allowed_origins
+    ),
+    allow_credentials=(
+        settings.cors_allow_credentials
+    ),
+    allow_methods=[
+        "GET",
+        "POST",
+        "DELETE",
+        "OPTIONS",
+    ],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+    ],
 )
 
-app.include_router(
-    auth_router
-)
 
-app.include_router(
-    ingest_router
-)
+@app.middleware("http")
+async def add_security_headers(
+    request: Request,
+    call_next,
+):
+    response = await call_next(request)
 
-app.include_router(
-    query_router
-)
+    response.headers.setdefault(
+        "Cache-Control",
+        "no-store",
+    )
 
-app.include_router(
-    documents_router
-)
-app.include_router(
-    extractions_router
-)
+    response.headers.setdefault(
+        "X-Content-Type-Options",
+        "nosniff",
+    )
+
+    response.headers.setdefault(
+        "X-Frame-Options",
+        "DENY",
+    )
+
+    response.headers.setdefault(
+        "Referrer-Policy",
+        "no-referrer",
+    )
+
+    return response
+
+
+app.include_router(health_router)
+app.include_router(auth_router)
+app.include_router(ingest_router)
+app.include_router(query_router)
+app.include_router(documents_router)
+app.include_router(extractions_router)
 
 
 @app.get(

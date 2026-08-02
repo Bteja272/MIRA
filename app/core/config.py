@@ -1,5 +1,6 @@
 from pydantic import (
     SecretStr,
+    field_validator,
     model_validator,
 )
 from pydantic_settings import (
@@ -36,6 +37,14 @@ class Settings(BaseSettings):
         "all-MiniLM-L6-v2"
     )
 
+    # Frontend/API settings.
+    cors_allowed_origins: list[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+
+    cors_allow_credentials: bool = True
+
     # Structured medical extraction settings.
     extraction_max_context_characters: int = 16_000
     extraction_llm_timeout_seconds: int = 180
@@ -59,6 +68,41 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=False,
     )
+
+    @field_validator(
+        "cors_allowed_origins",
+        mode="before",
+    )
+    @classmethod
+    def normalize_cors_origins(
+        cls,
+        value,
+    ):
+        if isinstance(value, str):
+            value = [
+                origin.strip()
+                for origin in value.split(",")
+                if origin.strip()
+            ]
+
+        if not isinstance(value, list):
+            raise ValueError(
+                "cors_allowed_origins must be a list "
+                "or comma-separated string."
+            )
+
+        normalized: list[str] = []
+
+        for origin in value:
+            cleaned = str(origin).strip().rstrip("/")
+
+            if (
+                cleaned
+                and cleaned not in normalized
+            ):
+                normalized.append(cleaned)
+
+        return normalized
 
     @model_validator(mode="after")
     def validate_runtime_settings(self):
@@ -104,6 +148,15 @@ class Settings(BaseSettings):
                 raise ValueError(
                     f"{field_name} must be greater than zero."
                 )
+
+        if (
+            self.cors_allow_credentials
+            and "*" in self.cors_allowed_origins
+        ):
+            raise ValueError(
+                "Wildcard CORS origins cannot be used "
+                "when credentials are enabled."
+            )
 
         return self
 

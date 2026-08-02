@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from fastapi import (
@@ -9,10 +10,17 @@ from fastapi import (
 from app.api.dependencies.auth import (
     CurrentUser,
 )
+from app.schemas.documents import (
+    DocumentDeleteResponse,
+    DocumentDetail,
+    DocumentListResponse,
+)
 from app.services.document_service import (
     DocumentService,
 )
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/documents",
@@ -26,6 +34,7 @@ UPLOAD_DIRECTORY = Path(
 
 @router.get(
     "",
+    response_model=DocumentListResponse,
     summary="List the authenticated user's documents",
 )
 def list_documents(
@@ -45,6 +54,7 @@ def list_documents(
 
 @router.get(
     "/{document_id}",
+    response_model=DocumentDetail,
     summary="Get one owned document",
 )
 def get_document(
@@ -71,6 +81,7 @@ def get_document(
 
 @router.delete(
     "/{document_id}",
+    response_model=DocumentDeleteResponse,
     summary="Permanently delete one owned document",
 )
 def delete_document(
@@ -91,22 +102,61 @@ def delete_document(
         )
 
     except ValueError as exc:
+        logger.exception(
+            (
+                "document_delete_metadata_error "
+                "user_id=%s document_id=%s"
+            ),
+            current_user.user_id,
+            document_id,
+        )
+
         raise HTTPException(
             status_code=(
                 status.HTTP_500_INTERNAL_SERVER_ERROR
             ),
             detail=(
-                "The document has invalid "
-                "stored-file metadata."
+                "The document could not be deleted."
             ),
         ) from exc
 
     except RuntimeError as exc:
+        logger.exception(
+            (
+                "document_delete_file_error "
+                "user_id=%s document_id=%s"
+            ),
+            current_user.user_id,
+            document_id,
+        )
+
         raise HTTPException(
             status_code=(
                 status.HTTP_500_INTERNAL_SERVER_ERROR
             ),
-            detail=str(exc),
+            detail=(
+                "The document database records were "
+                "deleted, but file cleanup failed."
+            ),
+        ) from exc
+
+    except Exception as exc:
+        logger.exception(
+            (
+                "document_delete_failed "
+                "user_id=%s document_id=%s"
+            ),
+            current_user.user_id,
+            document_id,
+        )
+
+        raise HTTPException(
+            status_code=(
+                status.HTTP_500_INTERNAL_SERVER_ERROR
+            ),
+            detail=(
+                "The document could not be deleted."
+            ),
         ) from exc
 
     if result is None:

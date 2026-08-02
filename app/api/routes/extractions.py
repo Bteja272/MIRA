@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import (
     APIRouter,
     HTTPException,
@@ -29,10 +31,32 @@ from app.services.medical_extraction_service import (
 )
 
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(
     prefix="/documents",
     tags=["extractions"],
 )
+
+
+def _clean_document_id(
+    document_id: str,
+) -> str:
+    cleaned_document_id = (
+        document_id.strip()
+    )
+
+    if not cleaned_document_id:
+        raise HTTPException(
+            status_code=(
+                status.HTTP_422_UNPROCESSABLE_CONTENT
+            ),
+            detail=(
+                "A valid document ID is required."
+            ),
+        )
+
+    return cleaned_document_id
 
 
 @router.post(
@@ -51,18 +75,10 @@ def generate_document_extraction(
     current_user: CurrentUser,
 ) -> ExtractionGenerateResponse:
     cleaned_document_id = (
-        document_id.strip()
-    )
-
-    if not cleaned_document_id:
-        raise HTTPException(
-            status_code=(
-                status.HTTP_422_UNPROCESSABLE_ENTITY
-            ),
-            detail=(
-                "A valid document ID is required."
-            ),
+        _clean_document_id(
+            document_id
         )
+    )
 
     try:
         existing_extraction = (
@@ -140,8 +156,6 @@ def generate_document_extraction(
         MedicalExtractionNotFoundError,
         MedicalExtractionPersistenceNotFoundError,
     ) as exc:
-        # Do not reveal whether this document
-        # belongs to another account.
         raise HTTPException(
             status_code=(
                 status.HTTP_404_NOT_FOUND
@@ -168,7 +182,7 @@ def generate_document_extraction(
     ) as exc:
         raise HTTPException(
             status_code=(
-                status.HTTP_422_UNPROCESSABLE_ENTITY
+                status.HTTP_422_UNPROCESSABLE_CONTENT
             ),
             detail=(
                 "The document could not be "
@@ -184,14 +198,22 @@ def generate_document_extraction(
             ),
             detail=(
                 "The structured extraction "
-                "service is currently "
-                "unavailable."
+                "service is currently unavailable."
             ),
         ) from exc
 
     except (
         MedicalExtractionPersistenceError
     ) as exc:
+        logger.exception(
+            (
+                "extraction_persistence_failed "
+                "user_id=%s document_id=%s"
+            ),
+            current_user.user_id,
+            cleaned_document_id,
+        )
+
         raise HTTPException(
             status_code=(
                 status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -199,6 +221,26 @@ def generate_document_extraction(
             detail=(
                 "The structured extraction "
                 "could not be stored."
+            ),
+        ) from exc
+
+    except Exception as exc:
+        logger.exception(
+            (
+                "extraction_generation_failed "
+                "user_id=%s document_id=%s"
+            ),
+            current_user.user_id,
+            cleaned_document_id,
+        )
+
+        raise HTTPException(
+            status_code=(
+                status.HTTP_500_INTERNAL_SERVER_ERROR
+            ),
+            detail=(
+                "The structured extraction "
+                "could not be generated."
             ),
         ) from exc
 
@@ -218,18 +260,10 @@ def get_document_extraction(
     current_user: CurrentUser,
 ) -> PersistedMedicalExtraction:
     cleaned_document_id = (
-        document_id.strip()
-    )
-
-    if not cleaned_document_id:
-        raise HTTPException(
-            status_code=(
-                status.HTTP_422_UNPROCESSABLE_ENTITY
-            ),
-            detail=(
-                "A valid document ID is required."
-            ),
+        _clean_document_id(
+            document_id
         )
+    )
 
     try:
         extraction = (
@@ -247,6 +281,15 @@ def get_document_extraction(
     except (
         MedicalExtractionPersistenceError
     ) as exc:
+        logger.exception(
+            (
+                "extraction_load_failed "
+                "user_id=%s document_id=%s"
+            ),
+            current_user.user_id,
+            cleaned_document_id,
+        )
+
         raise HTTPException(
             status_code=(
                 status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -286,18 +329,10 @@ def delete_document_extraction(
     current_user: CurrentUser,
 ) -> ExtractionDeleteResponse:
     cleaned_document_id = (
-        document_id.strip()
-    )
-
-    if not cleaned_document_id:
-        raise HTTPException(
-            status_code=(
-                status.HTTP_422_UNPROCESSABLE_ENTITY
-            ),
-            detail=(
-                "A valid document ID is required."
-            ),
+        _clean_document_id(
+            document_id
         )
+    )
 
     try:
         deleted = (
@@ -315,6 +350,15 @@ def delete_document_extraction(
     except (
         MedicalExtractionPersistenceError
     ) as exc:
+        logger.exception(
+            (
+                "extraction_delete_failed "
+                "user_id=%s document_id=%s"
+            ),
+            current_user.user_id,
+            cleaned_document_id,
+        )
+
         raise HTTPException(
             status_code=(
                 status.HTTP_500_INTERNAL_SERVER_ERROR
