@@ -1,0 +1,24 @@
+SYNTHETIC MEDICAL RECORD — FOR SOFTWARE TESTING ONLY
+
+Example General Hospital
+Discharge Date: April 4, 2026
+Patient: Test Patient
+Attending Physician: Dr. Example
+
+DISCHARGE DIAGNOSES
+
+1. Type 2 diabetes mellitus
+2. Hypertension
+
+MEDICATIONS LISTED AT DISCHARGE
+
+Metformin 500 mg by mouth twice daily.
+Lisinopril 10 mg by mouth once daily.
+
+FOLLOW-UP INSTRUCTIONS
+
+Schedule a primary-care follow-up appointment within two weeks.
+Continue medications exactly as documented by the treating physician.
+Seek urgent medical care for severe or worsening symptoms.
+
+This synthetic document was created solely for testing MIRA.

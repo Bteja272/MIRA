@@ -1,0 +1,35 @@
+SYNTHETIC MEDICAL RECORD — FOR SOFTWARE TESTING ONLY
+
+Facility: Example Community Laboratory
+Patient: Test Patient
+Collection Date: March 12, 2026
+Ordering Physician: Dr. Example
+
+LABORATORY RESULTS
+
+Hemoglobin A1c
+Result: 7.2 %
+Reference Range: 4.0 - 5.6 %
+Flag: High
+
+Glucose
+Result: 138 mg/dL
+Reference Range: 70 - 99 mg/dL
+Flag: High
+
+Total Cholesterol
+Result: 196 mg/dL
+Reference Range: Below 200 mg/dL
+Flag: Normal
+
+LDL Cholesterol
+Result: 121 mg/dL
+Reference Range: Below 100 mg/dL
+Flag: High
+
+HDL Cholesterol
+Result: 48 mg/dL
+Reference Range: 40 - 60 mg/dL
+Flag: Normal
+
+This synthetic document was created solely for testing MIRA.

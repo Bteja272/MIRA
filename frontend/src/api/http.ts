@@ -4,8 +4,8 @@ import {
 } from "../auth/tokenStorage";
 
 export const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ??
-  "http://127.0.0.1:8001"
+  import.meta.env.VITE_API_BASE_URL
+  ?? "http://127.0.0.1:8001"
 ).replace(/\/+$/, "");
 
 type FastApiErrorBody = {
@@ -33,13 +33,11 @@ export function extractApiErrorMessage(
   fallback: string,
 ): string {
   if (
-    body &&
-    typeof body === "object" &&
-    "detail" in body
+    body
+    && typeof body === "object"
+    && "detail" in body
   ) {
-    const detail = (
-      body as FastApiErrorBody
-    ).detail;
+    const detail = (body as FastApiErrorBody).detail;
 
     if (typeof detail === "string") {
       return detail;
@@ -49,10 +47,10 @@ export function extractApiErrorMessage(
       const messages = detail
         .map((item) => {
           if (
-            item &&
-            typeof item === "object" &&
-            "msg" in item &&
-            typeof item.msg === "string"
+            item
+            && typeof item === "object"
+            && "msg" in item
+            && typeof item.msg === "string"
           ) {
             return item.msg;
           }
@@ -60,8 +58,7 @@ export function extractApiErrorMessage(
           return null;
         })
         .filter(
-          (message): message is string =>
-            message !== null,
+          (message): message is string => message !== null,
         );
 
       if (messages.length > 0) {
@@ -69,10 +66,7 @@ export function extractApiErrorMessage(
       }
     }
 
-    if (
-      detail &&
-      typeof detail === "object"
-    ) {
+    if (detail && typeof detail === "object") {
       return JSON.stringify(detail);
     }
   }
@@ -88,28 +82,19 @@ export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const headers = new Headers(
-    init.headers,
-  );
-
+  const headers = new Headers(init.headers);
   const token = getAccessToken();
 
   if (token) {
-    headers.set(
-      "Authorization",
-      `Bearer ${token}`,
-    );
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   if (
-    init.body !== undefined &&
-    !(init.body instanceof FormData) &&
-    !headers.has("Content-Type")
+    init.body !== undefined
+    && !(init.body instanceof FormData)
+    && !headers.has("Content-Type")
   ) {
-    headers.set(
-      "Content-Type",
-      "application/json",
-    );
+    headers.set("Content-Type", "application/json");
   }
 
   let response: Response;
@@ -122,7 +107,14 @@ export async function apiRequest<T>(
         headers,
       },
     );
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof DOMException
+      && error.name === "AbortError"
+    ) {
+      throw error;
+    }
+
     throw new ApiError(
       "The MIRA API could not be reached.",
       0,
@@ -130,19 +122,11 @@ export async function apiRequest<T>(
     );
   }
 
-  const contentType =
-    response.headers.get(
-      "content-type",
-    ) ?? "";
-
+  const contentType = response.headers.get("content-type") ?? "";
   let body: unknown = null;
 
   if (response.status !== 204) {
-    if (
-      contentType.includes(
-        "application/json",
-      )
-    ) {
+    if (contentType.includes("application/json")) {
       body = await response.json();
     } else {
       body = await response.text();
@@ -157,11 +141,7 @@ export async function apiRequest<T>(
     throw new ApiError(
       extractApiErrorMessage(
         body,
-        (
-          "Request failed with status "
-          + response.status
-          + "."
-        ),
+        `Request failed with status ${response.status}.`,
       ),
       response.status,
       body,

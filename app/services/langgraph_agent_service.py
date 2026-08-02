@@ -11,9 +11,6 @@ from langgraph.graph import (
 from app.services.direct_llm_service import (
     DirectLLMService,
 )
-from app.services.llm_service import (
-    LLMService,
-)
 from app.services.rag_service import (
     RAGService,
 )
@@ -199,32 +196,18 @@ def safety_block_node(
 def fallback_classify(
     query: str,
 ) -> str:
-    normalized_query = (
-        query.lower()
-    )
+    """
+    Apply deterministic routing.
 
-    document_keywords = (
-        "document",
-        "documents",
-        "uploaded",
-        "upload",
-        "file",
-        "files",
-        "pdf",
-        "report",
-        "reports",
-        "according to",
-        "source",
-        "summarize",
-        "summarise",
-        "summary",
-        "overview",
-        "compare",
-        "comparison",
-        "lab report",
-        "discharge summary",
-        "medical record",
-        "prescription",
+    Selected documents are handled in classify_node().
+    This function routes only explicit current-information
+    requests to web. All other unscoped questions use the
+    direct educational route.
+    """
+    normalized_query = (
+        " ".join(
+            query.lower().split()
+        )
     )
 
     web_keywords = (
@@ -233,18 +216,20 @@ def fallback_classify(
         "recent",
         "today",
         "this week",
+        "this month",
+        "this year",
         "news",
         "updated",
         "live",
         "new study",
+        "new studies",
+        "recent study",
+        "recent studies",
+        "current guideline",
+        "current guidelines",
+        "latest guideline",
+        "latest guidelines",
     )
-
-    if any(
-        keyword in normalized_query
-        for keyword
-        in document_keywords
-    ):
-        return "rag"
 
     if any(
         keyword in normalized_query
@@ -259,8 +244,6 @@ def fallback_classify(
 def classify_node(
     state: AgentState,
 ) -> dict:
-    query = state["query"]
-
     selected_ids = (
         state.get(
             "document_ids"
@@ -273,79 +256,10 @@ def classify_node(
             "route": "rag",
         }
 
-    deterministic_route = (
-        fallback_classify(
-            query
-        )
-    )
-
-    if deterministic_route in {
-        "rag",
-        "web",
-    }:
-        return {
-            "route": (
-                deterministic_route
-            ),
-        }
-
-    classifier_prompt = f"""
-Classify the user query into exactly one route.
-
-Routes:
-
-rag
-Use this for uploaded documents, medical records, files, and reports.
-
-direct
-Use this for general educational information that does not require
-uploaded documents or current external information.
-
-web
-Use this for current, recent, live, or time-sensitive information.
-
-Return only one word:
-
-rag
-direct
-web
-
-User query:
-{query}
-""".strip()
-
-    try:
-        route = (
-            LLMService
-            .generate_response(
-                prompt=(
-                    classifier_prompt
-                ),
-                system_prompt=(
-                    "You are a strict "
-                    "query-routing classifier. "
-                    "Return only rag, direct, "
-                    "or web."
-                ),
-            )
-            .strip()
-            .lower()
-        )
-
-        if route not in {
-            "rag",
-            "direct",
-            "web",
-        }:
-            route = (
-                deterministic_route
-            )
-
-    except Exception:
-        route = deterministic_route
-
     return {
-        "route": route,
+        "route": fallback_classify(
+            state["query"]
+        ),
     }
 
 
