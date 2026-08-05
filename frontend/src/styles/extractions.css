@@ -1,0 +1,373 @@
+.extraction-control-panel {
+  display: grid;
+  gap: 18px;
+  border: 1px solid #d8e1dc;
+  border-radius: 18px;
+  padding: 24px;
+  background: #ffffff;
+  box-shadow:
+    0 12px 30px
+    rgba(27, 55, 44, 0.05);
+}
+
+.field select {
+  width: 100%;
+  border: 1px solid #c8d3cd;
+  border-radius: 12px;
+  padding: 13px 14px;
+  color: #17211d;
+  background: #fbfdfc;
+}
+
+.field select:focus {
+  border-color: #34745f;
+}
+
+.selected-document-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid #dce6e1;
+  border-radius: 13px;
+  padding: 15px;
+  background: #f5f9f7;
+}
+
+.selected-document-summary div {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.selected-document-summary strong {
+  overflow: hidden;
+  color: #263832;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected-document-summary span {
+  color: #728078;
+  font-size: 0.8rem;
+}
+
+.selected-document-summary code {
+  max-width: 300px;
+  overflow: hidden;
+  color: #65736c;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.extraction-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.extraction-progress {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid #b9d6ca;
+  border-radius: 16px;
+  padding: 18px;
+  color: #245543;
+  background: #edf8f3;
+}
+
+.extraction-progress p {
+  margin: 5px 0 0;
+  color: #5e746a;
+  font-size: 0.82rem;
+}
+
+.extraction-result {
+  display: grid;
+  gap: 28px;
+}
+
+.extraction-result__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid #d8e1dc;
+  border-radius: 18px 18px 0 0;
+  padding: 25px;
+  background: #ffffff;
+}
+
+.extraction-result__header h3 {
+  margin-bottom: 0;
+  font-size: 1.55rem;
+}
+
+.extraction-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.extraction-overview {
+  display: grid;
+  margin: -28px 0 0;
+  border: 1px solid #d8e1dc;
+  border-top: 0;
+  border-radius: 0 0 18px 18px;
+  padding: 0 25px 25px;
+  gap: 16px;
+  background: #ffffff;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+}
+
+.extraction-overview div {
+  min-width: 0;
+  border-radius: 12px;
+  padding: 13px;
+  background: #f5f8f6;
+}
+
+.extraction-overview dt {
+  margin-bottom: 5px;
+  color: #78847e;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.extraction-overview dd {
+  margin: 0;
+  overflow: hidden;
+  color: #304139;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.extraction-warning-panel {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #dfc99d;
+  border-radius: 16px;
+  padding: 20px;
+  color: #5c4a25;
+  background: #fff8e7;
+}
+
+.extraction-warning-panel h4 {
+  margin-bottom: 0;
+}
+
+.extraction-warning-panel ul {
+  display: grid;
+  margin: 0;
+  padding-left: 20px;
+  gap: 8px;
+  line-height: 1.55;
+}
+
+.extraction-section {
+  display: grid;
+  gap: 16px;
+}
+
+.extraction-section .section-heading > span {
+  color: #6f7d76;
+  font-weight: 800;
+}
+
+.extraction-fact-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+}
+
+.extraction-fact-card {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  border: 1px solid #dce5e0;
+  border-radius: 15px;
+  padding: 18px;
+  background: #ffffff;
+  box-shadow:
+    0 9px 22px
+    rgba(27, 55, 44, 0.04);
+}
+
+.extraction-fact-card__header {
+  display: grid;
+  gap: 11px;
+}
+
+.extraction-fact-card h4 {
+  overflow-wrap: anywhere;
+  margin-bottom: 0;
+  color: #273831;
+  line-height: 1.45;
+}
+
+.fact-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.fact-badge {
+  border: 1px solid #d5e1dc;
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: #53635c;
+  background: #f4f8f6;
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.fact-badge--confidence {
+  border-color: #b8d5c8;
+  color: #175d47;
+  background: #edf8f3;
+}
+
+.fact-details {
+  display: grid;
+  margin: 0;
+  gap: 10px;
+}
+
+.fact-details div {
+  display: grid;
+  gap: 3px;
+}
+
+.fact-details dt {
+  color: #7a8680;
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.fact-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #34443d;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.evidence-details {
+  border-top: 1px solid #e3eae6;
+  padding-top: 12px;
+}
+
+.evidence-details summary {
+  color: #17644c;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.evidence-list {
+  display: grid;
+  margin-top: 12px;
+  gap: 10px;
+}
+
+.evidence-item {
+  display: grid;
+  gap: 9px;
+  border-radius: 11px;
+  padding: 12px;
+  background: #f6f9f7;
+}
+
+.evidence-item__metadata {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.evidence-item__metadata strong {
+  overflow: hidden;
+  color: #405048;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evidence-item__metadata span {
+  flex: 0 0 auto;
+  color: #7a8680;
+  font-size: 0.68rem;
+}
+
+.evidence-item blockquote {
+  margin: 0;
+  border-left: 3px solid #8db7a6;
+  padding-left: 10px;
+  color: #52615a;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.extraction-empty {
+  border: 1px dashed #bdccc5;
+  border-radius: 14px;
+  padding: 22px;
+  color: #69756f;
+  text-align: center;
+  background: #f8fbf9;
+}
+
+@media (max-width: 960px) {
+  .extraction-overview {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .extraction-fact-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .selected-document-summary,
+  .extraction-result__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .selected-document-summary code {
+    max-width: 100%;
+  }
+
+  .extraction-actions {
+    flex-direction: column;
+  }
+
+  .extraction-actions .button {
+    width: 100%;
+  }
+
+  .extraction-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .extraction-statuses {
+    justify-content: flex-start;
+  }
+
+  .evidence-item__metadata {
+    flex-direction: column;
+  }
+}
