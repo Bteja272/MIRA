@@ -4,7 +4,9 @@ import {
   useNavigate,
 } from "react-router";
 
-import { useAuth } from "../auth/AuthProvider";
+import {
+  useAuth,
+} from "../auth/AuthProvider";
 
 function navClassName({
   isActive,
@@ -12,17 +14,31 @@ function navClassName({
   isActive: boolean;
 }): string {
   return isActive
-    ? "app-nav__link app-nav__link--active"
+    ? (
+      "app-nav__link "
+      + "app-nav__link--active"
+    )
     : "app-nav__link";
 }
 
 export function AppShell() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const {
+    user,
+    logout,
+  } = useAuth();
+
+  const navigate =
+    useNavigate();
 
   function handleLogout(): void {
     logout();
-    navigate("/login", { replace: true });
+
+    navigate(
+      "/login",
+      {
+        replace: true,
+      },
+    );
   }
 
   return (
@@ -30,13 +46,20 @@ export function AppShell() {
       <header className="app-header">
         <div>
           <p className="eyebrow">
-            Medical Intelligence & Retrieval Assistant
+            Medical Intelligence & Retrieval
+            Assistant
           </p>
-          <h1 className="app-title">MIRA</h1>
+
+          <h1 className="app-title">
+            MIRA
+          </h1>
         </div>
 
         <div className="account-panel">
-          <span className="account-email">{user?.email}</span>
+          <span className="account-email">
+            {user?.email}
+          </span>
+
           <button
             className="button button--secondary"
             type="button"
@@ -49,25 +72,44 @@ export function AppShell() {
 
       <div className="app-body">
         <aside className="app-sidebar">
-          <nav className="app-nav" aria-label="Primary">
-            <NavLink to="/" end className={navClassName}>
+          <nav
+            className="app-nav"
+            aria-label="Primary"
+          >
+            <NavLink
+              to="/"
+              end
+              className={navClassName}
+            >
               Overview
             </NavLink>
-            <NavLink to="/documents" className={navClassName}>
+
+            <NavLink
+              to="/documents"
+              className={navClassName}
+            >
               Documents
             </NavLink>
-            <NavLink to="/ask" className={navClassName}>
+
+            <NavLink
+              to="/ask"
+              className={navClassName}
+            >
               Ask MIRA
             </NavLink>
-            <span className="app-nav__link app-nav__link--disabled">
+
+            <NavLink
+              to="/extractions"
+              className={navClassName}
+            >
               Extractions
-              <small>Batch 3D</small>
-            </span>
+            </NavLink>
           </nav>
 
           <div className="privacy-note">
-            Development environment only. Use synthetic documents during
-            frontend development.
+            Development environment only. Use
+            synthetic documents during frontend
+            development.
           </div>
         </aside>
 

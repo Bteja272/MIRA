@@ -1,13 +1,34 @@
-import { createBrowserRouter } from "react-router";
+import {
+  createBrowserRouter,
+} from "react-router";
 
-import { ProtectedRoute } from "./auth/ProtectedRoute";
-import { AppShell } from "./layout/AppShell";
-import { AskMiraPage } from "./pages/AskMiraPage";
-import { DashboardPage } from "./pages/DashboardPage";
-import { DocumentsPage } from "./pages/DocumentsPage";
-import { LoginPage } from "./pages/LoginPage";
-import { NotFoundPage } from "./pages/NotFoundPage";
-import { RegisterPage } from "./pages/RegisterPage";
+import {
+  ProtectedRoute,
+} from "./auth/ProtectedRoute";
+import {
+  AppShell,
+} from "./layout/AppShell";
+import {
+  AskMiraPage,
+} from "./pages/AskMiraPage";
+import {
+  DashboardPage,
+} from "./pages/DashboardPage";
+import {
+  DocumentsPage,
+} from "./pages/DocumentsPage";
+import {
+  ExtractionsPage,
+} from "./pages/ExtractionsPage";
+import {
+  LoginPage,
+} from "./pages/LoginPage";
+import {
+  NotFoundPage,
+} from "./pages/NotFoundPage";
+import {
+  RegisterPage,
+} from "./pages/RegisterPage";
 
 export const router = createBrowserRouter([
   {
@@ -18,15 +39,27 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <DashboardPage />,
+            element: (
+              <DashboardPage />
+            ),
           },
           {
             path: "documents",
-            element: <DocumentsPage />,
+            element: (
+              <DocumentsPage />
+            ),
           },
           {
             path: "ask",
-            element: <AskMiraPage />,
+            element: (
+              <AskMiraPage />
+            ),
+          },
+          {
+            path: "extractions",
+            element: (
+              <ExtractionsPage />
+            ),
           },
         ],
       },
