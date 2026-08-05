@@ -3,6 +3,8 @@
 
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?style=flat&logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-TypeScript-61DAFB?style=flat&logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-Frontend-646CFF?style=flat&logo=vite&logoColor=white)
 ![LangGraph](https://img.shields.io/badge/LangGraph-Agent_Orchestration-FF6B6B?style=flat)
 ![LangChain](https://img.shields.io/badge/LangChain-Retrieval-1C3C3C?style=flat)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791?style=flat&logo=postgresql&logoColor=white)
@@ -10,81 +12,161 @@
 ![Tavily](https://img.shields.io/badge/Search-Tavily-blue?style=flat)
 ![Alembic](https://img.shields.io/badge/Migrations-Alembic-orange?style=flat)
 ![Docker](https://img.shields.io/badge/Docker-PostgreSQL-2496ED?style=flat&logo=docker&logoColor=white)
+![Vitest](https://img.shields.io/badge/Vitest-19%2F19_Passing-6E9F18?style=flat&logo=vitest&logoColor=white)
+![Cypress](https://img.shields.io/badge/Cypress-2%2F2_E2E_Passing-17202C?style=flat&logo=cypress&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Active_Development-yellow?style=flat)
 
-> You upload your lab report. You ask: "What does my HbA1c result mean?" MIRA reads your specific document, explains what the lab documented, cites the exact source, and appends a medical disclaimer — without diagnosing you, recommending medication changes, or routing through a cloud API.
+> You upload your medical document. You ask: **"What medications and follow-up instructions are documented here?"** MIRA retrieves the relevant evidence from your selected record, explains it in plain English, cites the source, and appends a deterministic medical disclaimer — without diagnosing you or recommending treatment changes.
 
 ---
 
 ## What MIRA Is
 
-MIRA is a **safety-first medical document intelligence platform**. It helps patients understand their own medical records by explaining what healthcare providers have already documented — in plain English, with every claim cited to its source.
+MIRA is a **safety-first medical document intelligence platform** for understanding personal medical records.
 
-The critical distinction: MIRA explains what your documents say. It does not make new medical determinations.
+It combines authenticated document ownership, retrieval-augmented generation, structured medical extraction, deterministic safety checks, and a full React interface.
+
+The critical distinction:
+
+> **MIRA explains what your documents say. It does not make new medical determinations.**
 
 **What MIRA does:**
-- Summarize discharge summaries, lab reports, imaging reports, prescriptions, and visit notes
-- Explain medical terminology found in your documents
-- Compare two lab reports and show documented changes over time
-- Answer general health knowledge questions
-- Search current public medical guidelines
+
+- Register and authenticate users
+- Keep each user's documents isolated
+- Upload and index PDF or TXT medical records
+- Summarize discharge summaries, lab reports, prescriptions, imaging reports, and visit notes
+- Answer grounded questions using one or more selected documents
+- Compare multiple documents while preserving source boundaries
+- Explain medical terminology found in uploaded records
+- Search current public medical information through Tavily
+- Extract structured medical facts with supporting evidence
+- Permanently delete documents, chunks, embeddings, and extraction records
+- Present all major workflows through a React and TypeScript frontend
 
 **What MIRA never does:**
-- Diagnose conditions based on symptoms you describe
-- Recommend changing, stopping, or adjusting medications
+
+- Diagnose conditions based on symptoms
+- Recommend changing, stopping, or adjusting medication
 - Predict outcomes or prognosis
-- Answer without citing the source document
+- Treat generated text as a substitute for a licensed professional
+- Allow one user to access another user's records
 - Skip the medical disclaimer on health-related responses
+
+---
+
+## Current User Experience
+
+MIRA now includes a complete authenticated web application.
+
+### Frontend workflows
+
+- **Registration and login**
+- **Protected routes**
+- **Document upload with validation and progress**
+- **Duplicate-upload detection**
+- **Document library and permanent deletion**
+- **Multi-document selection**
+- **Grounded Q&A with source cards**
+- **Current-information answers with web sources**
+- **Structured medical extraction**
+- **Evidence review for extracted facts**
+- **Stored extraction deletion**
+- **Session-expiration handling**
+- **Offline and network-status feedback**
+- **Mobile navigation**
+- **Accessible forms, focus handling, and skip navigation**
+- **Global error boundary**
+
+### Main frontend routes
+
+| Route | Purpose |
+|---|---|
+| `/register` | Create an account |
+| `/login` | Authenticate |
+| `/` | Dashboard |
+| `/documents` | Upload, review, refresh, and delete documents |
+| `/ask` | Ask direct, document-grounded, or current-information questions |
+| `/extractions` | Generate and review structured medical facts |
 
 ---
 
 ## Safety Architecture
 
-Medical-risk queries are blocked **before** the LangGraph agent, before retrieval, and before any LLM call. This is deterministic code — not a language model making a judgment call.
+Medical-risk queries are blocked **before** the LangGraph agent, before retrieval, and before any LLM call.
 
-```
+This is deterministic application logic — not a language model making its own safety decision.
+
+```text
 User Query
      ↓
 Deterministic Safety Guard
      │
-     ├── Emergency keyword detected   → "Call 911 immediately. Do not wait."
-     ├── Self-harm indicator          → Crisis resources + redirect
-     ├── Symptom diagnosis request    → "Contact your healthcare provider."
-     ├── Prognosis request            → "Only your physician can determine this."
-     └── Medication-change request    → "Never adjust medications without your doctor."
+     ├── Emergency keyword detected   → Immediate emergency guidance
+     ├── Self-harm indicator          → Crisis-oriented response
+     ├── Symptom diagnosis request    → Redirect to a healthcare provider
+     ├── Prognosis request            → Decline to predict an outcome
+     └── Medication-change request    → Refuse medication-change guidance
      
 Allowed Query
      ↓
 LangGraph Router
      │
-     ├── Document-specific query     → RAG pipeline (pgvector retrieval)
-     ├── Multi-document comparison   → Full-document retrieval (all selected)
-     ├── General health knowledge    → Direct Ollama LLM
-     └── Current guidelines/news     → Tavily web search
+     ├── Selected document IDs       → RAG pipeline using pgvector
+     ├── Multi-document comparison   → Complete retrieval for all selected docs
+     ├── Explicit latest/current     → Tavily web search
+     └── General knowledge           → Direct Ollama LLM
      ↓
 Deterministic disclaimer appended by application code
      ↓
 Source-cited response
 ```
 
-The disclaimer is **never** generated by the LLM — it is appended by the application layer on every medical response, regardless of what the model returns.
+The disclaimer is **never generated conditionally by the LLM**. It is appended by the application layer.
+
+---
+
+## Authentication and Data Isolation
+
+MIRA now supports authenticated multi-user development workflows.
+
+**Implemented controls:**
+
+- Email and password registration
+- Argon2 password hashing
+- JWT access tokens
+- Protected backend routes
+- Protected frontend routes
+- Per-user document ownership
+- Per-user duplicate detection
+- Authorization checks for querying, extraction, and deletion
+- Cross-user access prevention
+- React Query cache clearing between users
+- Automatic logout after an invalid or expired session
+
+The frontend currently stores the access token in `sessionStorage` as an MVP implementation.
+
+A production deployment should move to secure HTTP-only cookies, CSRF protection, stricter session management, encryption, and audit logging.
 
 ---
 
 ## What Makes This Different From Generic RAG
 
-Most RAG systems retrieve the most similar chunks and pass them to a model. For medical documents this is insufficient.
+Most RAG systems retrieve similar chunks and pass them to a model. For medical documents, this is not enough.
 
 | Problem | How MIRA handles it |
 |---|---|
-| Similarity search omits sections | Document summary uses **complete-document retrieval**, not chunk similarity |
-| Multi-doc mixing | Document **boundaries preserved in every prompt** — diagnoses never cross-assigned |
-| Model classifies lab values | Model is **forbidden** from calling a value high/low/normal — only the lab's documented flag is used |
-| LLM could skip disclaimer | Disclaimer appended **deterministically by code** — not by the model |
-| Emergency queries reach LLM | **Pre-routing safety guard** blocks before any retrieval or generation |
-| Duplicate uploads pollute index | **SHA-256 hash detection** rejects exact duplicate files before ingestion |
-| Schema drift across environments | **Alembic migrations** track every schema change with version history |
-| Lines split across chunks | **Newline-aware chunking** preserves lab value line integrity |
+| Similarity search omits sections | Summaries use **complete-document retrieval** |
+| Multi-document facts become mixed | Document **boundaries are preserved** throughout the prompt |
+| Model classifies lab values | Only the laboratory's **documented flag** is reproduced |
+| LLM could skip the disclaimer | Disclaimer is appended **deterministically by code** |
+| Emergency requests reach the LLM | A **pre-routing safety guard** blocks them first |
+| Duplicate files pollute retrieval | **SHA-256 detection** rejects exact duplicates |
+| Users can access each other's files | **Ownership checks** protect every document operation |
+| Lines split across chunks | **Newline-aware chunking** preserves medical line structure |
+| Schema changes drift | **Alembic migrations** manage versioned database changes |
+| Extraction output cannot be reviewed | Facts include **supporting evidence and source metadata** |
+| Frontend state leaks between users | Query caches are cleared on authentication changes |
 
 ---
 
@@ -92,43 +174,47 @@ Most RAG systems retrieve the most similar chunks and pass them to a model. For 
 
 | User request | Route | Why |
 |---|---|---|
-| "Summarize this uploaded lab report" | Full-document RAG | Similarity search alone omits sections |
-| "Compare these two blood test results" | Multi-document RAG | Preserves boundaries, retrieves complete content |
-| "What does HbA1c mean?" | Direct LLM | General knowledge, no document needed |
-| "Latest guidelines on metformin?" | Tavily web search | Current information, beyond training data |
-| "Should I stop taking this medication?" | Safety guard | Blocked before routing |
-| "I have chest pain right now" | Safety guard | Emergency response, no retrieval |
+| "Summarize this uploaded report" | Full-document RAG | Similarity search alone may omit sections |
+| "What medications are documented here?" | Selected-document RAG | The answer must be grounded in the selected source |
+| "Compare these two lab reports" | Multi-document RAG | Retrieves complete content and preserves boundaries |
+| "What does HbA1c mean?" | Direct LLM | General knowledge does not require a document |
+| "What are the latest public guidelines?" | Tavily web search | The request explicitly requires current information |
+| "Should I stop taking this medication?" | Safety guard | Medication-change guidance is blocked |
+| "I have chest pain right now" | Safety guard | Emergency guidance occurs before retrieval |
 
 ---
 
-## Example Response — Lab Value Interpretation
+## Example Response — Grounded Medical Document Question
 
 **Query:**
+
 ```json
 {
-  "query": "According to this document, what do my lab results show?",
+  "query": "What medications and follow-up instructions are documented?",
   "document_id": "DOCUMENT_ID"
 }
 ```
 
-**MIRA response (summarized):**
-```
-Based on your uploaded lab report (synthetic_lab_report.txt):
+**MIRA response, summarized:**
 
-Hemoglobin A1c
-  Result:          7.2 %
-  Reference range: 4.0 – 5.6 %
-  Documented flag: High
+```text
+Based on synthetic_discharge_summary.txt:
 
-[Source: synthetic_lab_report.txt · lab_report · chunk 1]
+Medication
+  Lisinopril 10 mg once daily
+
+Follow-up
+  Follow up with the primary care physician within 7 days.
+
+[Source: synthetic_discharge_summary.txt · discharge_summary · chunk 1]
 
 ---
-⚠️ MEDICAL NOTICE: This information explains what is documented in your
-uploaded medical records. It is not medical advice, diagnosis, or
-treatment guidance. Consult your healthcare provider for medical decisions.
+MEDICAL NOTICE: This information explains what is documented in your
+uploaded medical record. It is not medical advice, diagnosis, or
+treatment guidance. Consult a qualified healthcare provider for decisions.
 ```
 
-The model is explicitly instructed not to independently label the value as "high" or "above normal." Only the laboratory's documented flag is reproduced.
+The model is instructed to remain grounded in the selected document and not invent undocumented medical facts.
 
 ---
 
@@ -136,49 +222,97 @@ The model is explicitly instructed not to independently label the value as "high
 
 ```json
 {
-  "query": "Compare these two lab reports.",
-  "document_ids": ["DOCUMENT_ID_1", "DOCUMENT_ID_2"]
+  "query": "Compare these two reports and identify documented changes.",
+  "document_ids": [
+    "DOCUMENT_ID_1",
+    "DOCUMENT_ID_2"
+  ]
 }
 ```
 
 MIRA:
-1. Validates every selected document exists
-2. Retrieves the complete indexed content of each — not just similar chunks
-3. Preserves document boundaries throughout the prompt
-4. Produces a separate summary per document
-5. Generates a cross-document comparison
-6. Never infers medical changes unless comparable values and dates are explicitly documented
-7. Labels every source with filename, document ID, type, and chunk position
 
-Current limit: 5 documents per request in local development.
+1. Confirms every document belongs to the authenticated user
+2. Rejects missing or unauthorized document IDs
+3. Retrieves the complete indexed content of every selected document
+4. Preserves filenames and document boundaries
+5. Produces source-specific summaries
+6. Identifies only explicitly documented differences
+7. Avoids unsupported clinical inference
+8. Labels evidence with filename, type, document ID, and chunk location
+
+Current local limit: **5 documents per request**.
+
+---
+
+## Structured Medical Extraction
+
+MIRA can transform an uploaded document into a persisted structured representation.
+
+**Current extraction categories include:**
+
+- Patient information
+- Diagnoses
+- Medications
+- Allergies
+- Procedures
+- Follow-up instructions
+- Additional document facts supported by the extraction schema
+
+Each extracted fact may include:
+
+- Normalized value
+- Supporting evidence
+- Source filename
+- Document ID
+- Page or chunk position
+
+```text
+Owned Document
+     ↓
+Complete indexed document retrieval
+     ↓
+Medical extraction prompt
+     ↓
+Structured JSON validation
+     ↓
+Persisted extraction record
+     ↓
+Evidence-backed frontend presentation
+```
+
+Structured extraction is intended for document understanding, not autonomous clinical decision-making.
 
 ---
 
 ## Document Ingestion Pipeline
 
-```
-PDF / TXT Upload
+```text
+Authenticated PDF / TXT Upload
      ↓
 Filename and extension validation
      ↓
 25 MB upload size limit
      ↓
-SHA-256 duplicate detection  ← rejects exact duplicates before processing
+UUID-based stored filename
      ↓
-Text extraction (pypdf)
+SHA-256 duplicate detection
      ↓
-Line-preserving text cleaning  ← preserves lab value line structure
+Text extraction using pypdf
      ↓
-Newline-aware overlapping chunking  ← never splits a lab value mid-line
+Line-preserving text cleaning
+     ↓
+Newline-aware overlapping chunking
      ↓
 Medical document classification
      ↓
-SentenceTransformers all-MiniLM-L6-v2 embeddings (384 dimensions)
+SentenceTransformers all-MiniLM-L6-v2 embeddings
      ↓
 PostgreSQL + pgvector · HNSW cosine index
 ```
 
 **Supported document types:**
+
 `lab_report` · `discharge_summary` · `prescription` · `imaging_report` · `pathology_report` · `visit_note` · `vaccination_record` · `insurance_document` · `unknown`
 
 ---
@@ -187,9 +321,16 @@ PostgreSQL + pgvector · HNSW cosine index
 
 | Layer | Technology |
 |---|---|
+| Frontend | React, TypeScript, Vite |
+| Routing | React Router |
+| Server-state management | TanStack Query |
+| API client | Native Fetch API |
+| Authentication state | React Context |
+| Styling | Plain CSS |
 | Backend API | FastAPI |
+| Authentication | JWT, Argon2 |
 | Agent orchestration | LangGraph |
-| Retrieval abstraction | LangChain |
+| Retrieval abstraction | LangChain-compatible retriever |
 | Embeddings | SentenceTransformers `all-MiniLM-L6-v2` |
 | Vector database | PostgreSQL + pgvector |
 | Vector index | HNSW cosine |
@@ -199,77 +340,199 @@ PostgreSQL + pgvector · HNSW cosine index
 | Web search | Tavily |
 | Document parsing | pypdf |
 | Database container | Docker Compose |
-| Testing | Python unittest |
+| Frontend testing | Vitest, Testing Library |
+| End-to-end testing | Cypress |
+| Backend testing | Pytest / unittest-based suite |
+| Development environment | WSL2, Linux, Docker |
 
 ---
 
 ## 🏗️ Key Technical Decisions
 
-**Why deterministic safety before LangGraph routing?**
-Medical-risk classification should not depend on a language model correctly identifying an emergency or a diagnosis request. A model can be misled by phrasing. A keyword guard cannot.
+**Why deterministic safety before LangGraph routing?**  
+Medical-risk classification should not depend on a language model correctly identifying an emergency, diagnosis request, prognosis request, or medication-change request.
 
-**Why complete-document retrieval for summaries?**
-Similarity search against a generic "summarize this document" query does not reliably surface all sections. A lab report's reference ranges may not score highly against that query. Complete retrieval ensures nothing is omitted.
+**Why complete-document retrieval for summaries?**  
+A generic summary query may not semantically match every section of a medical report. Complete retrieval reduces omission risk.
 
-**Why preserve document boundaries in multi-document prompts?**
-Without explicit boundaries, the model may associate a diagnosis, lab value, medication, or date from one document with a different patient's record. Every chunk is labeled with its source document.
+**Why preserve document boundaries in multi-document prompts?**  
+Without explicit boundaries, a model may associate a medication, diagnosis, date, or lab value with the wrong document.
 
-**Why forbid the model from classifying lab values?**
-The laboratory's documented flag (H, L, N, CRITICAL) reflects clinical context the model does not have — patient age, sex, medications, and prior results. The model reproduces the flag; it does not interpret it.
+**Why forbid independent lab-value classification?**  
+The model does not have the full clinical context needed to label a value. MIRA reproduces the laboratory's documented flag instead.
 
-**Why line-preserving cleaning and newline-aware chunking?**
-Lab reports place the test name, result, unit, reference range, and flag on separate lines. Character-based chunking splits these across chunk boundaries, breaking the association between a value and its test name.
+**Why use line-preserving cleaning and newline-aware chunking?**  
+Medical records often place the test name, result, unit, reference range, and flag on adjacent lines. Preserving line structure keeps related information together.
 
-**Why Alembic instead of `Base.metadata.create_all()`?**
-`create_all()` creates missing tables but silently ignores existing ones. Alembic tracks schema history and applies controlled incremental migrations — critical for any project expecting to evolve its data model.
+**Why use SHA-256 duplicate detection?**  
+Repeated ingestion creates duplicate vectors and can distort retrieval. Hash comparison rejects identical files before unnecessary processing.
 
-**Why SHA-256 duplicate detection?**
-Re-ingesting the same file creates duplicate chunks and corrupts retrieval. SHA-256 detection rejects identical files before any processing occurs.
+**Why use Alembic instead of `Base.metadata.create_all()`?**  
+Alembic tracks controlled schema changes for users, ownership, extraction records, and future production features.
 
-**Why Ollama locally?**
-Zero per-request API cost, full local data privacy, no rate limits during development. The LLM layer is replaceable for production deployment.
+**Why Ollama locally?**  
+Ollama provides local inference, no per-request development cost, and no external LLM dependency during synthetic-data development.
+
+**Why React Query?**  
+The frontend must coordinate authenticated uploads, document lists, deletions, extraction state, and query results. React Query provides caching, invalidation, loading states, and user-specific cache control.
 
 ---
 
 ## 🚀 Quick Start
 
+### 1. Clone the repository
+
 ```bash
-# 1. Clone and set up environment
 git clone https://github.com/Bteja272/MIRA.git
 cd MIRA
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-
-# 2. Configure environment
-cp .env.example .env   # add DATABASE_URL and TAVILY_API_KEY
-
-# 3. Start PostgreSQL
-docker compose up -d
-
-# 4. Apply migrations
-python -m alembic -c alembic.ini upgrade head
-
-# 5. Start Ollama (Windows host / separate terminal)
-ollama pull llama3.2 && ollama serve
-
-# 6. Run tests
-python -m unittest discover -s tests -v
-
-# 7. Start API
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
-API: `http://127.0.0.1:8001` · Docs: `http://127.0.0.1:8001/docs`
+### 2. Create the backend environment
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+### 3. Configure backend environment variables
+
+```bash
+cp .env.example .env
+```
+
+Configure the required local values:
+
+```env
+DATABASE_URL=postgresql+psycopg://...
+TAVILY_API_KEY=...
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2
+```
+
+Do not commit `.env`.
+
+### 4. Start PostgreSQL and pgvector
+
+```bash
+docker compose up -d
+docker compose ps
+```
+
+### 5. Apply database migrations
+
+```bash
+python -m alembic -c alembic.ini upgrade head
+```
+
+### 6. Start Ollama
+
+```bash
+ollama pull llama3.2
+ollama serve
+```
+
+Verify:
+
+```bash
+curl http://localhost:11434/api/tags
+```
+
+### 7. Start the backend
+
+```bash
+python -m uvicorn app.main:app \
+  --host 127.0.0.1 \
+  --port 8001 \
+  --reload
+```
+
+API: `http://127.0.0.1:8001`  
+Docs: `http://127.0.0.1:8001/docs`
+
+### 8. Install frontend dependencies
+
+Open another terminal:
+
+```bash
+cd frontend
+npm ci
+```
+
+Create `frontend/.env`:
+
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8001
+```
+
+### 9. Start the frontend
+
+```bash
+npm run dev
+```
+
+Frontend: `http://127.0.0.1:5173`
+
+Production preview:
+
+```bash
+npm run build
+npm run preview
+```
+
+Preview: `http://127.0.0.1:4173`
 
 ---
 
 ## 🔌 API Reference
 
+Base URL:
+
+```text
+http://127.0.0.1:8001
+```
+
+### Register
+
+```bash
+curl -X POST http://127.0.0.1:8001/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "synthetic.user@example.com",
+    "password": "SyntheticPassword!2026"
+  }'
+```
+
+### Login
+
+```bash
+curl -X POST http://127.0.0.1:8001/auth/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=synthetic.user@example.com&password=SyntheticPassword!2026"
+```
+
+Save the returned token:
+
+```bash
+export MIRA_TOKEN="YOUR_ACCESS_TOKEN"
+```
+
+### Current user
+
+```bash
+curl http://127.0.0.1:8001/auth/me \
+  -H "Authorization: Bearer $MIRA_TOKEN"
+```
+
 ### Ingest a document
+
 ```bash
 curl -X POST http://127.0.0.1:8001/ingest \
+  -H "Authorization: Bearer $MIRA_TOKEN" \
   -F "file=@sample_data/synthetic_lab_report.txt"
 ```
+
 ```json
 {
   "duplicate": false,
@@ -281,109 +544,335 @@ curl -X POST http://127.0.0.1:8001/ingest \
 }
 ```
 
+### List owned documents
+
+```bash
+curl http://127.0.0.1:8001/documents \
+  -H "Authorization: Bearer $MIRA_TOKEN"
+```
+
 ### Query one document
+
 ```bash
 curl -X POST http://127.0.0.1:8001/query \
+  -H "Authorization: Bearer $MIRA_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"query": "Summarize this document.", "document_id": "DOCUMENT_ID"}'
+  -d '{
+    "query": "Summarize this document.",
+    "document_id": "DOCUMENT_ID"
+  }'
 ```
 
 ### Compare multiple documents
+
 ```bash
 curl -X POST http://127.0.0.1:8001/query \
+  -H "Authorization: Bearer $MIRA_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"query": "Compare these and identify differences.", "document_ids": ["ID_1","ID_2"]}'
+  -d '{
+    "query": "Compare these and identify documented differences.",
+    "document_ids": [
+      "DOCUMENT_ID_1",
+      "DOCUMENT_ID_2"
+    ]
+  }'
 ```
 
-### Document management
+### Generate structured extraction
+
 ```bash
-curl http://127.0.0.1:8001/documents                    # list all
-curl http://127.0.0.1:8001/documents/DOCUMENT_ID        # metadata
-curl -X DELETE http://127.0.0.1:8001/documents/DOCUMENT_ID  # permanent delete
+curl -X POST \
+  http://127.0.0.1:8001/documents/DOCUMENT_ID/extract \
+  -H "Authorization: Bearer $MIRA_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "replace_existing": false
+  }'
 ```
 
-Deletion removes: original file · database row · chunks · vector embeddings.
+### Read structured extraction
+
+```bash
+curl \
+  http://127.0.0.1:8001/documents/DOCUMENT_ID/extraction \
+  -H "Authorization: Bearer $MIRA_TOKEN"
+```
+
+### Delete structured extraction
+
+```bash
+curl -X DELETE \
+  http://127.0.0.1:8001/documents/DOCUMENT_ID/extraction \
+  -H "Authorization: Bearer $MIRA_TOKEN"
+```
+
+### Permanently delete a document
+
+```bash
+curl -X DELETE \
+  http://127.0.0.1:8001/documents/DOCUMENT_ID \
+  -H "Authorization: Bearer $MIRA_TOKEN"
+```
+
+Deletion removes:
+
+- Original stored file
+- Document database row
+- Indexed chunks
+- Vector embeddings
+- Structured extraction record
+
+### Health checks
+
+```bash
+curl http://127.0.0.1:8001/health
+curl http://127.0.0.1:8001/health/ready
+```
+
+---
+
+## 🧪 Testing
+
+### Backend
+
+```bash
+cd ~/Projects/MIRA
+source .venv/bin/activate
+
+pytest
+```
+
+### Frontend unit and component tests
+
+```bash
+cd ~/Projects/MIRA/frontend
+
+npm run test
+```
+
+Current verified result:
+
+```text
+8 test files passed
+19 tests passed
+```
+
+### Lint and production build
+
+```bash
+npm run lint
+npm run build
+```
+
+### Cypress end-to-end tests
+
+Keep both services running:
+
+```text
+Frontend: http://127.0.0.1:5173
+Backend:  http://127.0.0.1:8001
+```
+
+Run:
+
+```bash
+CYPRESS_BASE_URL=http://127.0.0.1:5173 \
+npm run test:e2e
+```
+
+Current verified result:
+
+```text
+2 tests passed
+```
+
+The E2E suite verifies:
+
+1. Registration
+2. Authenticated upload
+3. Grounded document query
+4. Source-backed response
+5. Permanent document deletion
+6. Logout
+7. Cross-account document isolation
 
 ---
 
 ## 📁 Project Structure
 
-```
+```text
 MIRA/
 ├── alembic/
 │   ├── env.py
-│   └── versions/              Migration history
+│   └── versions/                    Migration history
 ├── app/
 │   ├── main.py
 │   ├── api/routes/
-│   │   ├── documents.py       List, read, delete documents
-│   │   ├── health.py
-│   │   ├── ingest.py          Upload and index documents
-│   │   └── query.py           Single and multi-document queries
+│   │   ├── auth.py                 Registration, login, current user
+│   │   ├── documents.py            Owned document management
+│   │   ├── extraction.py           Structured extraction API
+│   │   ├── health.py               Liveness and readiness
+│   │   ├── ingest.py               Authenticated upload and indexing
+│   │   └── query.py                Direct, RAG, and web queries
 │   ├── core/
 │   │   ├── config.py
-│   │   └── logger.py
+│   │   ├── logger.py
+│   │   └── security.py
 │   ├── db/
 │   │   ├── models.py
 │   │   └── session.py
 │   └── services/
-│       ├── safety_guard.py              Pre-routing safety check
-│       ├── document_classifier.py       Medical document type detection
-│       ├── cleaner_service.py           Line-preserving text cleaning
-│       ├── chunking_service.py          Newline-aware chunking
-│       ├── embedding_service.py         SentenceTransformers inference
+│       ├── safety_guard.py
+│       ├── auth_service.py
+│       ├── document_classifier.py
+│       ├── document_service.py
+│       ├── cleaner_service.py
+│       ├── chunking_service.py
+│       ├── embedding_service.py
+│       ├── indexing_service.py
+│       ├── retrieval_service.py
 │       ├── langchain_retriever_service.py
-│       ├── langgraph_agent_service.py   Agent graph and routing
-│       ├── rag_service.py               Single and multi-document RAG
-│       ├── retrieval_service.py         pgvector similarity search
-│       ├── direct_llm_service.py        Ollama direct generation
-│       ├── web_search_service.py        Tavily integration
-│       ├── medical_prompt_service.py    Medical-specific prompts + disclaimer
-│       └── document_service.py          Document CRUD and deletion
+│       ├── langgraph_agent_service.py
+│       ├── rag_service.py
+│       ├── direct_llm_service.py
+│       ├── llm_service.py
+│       ├── web_search_service.py
+│       ├── medical_prompt_service.py
+│       └── extraction_service.py
+├── frontend/
+│   ├── cypress/
+│   │   ├── e2e/
+│   │   │   └── mira-workflow.cy.ts
+│   │   ├── fixtures/
+│   │   └── support/
+│   ├── src/
+│   │   ├── api/
+│   │   ├── auth/
+│   │   ├── components/
+│   │   ├── layout/
+│   │   ├── pages/
+│   │   ├── styles/
+│   │   ├── test/
+│   │   ├── types/
+│   │   ├── router.tsx
+│   │   └── main.tsx
+│   ├── cypress.config.ts
+│   ├── vitest.config.ts
+│   ├── package.json
+│   └── vite.config.ts
 ├── sample_data/
-│   ├── synthetic_lab_report.txt
-│   └── synthetic_discharge_summary.txt
+├── scripts/
 ├── tests/
 ├── docker-compose.yml
 ├── alembic.ini
-└── requirements.txt
+├── requirements.txt
+└── README.md
 ```
 
 ---
 
 ## ✅ Status
 
-**Complete:**
-FastAPI backend · PostgreSQL + pgvector + HNSW · PDF and TXT ingestion · Line-preserving cleaning · Newline-aware chunking · Medical document classification · Source-cited RAG · Direct LLM route · Tavily web search · Pre-routing safety guard · Deterministic disclaimer · SHA-256 duplicate detection · Permanent document deletion · Alembic migrations · Multi-document selection · Combined overview · Cross-document comparison · Python unittest suite
+### Complete
 
-**Roadmap:**
-- [ ] Structured lab value extraction into dedicated table
-- [ ] Medical NER (spaCy + en_ner_bc5cdr_md)
-- [ ] Deterministic response validation layer
-- [ ] Conversation memory with session isolation
-- [ ] Voice interface (Java audio → Whisper → Coqui TTS)
-- [ ] React frontend with document library and voice input
-- [ ] Authentication and per-user document ownership
-- [ ] Hybrid BM25 + vector search
+- [x] FastAPI backend
+- [x] PostgreSQL + pgvector + HNSW
+- [x] PDF and TXT ingestion
+- [x] UUID-based file storage
+- [x] SHA-256 duplicate detection
+- [x] Medical document classification
+- [x] Line-preserving cleaning
+- [x] Newline-aware chunking
+- [x] Source-cited RAG
+- [x] Complete-document summaries
+- [x] Multi-document comparison
+- [x] Direct Ollama route
+- [x] Tavily web search
+- [x] Deterministic safety guard
+- [x] Deterministic medical disclaimer
+- [x] JWT authentication
+- [x] Argon2 password hashing
+- [x] Per-user document ownership
+- [x] Cross-user isolation
+- [x] Structured medical extraction
+- [x] Persisted extraction records
+- [x] Evidence-backed extraction UI
+- [x] React + TypeScript frontend
+- [x] Protected frontend routes
+- [x] Session-expiration handling
+- [x] Health and readiness endpoints
+- [x] Alembic migrations
+- [x] Frontend unit and component tests
+- [x] Cypress end-to-end workflows
+
+### Next milestone
+
+- [ ] Provider-neutral LLM interface
+- [ ] Dedicated Ollama provider
+- [ ] Groq provider
+- [ ] Primary and fallback provider configuration
+- [ ] Timeout and retry policies
+- [ ] Structured-output handling
+- [ ] Provider-specific error mapping
+- [ ] Latency benchmarking
+- [ ] Mocked provider tests
+
+### Future roadmap
+
+- [ ] Deterministic response validation
+- [ ] Medical NER
+- [ ] Hybrid BM25 + vector retrieval
 - [ ] Cross-encoder reranking
 - [ ] RAGAS evaluation pipeline
+- [ ] Conversation memory with strict ownership
+- [ ] Secure HTTP-only cookie authentication
+- [ ] Audit logging
+- [ ] Encryption at rest
+- [ ] Rate limiting
+- [ ] Voice interface
 - [ ] Production deployment
+- [ ] Monitoring and observability dashboards
 
 ---
 
 ## 🔒 Privacy Notice
 
-MIRA is a local development system. It is not ready for real patient records or external users.
+MIRA is an authenticated local development system, but it is **not production-ready for real protected health information**.
 
-Before supporting multiple users with real medical documents, the system requires authentication, per-user document ownership enforcement, authorization checks on every operation, encrypted transport, encrypted storage, audit logging, and production hardening.
+**Implemented:**
 
-**Use only synthetic medical documents during the current development stage.**
+- Password hashing
+- JWT authentication
+- Per-user ownership
+- Authorization checks
+- Cross-account isolation
+- Permanent deletion
+
+**Still required before real medical use:**
+
+- HTTPS
+- Secure HTTP-only cookies
+- CSRF protection
+- Encryption at rest
+- Secret management
+- Audit logging
+- Rate limiting
+- Backup and recovery controls
+- Data-retention policies
+- Security review
+- Compliance assessment
+- Production monitoring
+- Incident-response procedures
+
+**Use only synthetic medical documents during development.**
 
 ---
 
 ## Medical Notice
 
 MIRA provides educational explanations of supplied documents. It does not replace a licensed healthcare professional and must not be used for diagnosis, treatment decisions, medication changes, emergency triage, or prognosis.
+
+For urgent symptoms or emergencies, contact local emergency services immediately.
 
 ---
 
@@ -393,4 +882,4 @@ MIT
 
 ---
 
-> Built as a safety-first medical document intelligence platform combining LangGraph routing, LangChain-compatible pgvector retrieval, Alembic-managed schema migrations, SHA-256 duplicate detection, multi-document comparison with preserved boundaries, deterministic safety guardrails, and local Ollama inference — with medical disclaimers enforced by application code, never by the language model.
+> Built as a safety-first medical document intelligence platform combining authenticated document ownership, LangGraph routing, LangChain-compatible pgvector retrieval, structured extraction, deterministic safety guardrails, source-backed answers, React workflows, and local Ollama inference — with medical disclaimers enforced by application code, never by the language model.
