@@ -53,6 +53,11 @@ node_modules/
 dist/
 build/
 
+#Frontend test output
+frontend/coverage/
+frontend/cypress/screenshots/
+frontend/cypress/videos/
+
 # Operating system
 .DS_Store
 Thumbs.db
