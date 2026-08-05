@@ -56,8 +56,15 @@ build/
 # Operating system
 .DS_Store
 Thumbs.db
+uploaded_files/
 
 #Frontend
 frontend/node_modules/
 frontend/dist/
 frontend/.env
+
+
+# Frontend test output
+frontend/coverage/
+frontend/cypress/screenshots/
+frontend/cypress/videos/
