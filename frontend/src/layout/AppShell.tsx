@@ -6,7 +6,7 @@ import {
 
 import {
   useAuth,
-} from "../auth/AuthProvider";
+} from "../auth/useAuth";
 
 function navClassName({
   isActive,
@@ -19,6 +19,41 @@ function navClassName({
       + "app-nav__link--active"
     )
     : "app-nav__link";
+}
+
+function navigationLinks() {
+  return (
+    <>
+      <NavLink
+        to="/"
+        end
+        className={navClassName}
+      >
+        Overview
+      </NavLink>
+
+      <NavLink
+        to="/documents"
+        className={navClassName}
+      >
+        Documents
+      </NavLink>
+
+      <NavLink
+        to="/ask"
+        className={navClassName}
+      >
+        Ask MIRA
+      </NavLink>
+
+      <NavLink
+        to="/extractions"
+        className={navClassName}
+      >
+        Extractions
+      </NavLink>
+    </>
+  );
 }
 
 export function AppShell() {
@@ -43,6 +78,13 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
+      <a
+        className="skip-link"
+        href="#main-content"
+      >
+        Skip to main content
+      </a>
+
       <header className="app-header">
         <div>
           <p className="eyebrow">
@@ -70,40 +112,20 @@ export function AppShell() {
         </div>
       </header>
 
+      <nav
+        className="app-mobile-nav"
+        aria-label="Primary mobile"
+      >
+        {navigationLinks()}
+      </nav>
+
       <div className="app-body">
         <aside className="app-sidebar">
           <nav
             className="app-nav"
             aria-label="Primary"
           >
-            <NavLink
-              to="/"
-              end
-              className={navClassName}
-            >
-              Overview
-            </NavLink>
-
-            <NavLink
-              to="/documents"
-              className={navClassName}
-            >
-              Documents
-            </NavLink>
-
-            <NavLink
-              to="/ask"
-              className={navClassName}
-            >
-              Ask MIRA
-            </NavLink>
-
-            <NavLink
-              to="/extractions"
-              className={navClassName}
-            >
-              Extractions
-            </NavLink>
+            {navigationLinks()}
           </nav>
 
           <div className="privacy-note">
@@ -113,7 +135,11 @@ export function AppShell() {
           </div>
         </aside>
 
-        <main className="app-content">
+        <main
+          id="main-content"
+          className="app-content"
+          tabIndex={-1}
+        >
           <Outlet />
         </main>
       </div>

@@ -4,19 +4,26 @@ import {
   useLocation,
 } from "react-router";
 
-import { useAuth } from "./AuthProvider";
+import {
+  useAuth,
+} from "./useAuth";
 
 export function ProtectedRoute() {
   const {
     isAuthenticated,
     isInitializing,
+    sessionEndReason,
   } = useAuth();
 
   const location = useLocation();
 
   if (isInitializing) {
     return (
-      <main className="centered-page">
+      <main
+        id="main-content"
+        className="centered-page"
+        tabIndex={-1}
+      >
         <div
           className="loading-card"
           role="status"
@@ -34,7 +41,10 @@ export function ProtectedRoute() {
         to="/login"
         replace
         state={{
-          from: location.pathname,
+          from:
+            location.pathname
+            + location.search,
+          reason: sessionEndReason,
         }}
       />
     );

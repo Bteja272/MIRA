@@ -6,6 +6,9 @@ import {
   ProtectedRoute,
 } from "./auth/ProtectedRoute";
 import {
+  RouteAccessibility,
+} from "./components/RouteAccessibility";
+import {
   AppShell,
 } from "./layout/AppShell";
 import {
@@ -32,49 +35,54 @@ import {
 
 export const router = createBrowserRouter([
   {
-    element: <ProtectedRoute />,
+    element: <RouteAccessibility />,
     children: [
       {
-        element: <AppShell />,
+        element: <ProtectedRoute />,
         children: [
           {
-            index: true,
-            element: (
-              <DashboardPage />
-            ),
-          },
-          {
-            path: "documents",
-            element: (
-              <DocumentsPage />
-            ),
-          },
-          {
-            path: "ask",
-            element: (
-              <AskMiraPage />
-            ),
-          },
-          {
-            path: "extractions",
-            element: (
-              <ExtractionsPage />
-            ),
+            element: <AppShell />,
+            children: [
+              {
+                index: true,
+                element: (
+                  <DashboardPage />
+                ),
+              },
+              {
+                path: "documents",
+                element: (
+                  <DocumentsPage />
+                ),
+              },
+              {
+                path: "ask",
+                element: (
+                  <AskMiraPage />
+                ),
+              },
+              {
+                path: "extractions",
+                element: (
+                  <ExtractionsPage />
+                ),
+              },
+            ],
           },
         ],
       },
+      {
+        path: "/login",
+        element: <LoginPage />,
+      },
+      {
+        path: "/register",
+        element: <RegisterPage />,
+      },
+      {
+        path: "*",
+        element: <NotFoundPage />,
+      },
     ],
-  },
-  {
-    path: "/login",
-    element: <LoginPage />,
-  },
-  {
-    path: "/register",
-    element: <RegisterPage />,
-  },
-  {
-    path: "*",
-    element: <NotFoundPage />,
   },
 ]);

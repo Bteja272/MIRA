@@ -4,7 +4,11 @@ import {
   apiRequest,
   extractApiErrorMessage,
 } from "./http";
-import { getAccessToken } from "../auth/tokenStorage";
+import {
+  clearAccessToken,
+  getAccessToken,
+  notifyUnauthorized,
+} from "../auth/tokenStorage";
 import type {
   DocumentDeleteResponse,
   DocumentDetail,
@@ -61,7 +65,7 @@ function parseXhrBody(
         xhr.responseText,
       ) as unknown;
     } catch {
-      return null;
+      return xhr.responseText;
     }
   }
 
@@ -76,11 +80,17 @@ export function uploadDocument(
 ): Promise<IngestResponse> {
   return new Promise(
     (resolve, reject) => {
-      const xhr = new XMLHttpRequest();
+      const xhr =
+        new XMLHttpRequest();
 
       xhr.open(
         "POST",
         `${API_BASE_URL}/ingest`,
+      );
+
+      xhr.setRequestHeader(
+        "Accept",
+        "application/json",
       );
 
       const token = getAccessToken();
@@ -96,8 +106,8 @@ export function uploadDocument(
         "progress",
         (event) => {
           if (
-            !event.lengthComputable ||
-            !onProgress
+            !event.lengthComputable
+            || !onProgress
           ) {
             return;
           }
@@ -105,8 +115,10 @@ export function uploadDocument(
           const percentage = Math.min(
             100,
             Math.round(
-              (event.loaded / event.total)
-              * 100,
+              (
+                event.loaded
+                / event.total
+              ) * 100,
             ),
           );
 
@@ -121,16 +133,27 @@ export function uploadDocument(
       xhr.addEventListener(
         "load",
         () => {
-          const body = parseXhrBody(xhr);
+          const body =
+            parseXhrBody(xhr);
 
           if (
-            xhr.status >= 200 &&
-            xhr.status < 300
+            xhr.status >= 200
+            && xhr.status < 300
           ) {
             resolve(
               body as IngestResponse,
             );
             return;
+          }
+
+          if (
+            xhr.status === 401
+            && token
+          ) {
+            clearAccessToken();
+            notifyUnauthorized(
+              "unauthorized",
+            );
           }
 
           reject(
@@ -176,7 +199,8 @@ export function uploadDocument(
         },
       );
 
-      const formData = new FormData();
+      const formData =
+        new FormData();
 
       formData.append(
         "file",

@@ -1,12 +1,13 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
   type PropsWithChildren,
 } from "react";
+import {
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import {
   getCurrentUser,
@@ -14,35 +15,34 @@ import {
   registerAccount,
 } from "../api/auth";
 import {
+  AuthContext,
+  type SessionEndReason,
+} from "./authContext";
+import {
+  AUTH_UNAUTHORIZED_EVENT,
   clearAccessToken,
   getAccessToken,
+  getTokenExpirationTime,
+  isAccessTokenExpired,
+  type UnauthorizedReason,
+} from "./tokenStorage";
+import {
   setAccessToken,
 } from "./tokenStorage";
-import type { User } from "../types/auth";
-
-interface AuthContextValue {
-  user: User | null;
-  isInitializing: boolean;
-  isAuthenticated: boolean;
-  login: (
-    email: string,
-    password: string,
-  ) => Promise<void>;
-  register: (
-    email: string,
-    password: string,
-  ) => Promise<void>;
-  logout: () => void;
-}
-
-const AuthContext = createContext<
-  AuthContextValue | undefined
->(undefined);
+import type {
+  User,
+} from "../types/auth";
 
 export function AuthProvider({
   children,
 }: PropsWithChildren) {
-  const [user, setUser] = useState<User | null>(
+  const queryClient =
+    useQueryClient();
+
+  const [
+    user,
+    setUser,
+  ] = useState<User | null>(
     null,
   );
 
@@ -50,6 +50,30 @@ export function AuthProvider({
     isInitializing,
     setIsInitializing,
   ] = useState(true);
+
+  const [
+    sessionEndReason,
+    setSessionEndReason,
+  ] = useState<SessionEndReason>(
+    null,
+  );
+
+  const endSession = useCallback(
+    (
+      reason: Exclude<
+        SessionEndReason,
+        null
+      > | null,
+    ): void => {
+      clearAccessToken();
+      queryClient.clear();
+      setUser(null);
+      setSessionEndReason(reason);
+    },
+    [
+      queryClient,
+    ],
+  );
 
   const loadCurrentUser = useCallback(
     async (): Promise<void> => {
@@ -61,24 +85,106 @@ export function AuthProvider({
         return;
       }
 
+      if (isAccessTokenExpired(token)) {
+        endSession("expired");
+        setIsInitializing(false);
+        return;
+      }
+
       try {
         const currentUser =
           await getCurrentUser();
 
         setUser(currentUser);
+        setSessionEndReason(null);
       } catch {
-        clearAccessToken();
-        setUser(null);
+        endSession("unauthorized");
       } finally {
         setIsInitializing(false);
       }
     },
-    [],
+    [
+      endSession,
+    ],
   );
 
   useEffect(() => {
     void loadCurrentUser();
-  }, [loadCurrentUser]);
+  }, [
+    loadCurrentUser,
+  ]);
+
+  useEffect(() => {
+    function handleUnauthorized(
+      event: Event,
+    ): void {
+      const customEvent =
+        event as CustomEvent<
+          UnauthorizedReason
+        >;
+
+      endSession(
+        customEvent.detail
+        ?? "unauthorized",
+      );
+    }
+
+    window.addEventListener(
+      AUTH_UNAUTHORIZED_EVENT,
+      handleUnauthorized,
+    );
+
+    return () => {
+      window.removeEventListener(
+        AUTH_UNAUTHORIZED_EVENT,
+        handleUnauthorized,
+      );
+    };
+  }, [
+    endSession,
+  ]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const token = getAccessToken();
+
+    if (!token) {
+      endSession("unauthorized");
+      return;
+    }
+
+    const expirationTime =
+      getTokenExpirationTime(token);
+
+    if (expirationTime === null) {
+      return;
+    }
+
+    const delay = Math.max(
+      0,
+      expirationTime - Date.now(),
+    );
+
+    const timeoutId =
+      window.setTimeout(
+        () => {
+          endSession("expired");
+        },
+        delay,
+      );
+
+    return () => {
+      window.clearTimeout(
+        timeoutId,
+      );
+    };
+  }, [
+    endSession,
+    user,
+  ]);
 
   const login = useCallback(
     async (
@@ -86,7 +192,12 @@ export function AuthProvider({
       password: string,
     ): Promise<void> => {
       const tokenResponse =
-        await loginAccount(email, password);
+        await loginAccount(
+          email,
+          password,
+        );
+
+      queryClient.clear();
 
       setAccessToken(
         tokenResponse.access_token,
@@ -97,13 +208,16 @@ export function AuthProvider({
           await getCurrentUser();
 
         setUser(currentUser);
+        setSessionEndReason(null);
       } catch (error) {
-        clearAccessToken();
-        setUser(null);
+        endSession(null);
         throw error;
       }
     },
-    [],
+    [
+      endSession,
+      queryClient,
+    ],
   );
 
   const register = useCallback(
@@ -121,19 +235,26 @@ export function AuthProvider({
         password,
       );
     },
-    [login],
+    [
+      login,
+    ],
   );
 
-  const logout = useCallback((): void => {
-    clearAccessToken();
-    setUser(null);
-  }, []);
+  const logout = useCallback(
+    (): void => {
+      endSession(null);
+    },
+    [
+      endSession,
+    ],
+  );
 
-  const value = useMemo<AuthContextValue>(
+  const value = useMemo(
     () => ({
       user,
       isInitializing,
       isAuthenticated: user !== null,
+      sessionEndReason,
       login,
       register,
       logout,
@@ -141,6 +262,7 @@ export function AuthProvider({
     [
       user,
       isInitializing,
+      sessionEndReason,
       login,
       register,
       logout,
@@ -152,16 +274,4 @@ export function AuthProvider({
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error(
-      "useAuth must be used inside AuthProvider.",
-    );
-  }
-
-  return context;
 }

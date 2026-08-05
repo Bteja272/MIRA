@@ -9,12 +9,56 @@ import {
   useNavigate,
 } from "react-router";
 
-import { ApiError } from "../api/http";
-import { useAuth } from "../auth/AuthProvider";
-import { StatusBanner } from "../components/StatusBanner";
+import {
+  ApiError,
+} from "../api/http";
+import {
+  useAuth,
+} from "../auth/useAuth";
+import {
+  StatusBanner,
+} from "../components/StatusBanner";
+import type {
+  SessionEndReason,
+} from "../auth/authContext";
 
 interface LocationState {
   from?: string;
+  reason?: SessionEndReason;
+}
+
+function safeDestination(
+  value: string | undefined,
+): string {
+  if (
+    !value
+    || !value.startsWith("/")
+    || value.startsWith("//")
+  ) {
+    return "/";
+  }
+
+  return value;
+}
+
+function sessionMessage(
+  reason: SessionEndReason,
+): string | null {
+  if (reason === "expired") {
+    return (
+      "Your session expired. Log in again "
+      + "to continue."
+    );
+  }
+
+  if (reason === "unauthorized") {
+    return (
+      "Your session is no longer valid. "
+      + "Log in again to continue."
+    );
+  }
+
+  return null;
 }
 
 export function LoginPage() {
@@ -23,29 +67,57 @@ export function LoginPage() {
     isAuthenticated,
   } = useAuth();
 
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate =
+    useNavigate();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] =
-    useState("");
-  const [error, setError] = useState<
-    string | null
-  >(null);
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const location =
+    useLocation();
 
-  const state = location.state as
-    | LocationState
-    | null;
+  const [
+    email,
+    setEmail,
+  ] = useState("");
 
-  const destination = state?.from ?? "/";
+  const [
+    password,
+    setPassword,
+  ] = useState("");
+
+  const [
+    error,
+    setError,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] = useState(false);
+
+  const state =
+    location.state as
+      | LocationState
+      | null;
+
+  const destination =
+    safeDestination(
+      state?.from,
+    );
+
+  const endedSessionMessage =
+    sessionMessage(
+      state?.reason ?? null,
+    );
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(destination, {
-        replace: true,
-      });
+      navigate(
+        destination,
+        {
+          replace: true,
+        },
+      );
     }
   }, [
     destination,
@@ -67,9 +139,12 @@ export function LoginPage() {
         password,
       );
 
-      navigate(destination, {
-        replace: true,
-      });
+      navigate(
+        destination,
+        {
+          replace: true,
+        },
+      );
     } catch (caught) {
       setError(
         caught instanceof ApiError
@@ -82,13 +157,19 @@ export function LoginPage() {
   }
 
   return (
-    <main className="auth-page">
+    <main
+      id="main-content"
+      className="auth-page"
+      tabIndex={-1}
+    >
       <section className="auth-panel">
         <div className="auth-copy">
           <p className="eyebrow">
             Medical document intelligence
           </p>
+
           <h1>Welcome to MIRA</h1>
+
           <p>
             Review uploaded medical documents,
             ask grounded questions, and inspect
@@ -99,13 +180,21 @@ export function LoginPage() {
         <form
           className="auth-form"
           onSubmit={handleSubmit}
+          aria-busy={isSubmitting}
         >
           <div>
             <p className="eyebrow">
               Secure account access
             </p>
+
             <h2>Log in</h2>
           </div>
+
+          {endedSessionMessage && (
+            <StatusBanner tone="info">
+              {endedSessionMessage}
+            </StatusBanner>
+          )}
 
           {error && (
             <StatusBanner tone="error">
@@ -113,28 +202,46 @@ export function LoginPage() {
             </StatusBanner>
           )}
 
-          <label className="field">
+          <label
+            className="field"
+            htmlFor="login-email"
+          >
             <span>Email</span>
+
             <input
+              id="login-email"
               type="email"
               autoComplete="email"
+              inputMode="email"
+              autoFocus
               required
+              disabled={isSubmitting}
               value={email}
               onChange={(event) =>
-                setEmail(event.target.value)
+                setEmail(
+                  event.target.value,
+                )
               }
             />
           </label>
 
-          <label className="field">
+          <label
+            className="field"
+            htmlFor="login-password"
+          >
             <span>Password</span>
+
             <input
+              id="login-password"
               type="password"
               autoComplete="current-password"
               required
+              disabled={isSubmitting}
               value={password}
               onChange={(event) =>
-                setPassword(event.target.value)
+                setPassword(
+                  event.target.value,
+                )
               }
             />
           </label>

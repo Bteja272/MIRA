@@ -1,6 +1,7 @@
 import {
   clearAccessToken,
   getAccessToken,
+  notifyUnauthorized,
 } from "../auth/tokenStorage";
 
 export const API_BASE_URL = (
@@ -37,7 +38,8 @@ export function extractApiErrorMessage(
     && typeof body === "object"
     && "detail" in body
   ) {
-    const detail = (body as FastApiErrorBody).detail;
+    const detail =
+      (body as FastApiErrorBody).detail;
 
     if (typeof detail === "string") {
       return detail;
@@ -58,7 +60,10 @@ export function extractApiErrorMessage(
           return null;
         })
         .filter(
-          (message): message is string => message !== null,
+          (
+            message,
+          ): message is string =>
+            message !== null,
         );
 
       if (messages.length > 0) {
@@ -66,27 +71,79 @@ export function extractApiErrorMessage(
       }
     }
 
-    if (detail && typeof detail === "object") {
+    if (
+      detail
+      && typeof detail === "object"
+    ) {
       return JSON.stringify(detail);
     }
   }
 
-  if (typeof body === "string" && body.trim()) {
+  if (
+    typeof body === "string"
+    && body.trim()
+  ) {
     return body.trim();
   }
 
   return fallback;
 }
 
+async function parseResponseBody(
+  response: Response,
+): Promise<unknown> {
+  if (response.status === 204) {
+    return null;
+  }
+
+  const rawBody =
+    await response.text();
+
+  if (!rawBody) {
+    return null;
+  }
+
+  const contentType =
+    response.headers.get(
+      "content-type",
+    ) ?? "";
+
+  if (
+    contentType.includes(
+      "application/json",
+    )
+  ) {
+    try {
+      return JSON.parse(
+        rawBody,
+      ) as unknown;
+    } catch {
+      return rawBody;
+    }
+  }
+
+  return rawBody;
+}
+
 export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const headers = new Headers(init.headers);
+  const headers =
+    new Headers(init.headers);
+
   const token = getAccessToken();
 
+  headers.set(
+    "Accept",
+    "application/json",
+  );
+
   if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+    headers.set(
+      "Authorization",
+      `Bearer ${token}`,
+    );
   }
 
   if (
@@ -94,7 +151,10 @@ export async function apiRequest<T>(
     && !(init.body instanceof FormData)
     && !headers.has("Content-Type")
   ) {
-    headers.set("Content-Type", "application/json");
+    headers.set(
+      "Content-Type",
+      "application/json",
+    );
   }
 
   let response: Response;
@@ -105,6 +165,7 @@ export async function apiRequest<T>(
       {
         ...init,
         headers,
+        credentials: "omit",
       },
     );
   } catch (error) {
@@ -122,26 +183,28 @@ export async function apiRequest<T>(
     );
   }
 
-  const contentType = response.headers.get("content-type") ?? "";
-  let body: unknown = null;
-
-  if (response.status !== 204) {
-    if (contentType.includes("application/json")) {
-      body = await response.json();
-    } else {
-      body = await response.text();
-    }
-  }
+  const body =
+    await parseResponseBody(response);
 
   if (!response.ok) {
-    if (response.status === 401) {
+    if (
+      response.status === 401
+      && token
+    ) {
       clearAccessToken();
+      notifyUnauthorized(
+        "unauthorized",
+      );
     }
 
     throw new ApiError(
       extractApiErrorMessage(
         body,
-        `Request failed with status ${response.status}.`,
+        (
+          "Request failed with status "
+          + response.status
+          + "."
+        ),
       ),
       response.status,
       body,

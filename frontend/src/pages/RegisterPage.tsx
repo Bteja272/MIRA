@@ -8,9 +8,15 @@ import {
   useNavigate,
 } from "react-router";
 
-import { ApiError } from "../api/http";
-import { useAuth } from "../auth/AuthProvider";
-import { StatusBanner } from "../components/StatusBanner";
+import {
+  ApiError,
+} from "../api/http";
+import {
+  useAuth,
+} from "../auth/useAuth";
+import {
+  StatusBanner,
+} from "../components/StatusBanner";
 
 export function RegisterPage() {
   const {
@@ -18,26 +24,44 @@ export function RegisterPage() {
     isAuthenticated,
   } = useAuth();
 
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] =
-    useState("");
+  const [
+    email,
+    setEmail,
+  ] = useState("");
+
+  const [
+    password,
+    setPassword,
+  ] = useState("");
+
   const [
     confirmPassword,
     setConfirmPassword,
   ] = useState("");
-  const [error, setError] = useState<
-    string | null
-  >(null);
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+
+  const [
+    error,
+    setError,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/", {
-        replace: true,
-      });
+      navigate(
+        "/",
+        {
+          replace: true,
+        },
+      );
     }
   }, [
     isAuthenticated,
@@ -66,9 +90,12 @@ export function RegisterPage() {
         password,
       );
 
-      navigate("/", {
-        replace: true,
-      });
+      navigate(
+        "/",
+        {
+          replace: true,
+        },
+      );
     } catch (caught) {
       setError(
         caught instanceof ApiError
@@ -81,13 +108,19 @@ export function RegisterPage() {
   }
 
   return (
-    <main className="auth-page">
+    <main
+      id="main-content"
+      className="auth-page"
+      tabIndex={-1}
+    >
       <section className="auth-panel">
         <div className="auth-copy">
           <p className="eyebrow">
             Private by account
           </p>
+
           <h1>Create a MIRA account</h1>
+
           <p>
             Your uploaded documents, questions,
             and structured extractions are scoped
@@ -98,11 +131,13 @@ export function RegisterPage() {
         <form
           className="auth-form"
           onSubmit={handleSubmit}
+          aria-busy={isSubmitting}
         >
           <div>
             <p className="eyebrow">
               Development access
             </p>
+
             <h2>Register</h2>
           </div>
 
@@ -112,43 +147,71 @@ export function RegisterPage() {
             </StatusBanner>
           )}
 
-          <label className="field">
+          <label
+            className="field"
+            htmlFor="register-email"
+          >
             <span>Email</span>
+
             <input
+              id="register-email"
               type="email"
               autoComplete="email"
+              inputMode="email"
+              autoFocus
               required
+              disabled={isSubmitting}
               value={email}
               onChange={(event) =>
-                setEmail(event.target.value)
+                setEmail(
+                  event.target.value,
+                )
               }
             />
           </label>
 
-          <label className="field">
+          <label
+            className="field"
+            htmlFor="register-password"
+          >
             <span>Password</span>
+
             <input
+              id="register-password"
               type="password"
               autoComplete="new-password"
               minLength={12}
               required
+              disabled={isSubmitting}
+              aria-describedby={
+                "register-password-help"
+              }
               value={password}
               onChange={(event) =>
-                setPassword(event.target.value)
+                setPassword(
+                  event.target.value,
+                )
               }
             />
-            <small>
+
+            <small id="register-password-help">
               Use at least 12 characters.
             </small>
           </label>
 
-          <label className="field">
+          <label
+            className="field"
+            htmlFor="confirm-password"
+          >
             <span>Confirm password</span>
+
             <input
+              id="confirm-password"
               type="password"
               autoComplete="new-password"
               minLength={12}
               required
+              disabled={isSubmitting}
               value={confirmPassword}
               onChange={(event) =>
                 setConfirmPassword(
