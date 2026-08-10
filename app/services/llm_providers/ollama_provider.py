@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Any
 
 import requests
@@ -13,22 +11,129 @@ from app.services.llm_providers.base import (
 
 
 class OllamaProvider(LLMProvider):
-    """
-    Local Ollama implementation of MIRA's LLM provider contract.
-    """
-
     name = "ollama"
 
-    def __init__(self) -> None:
-        self.base_url = (
-            settings
-            .ollama_base_url
-            .rstrip("/")
-        )
-
-        self.model_name = (
+    @property
+    def model_name(self) -> str:
+        return (
             settings
             .resolved_ollama_model_name
+        )
+
+    @staticmethod
+    def _safe_error_message(
+        response: requests.Response,
+    ) -> str:
+        message = "request failed"
+
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = None
+
+        if isinstance(payload, dict):
+            raw_error = payload.get(
+                "error"
+            )
+
+            if isinstance(
+                raw_error,
+                str,
+            ) and raw_error.strip():
+                message = raw_error.strip()
+
+        if message == "request failed":
+            raw_text = getattr(
+                response,
+                "text",
+                "",
+            )
+
+            if isinstance(
+                raw_text,
+                str,
+            ) and raw_text.strip():
+                message = raw_text.strip()
+
+        return message[:1000]
+
+    @classmethod
+    def _http_error(
+        cls,
+        response: requests.Response,
+    ) -> LLMProviderError:
+        status_code = int(
+            response.status_code
+        )
+        provider_message = (
+            cls._safe_error_message(
+                response
+            )
+        )
+
+        common_message = (
+            f"request failed with HTTP "
+            f"{status_code}: "
+            f"{provider_message}"
+        )
+
+        if status_code in {
+            408,
+            429,
+        }:
+            return LLMProviderError(
+                "ollama",
+                common_message,
+                retryable=True,
+                kind=(
+                    "rate_limit"
+                    if status_code == 429
+                    else "timeout"
+                ),
+                status_code=status_code,
+                fallback_allowed=True,
+            )
+
+        if status_code >= 500:
+            return LLMProviderError(
+                "ollama",
+                common_message,
+                retryable=True,
+                kind="server",
+                status_code=status_code,
+                fallback_allowed=True,
+            )
+
+        if status_code in {
+            401,
+            403,
+        }:
+            return LLMProviderError(
+                "ollama",
+                common_message,
+                retryable=False,
+                kind="authentication",
+                status_code=status_code,
+                fallback_allowed=False,
+            )
+
+        if status_code == 404:
+            return LLMProviderError(
+                "ollama",
+                common_message,
+                retryable=False,
+                kind="configuration",
+                status_code=status_code,
+                fallback_allowed=False,
+            )
+
+        return LLMProviderError(
+            "ollama",
+            common_message,
+            retryable=False,
+            kind="request",
+            status_code=status_code,
+            fallback_allowed=False,
         )
 
     def generate(
@@ -36,7 +141,8 @@ class OllamaProvider(LLMProvider):
         request: LLMRequest,
     ) -> str:
         url = (
-            f"{self.base_url}/api/chat"
+            f"{settings.ollama_base_url.rstrip('/')}"
+            "/api/chat"
         )
 
         options: dict[str, Any] = {}
@@ -79,8 +185,6 @@ class OllamaProvider(LLMProvider):
             "stream": False,
         }
 
-        # Local Ollama supports either plain JSON mode
-        # or a complete JSON Schema in `format`.
         if request.json_schema is not None:
             payload["format"] = (
                 request.json_schema
@@ -101,53 +205,37 @@ class OllamaProvider(LLMProvider):
             response = requests.post(
                 url,
                 json=payload,
-                timeout=(
-                    request.timeout_seconds
-                ),
+                timeout=request.timeout_seconds,
             )
 
         except requests.Timeout as exc:
             raise LLMProviderError(
-                self.name,
-                (
-                    "request timed out after "
-                    f"{request.timeout_seconds} seconds."
-                ),
+                "ollama",
+                "request timed out.",
                 retryable=True,
+                kind="timeout",
+                fallback_allowed=True,
             ) from exc
 
         except requests.RequestException as exc:
             raise LLMProviderError(
-                self.name,
-                (
-                    "could not connect to "
-                    f"{url}: {exc}"
-                ),
+                "ollama",
+                "request could not reach the provider.",
                 retryable=True,
+                kind="connection",
+                fallback_allowed=True,
             ) from exc
 
         if not response.ok:
-            retryable = (
-                response.status_code == 429
-                or response.status_code >= 500
-            )
-
-            raise LLMProviderError(
-                self.name,
-                (
-                    "request failed with HTTP "
-                    f"{response.status_code}: "
-                    f"{response.text[:2000]}"
-                ),
-                retryable=retryable,
+            raise self._http_error(
+                response
             )
 
         try:
             data = response.json()
-
-            answer = (
-                data["message"]["content"]
-            )
+            answer = data[
+                "message"
+            ]["content"]
 
         except (
             ValueError,
@@ -155,28 +243,31 @@ class OllamaProvider(LLMProvider):
             TypeError,
         ) as exc:
             raise LLMProviderError(
-                self.name,
-                (
-                    "returned an unexpected response: "
-                    f"{response.text[:2000]}"
-                ),
+                "ollama",
+                "returned an unexpected response.",
+                retryable=True,
+                kind="response",
+                fallback_allowed=True,
             ) from exc
 
-        if not isinstance(
-            answer,
-            str,
-        ):
+        if not isinstance(answer, str):
             raise LLMProviderError(
-                self.name,
+                "ollama",
                 "returned a non-text response.",
+                retryable=True,
+                kind="response",
+                fallback_allowed=True,
             )
 
         cleaned_answer = answer.strip()
 
         if not cleaned_answer:
             raise LLMProviderError(
-                self.name,
+                "ollama",
                 "returned an empty response.",
+                retryable=True,
+                kind="response",
+                fallback_allowed=True,
             )
 
         return cleaned_answer
