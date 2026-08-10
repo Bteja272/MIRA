@@ -10,9 +10,15 @@ class MedicalExtractionPromptService:
     SYSTEM_PROMPT = """
 You extract explicit facts from medical documents.
 
-Return one JSON object only. Copy values exactly as written. Never infer,
-diagnose, recommend treatment, convert units, or add information that is not
-present in the supplied text. Use null or an empty list when a fact is absent.
+Return one JSON object only. Copy factual text values exactly as written.
+The schema control fields diagnosis.status, medication.status, and
+lab_results.flag are the only exception: return only the exact lowercase enum
+tokens shown in the output contract. For example, source text "High" maps to
+"high" and "Normal" maps to "normal". Never infer, diagnose, recommend
+treatment, convert units, or add information that is not present in the
+supplied text. Use null or an empty list when a fact is absent. Do not repeat
+the same fact. Optional fields must be null unless the exact value appears in
+the same supporting line or nearby document text.
 """.strip()
 
     OUTPUT_CONTRACT = """
@@ -202,9 +208,22 @@ Return this lightweight JSON shape:
 {cls.OUTPUT_CONTRACT}
 
 Rules:
-- Copy every returned string exactly from the document text.
+- Copy factual text fields exactly from the document text.
+- Exception: diagnosis.status, medication.status, and lab_results.flag are
+  schema control values. Return them only as the exact lowercase tokens shown
+  in the contract, regardless of capitalization in the document.
+- For example, document text "High" must be returned as "high", and "Normal"
+  must be returned as "normal".
 - Omit unsupported facts; do not guess.
-- Use "unknown" for a status or flag unless the document explicitly states it.
+- Do not repeat facts already listed by deterministic extraction.
+- Do not return duplicate rows within a category.
+- Optional fields must be null unless their exact value is explicitly present.
+- Use "unknown" for a status or flag unless the document explicitly supports
+  one of the allowed enum meanings.
+- When a category has no facts, return an empty array.
+- Never return placeholder objects with null required fields.
+  For example, use "lab_results": [] instead of an object whose
+  test_name and raw_value are null.
 - Return no confidence values, evidence objects, metadata, warnings, or extra keys.
 - The server will locate exact supporting text and create trusted evidence.
 
@@ -284,7 +303,10 @@ Return one JSON object only.
 The previous candidate JSON was invalid or contained unsupported facts.
 Return one corrected JSON object matching the lightweight contract in the
 original request. Remove any fact that is not copied exactly from the supplied
-document. Do not add confidence values, sources, metadata, or explanations.
+document. Keep factual text verbatim, but normalize diagnosis.status,
+medication.status, and lab_results.flag to the exact lowercase enum tokens
+required by the contract. Do not add confidence values, sources, metadata, or
+explanations.
 
 Validation error:
 {compact_error}

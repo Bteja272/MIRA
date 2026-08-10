@@ -1,62 +1,211 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import (
+    Mock,
+    patch,
+)
 
-from app.services.llm_service import LLMService
+from app.services.llm_service import (
+    LLMService,
+)
 
 
 class LLMServiceTests(unittest.TestCase):
-    @patch("app.services.llm_service.requests.post")
+
+    @patch(
+        "app.services.llm_service."
+        "LLMProviderFactory.create"
+    )
+    @patch(
+        "app.services.llm_service.settings"
+    )
     def test_custom_system_prompt_is_sent(
         self,
-        mock_post,
-    ):
-        mock_response = Mock()
-        mock_response.ok = True
-        mock_response.json.return_value = {
-            "message": {
-                "content": "Test response"
-            }
-        }
-        mock_post.return_value = mock_response
+        mock_settings,
+        mock_create,
+    ) -> None:
+        mock_settings.llm_provider = "groq"
+        mock_settings.llm_fallback_provider = ""
 
-        answer = LLMService.generate_response(
-            prompt="Explain this.",
-            system_prompt="Custom medical instructions.",
+        provider = Mock()
+        provider.generate.return_value = (
+            "Synthetic response"
         )
 
-        self.assertEqual(answer, "Test response")
+        mock_create.return_value = provider
 
-        payload = mock_post.call_args.kwargs["json"]
+        result = LLMService.generate_response(
+            prompt="Synthetic question",
+            system_prompt=(
+                "Synthetic system prompt"
+            ),
+            temperature=0.0,
+        )
 
         self.assertEqual(
-            payload["messages"][0]["role"],
-            "system",
-        )
-        self.assertEqual(
-            payload["messages"][0]["content"],
-            "Custom medical instructions.",
-        )
-        self.assertEqual(
-            payload["messages"][1]["content"],
-            "Explain this.",
+            result,
+            "Synthetic response",
         )
 
-    @patch("app.services.llm_service.requests.post")
-    def test_ollama_error_includes_response_body(
+        provider.generate.assert_called_once()
+
+        request = (
+            provider.generate
+            .call_args
+            .args[0]
+        )
+
+        self.assertEqual(
+            request.prompt,
+            "Synthetic question",
+        )
+
+        self.assertEqual(
+            request.system_prompt,
+            "Synthetic system prompt",
+        )
+
+        self.assertEqual(
+            request.temperature,
+            0.0,
+        )
+
+    @patch(
+        "app.services.llm_service."
+        "LLMProviderFactory.create"
+    )
+    @patch(
+        "app.services.llm_service.settings"
+    )
+    def test_primary_provider_is_used(
         self,
-        mock_post,
-    ):
-        mock_response = Mock()
-        mock_response.ok = False
-        mock_response.status_code = 404
-        mock_response.text = "model not found"
-        mock_post.return_value = mock_response
+        mock_settings,
+        mock_create,
+    ) -> None:
+        mock_settings.llm_provider = "groq"
+        mock_settings.llm_fallback_provider = (
+            "ollama"
+        )
+
+        provider = Mock()
+        provider.generate.return_value = (
+            "Primary response"
+        )
+
+        mock_create.return_value = provider
+
+        result = LLMService.generate_response(
+            prompt="Synthetic question"
+        )
+
+        self.assertEqual(
+            result,
+            "Primary response",
+        )
+
+        mock_create.assert_called_once_with(
+            "groq"
+        )
+
+    @patch(
+        "app.services.llm_service."
+        "LLMProviderFactory.create"
+    )
+    @patch(
+        "app.services.llm_service.settings"
+    )
+    def test_fallback_provider_is_used(
+        self,
+        mock_settings,
+        mock_create,
+    ) -> None:
+        mock_settings.llm_provider = "groq"
+        mock_settings.llm_fallback_provider = (
+            "ollama"
+        )
+
+        primary_provider = Mock()
+        primary_provider.generate.side_effect = (
+            RuntimeError(
+                "Groq unavailable"
+            )
+        )
+
+        fallback_provider = Mock()
+        fallback_provider.generate.return_value = (
+            "Fallback response"
+        )
+
+        mock_create.side_effect = [
+            primary_provider,
+            fallback_provider,
+        ]
+
+        result = LLMService.generate_response(
+            prompt="Synthetic question"
+        )
+
+        self.assertEqual(
+            result,
+            "Fallback response",
+        )
+
+        self.assertEqual(
+            mock_create.call_count,
+            2,
+        )
+
+        self.assertEqual(
+            mock_create.call_args_list[0].args,
+            ("groq",),
+        )
+
+        self.assertEqual(
+            mock_create.call_args_list[1].args,
+            ("ollama",),
+        )
+
+    @patch(
+        "app.services.llm_service."
+        "LLMProviderFactory.create"
+    )
+    @patch(
+        "app.services.llm_service.settings"
+    )
+    def test_provider_failure_without_fallback_raises(
+        self,
+        mock_settings,
+        mock_create,
+    ) -> None:
+        mock_settings.llm_provider = "groq"
+        mock_settings.llm_fallback_provider = ""
+
+        provider = Mock()
+        provider.generate.side_effect = (
+            RuntimeError(
+                "Provider unavailable"
+            )
+        )
+
+        mock_create.return_value = provider
 
         with self.assertRaisesRegex(
             RuntimeError,
-            "model not found",
+            "LLM generation failed using groq",
         ):
-            LLMService.generate_response("Hello")
+            LLMService.generate_response(
+                prompt="Synthetic question"
+            )
+
+    def test_blank_prompt_is_rejected(
+        self,
+    ) -> None:
+        with self.assertRaisesRegex(
+            ValueError,
+            "prompt is required",
+        ):
+            LLMService.generate_response(
+                prompt="   "
+            )
 
 
 if __name__ == "__main__":

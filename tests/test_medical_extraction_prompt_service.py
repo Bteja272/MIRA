@@ -127,6 +127,35 @@ class MedicalExtractionPromptServiceTests(
             prompt.casefold(),
         )
 
+
+    def test_prompt_requires_lowercase_enum_control_values(
+        self,
+    ) -> None:
+        prompt = (
+            MedicalExtractionPromptService
+            .build_extraction_prompt(
+                document=self.document,
+                chunks=self.chunks,
+            )
+        )
+
+        normalized_prompt = " ".join(
+            prompt.split()
+        )
+
+        self.assertIn(
+            "exact lowercase tokens",
+            normalized_prompt,
+        )
+        self.assertIn(
+            '"High" must be returned as "high"',
+            normalized_prompt,
+        )
+        self.assertIn(
+            '"Normal" must be returned as "normal"',
+            normalized_prompt,
+        )
+
     def test_repair_prompt_is_bounded(
         self,
     ) -> None:

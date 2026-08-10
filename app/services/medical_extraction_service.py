@@ -51,6 +51,9 @@ from app.services.medical_extraction_hardening_service import (
 from app.services.medical_extraction_merge_service import (
     MedicalExtractionMergeService,
 )
+from app.schemas.medical_extraction_strict_schema import (
+    MEDICAL_EXTRACTION_CANDIDATE_STRICT_SCHEMA,
+)
 from app.services.medical_extraction_prompt_service import (
     MedicalExtractionPromptService,
 )
@@ -1943,6 +1946,9 @@ class MedicalExtractionService:
                             .extraction_llm_timeout_seconds
                         ),
                         json_mode=True,
+                        json_schema=(
+                            MEDICAL_EXTRACTION_CANDIDATE_STRICT_SCHEMA
+                        ),
                         temperature=0.0,
                         max_output_tokens=(
                             settings
