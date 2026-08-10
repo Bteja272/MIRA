@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import (
     SecretStr,
     field_validator,
@@ -14,16 +16,35 @@ class Settings(BaseSettings):
         "MIRA Medical Document Assistant"
     )
 
-    app_version: str = "0.2.0"
+    app_version: str = "0.3.0"
     environment: str = "development"
 
+    # LLM provider configuration.
     llm_provider: str = "ollama"
+    llm_fallback_provider: str = ""
 
+    # Existing setting retained for backward compatibility.
+    llm_model_name: str = "llama3.2"
+
+    # Ollama.
     ollama_base_url: str = (
         "http://host.docker.internal:11434"
     )
 
-    llm_model_name: str = "llama3.2"
+    # If omitted, LLM_MODEL_NAME is used.
+    ollama_model_name: str = ""
+
+    # Groq.
+    groq_api_key: SecretStr | None = None
+
+    groq_base_url: str = (
+        "https://api.groq.com/openai/v1"
+    )
+
+    groq_model_name: str = (
+        "openai/gpt-oss-20b"
+    )
+
     retrieval_top_k: int = 3
 
     chunk_size: int = 500
@@ -69,6 +90,25 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
+    @property
+    def resolved_ollama_model_name(
+        self,
+    ) -> str:
+        explicit_model = (
+            self
+            .ollama_model_name
+            .strip()
+        )
+
+        if explicit_model:
+            return explicit_model
+
+        return (
+            self
+            .llm_model_name
+            .strip()
+        )
+
     @field_validator(
         "cors_allowed_origins",
         mode="before",
@@ -87,28 +127,99 @@ class Settings(BaseSettings):
 
         if not isinstance(value, list):
             raise ValueError(
-                "cors_allowed_origins must be a list "
-                "or comma-separated string."
+                "cors_allowed_origins must be "
+                "a list or comma-separated string."
             )
 
         normalized: list[str] = []
 
         for origin in value:
-            cleaned = str(origin).strip().rstrip("/")
+            cleaned = (
+                str(origin)
+                .strip()
+                .rstrip("/")
+            )
 
             if (
                 cleaned
                 and cleaned not in normalized
             ):
-                normalized.append(cleaned)
+                normalized.append(
+                    cleaned
+                )
 
         return normalized
 
+    @field_validator(
+        "llm_provider",
+        "llm_fallback_provider",
+        mode="before",
+    )
+    @classmethod
+    def normalize_provider_name(
+        cls,
+        value,
+    ):
+        if value is None:
+            return ""
+
+        return (
+            str(value)
+            .strip()
+            .lower()
+        )
+
     @model_validator(mode="after")
     def validate_runtime_settings(self):
+        supported_providers = {
+            "groq",
+            "ollama",
+        }
+
+        if (
+            self.llm_provider
+            not in supported_providers
+        ):
+            raise ValueError(
+                "llm_provider must be one of: "
+                "groq, ollama."
+            )
+
+        if (
+            self.llm_fallback_provider
+            and self.llm_fallback_provider
+            not in supported_providers
+        ):
+            raise ValueError(
+                "llm_fallback_provider must be "
+                "empty or one of: groq, ollama."
+            )
+
+        if (
+            self.llm_fallback_provider
+            == self.llm_provider
+        ):
+            raise ValueError(
+                "llm_fallback_provider must "
+                "differ from llm_provider."
+            )
+
+        if not (
+            self.resolved_ollama_model_name
+        ):
+            raise ValueError(
+                "An Ollama model name is required."
+            )
+
+        if not self.groq_model_name.strip():
+            raise ValueError(
+                "groq_model_name is required."
+            )
+
         if self.chunk_size <= 0:
             raise ValueError(
-                "chunk_size must be greater than zero."
+                "chunk_size must be greater "
+                "than zero."
             )
 
         if self.chunk_overlap < 0:
@@ -116,13 +227,19 @@ class Settings(BaseSettings):
                 "chunk_overlap cannot be negative."
             )
 
-        if self.chunk_overlap >= self.chunk_size:
+        if (
+            self.chunk_overlap
+            >= self.chunk_size
+        ):
             raise ValueError(
-                "chunk_overlap must be smaller than chunk_size."
+                "chunk_overlap must be smaller "
+                "than chunk_size."
             )
 
         positive_integer_fields = {
-            "retrieval_top_k": self.retrieval_top_k,
+            "retrieval_top_k": (
+                self.retrieval_top_k
+            ),
             "extraction_max_context_characters": (
                 self.extraction_max_context_characters
             ),
@@ -143,19 +260,24 @@ class Settings(BaseSettings):
             ),
         }
 
-        for field_name, value in positive_integer_fields.items():
+        for (
+            field_name,
+            value,
+        ) in positive_integer_fields.items():
             if value <= 0:
                 raise ValueError(
-                    f"{field_name} must be greater than zero."
+                    f"{field_name} must be "
+                    "greater than zero."
                 )
 
         if (
             self.cors_allow_credentials
-            and "*" in self.cors_allowed_origins
+            and "*"
+            in self.cors_allowed_origins
         ):
             raise ValueError(
-                "Wildcard CORS origins cannot be used "
-                "when credentials are enabled."
+                "Wildcard CORS origins cannot "
+                "be used when credentials are enabled."
             )
 
         return self
