@@ -45,7 +45,20 @@ class Settings(BaseSettings):
         "openai/gpt-oss-20b"
     )
 
+    # Retrieval.
     retrieval_top_k: int = 3
+    retrieval_candidate_k: int = 10
+    retrieval_rrf_k: int = 60
+
+    retrieval_semantic_weight: float = 1.0
+    retrieval_lexical_weight: float = 1.0
+
+    retrieval_bm25_k1: float = 1.5
+    retrieval_bm25_b: float = 0.75
+
+    # Protects unscoped lexical search from loading an
+    # unbounded number of chunks into application memory.
+    retrieval_lexical_max_chunks: int = 2000
 
     chunk_size: int = 500
     chunk_overlap: int = 100
@@ -240,6 +253,15 @@ class Settings(BaseSettings):
             "retrieval_top_k": (
                 self.retrieval_top_k
             ),
+            "retrieval_candidate_k": (
+                self.retrieval_candidate_k
+            ),
+            "retrieval_rrf_k": (
+                self.retrieval_rrf_k
+            ),
+            "retrieval_lexical_max_chunks": (
+                self.retrieval_lexical_max_chunks
+            ),
             "extraction_max_context_characters": (
                 self.extraction_max_context_characters
             ),
@@ -269,6 +291,54 @@ class Settings(BaseSettings):
                     f"{field_name} must be "
                     "greater than zero."
                 )
+
+        if (
+            self.retrieval_candidate_k
+            < self.retrieval_top_k
+        ):
+            raise ValueError(
+                "retrieval_candidate_k must be "
+                "greater than or equal to "
+                "retrieval_top_k."
+            )
+
+        if (
+            self.retrieval_semantic_weight
+            < 0
+            or self.retrieval_lexical_weight
+            < 0
+        ):
+            raise ValueError(
+                "Retrieval fusion weights "
+                "cannot be negative."
+            )
+
+        if (
+            self.retrieval_semantic_weight
+            == 0
+            and self.retrieval_lexical_weight
+            == 0
+        ):
+            raise ValueError(
+                "At least one retrieval fusion "
+                "weight must be greater than zero."
+            )
+
+        if self.retrieval_bm25_k1 <= 0:
+            raise ValueError(
+                "retrieval_bm25_k1 must be "
+                "greater than zero."
+            )
+
+        if not (
+            0.0
+            <= self.retrieval_bm25_b
+            <= 1.0
+        ):
+            raise ValueError(
+                "retrieval_bm25_b must be "
+                "between 0 and 1."
+            )
 
         if (
             self.cors_allow_credentials

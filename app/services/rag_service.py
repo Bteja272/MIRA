@@ -1,3 +1,4 @@
+import logging
 import re
 import time
 
@@ -23,6 +24,9 @@ from app.services.prompt_service import (
 from app.services.response_validation_service import (
     ResponseValidationService,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class RAGService:
@@ -69,6 +73,54 @@ class RAGService:
         "list uploaded documents",
         "list the uploaded documents",
     }
+
+    @staticmethod
+    def _elapsed_ms(
+        started_at: float,
+    ) -> float:
+        return round(
+            (
+                time.perf_counter()
+                - started_at
+            )
+            * 1000,
+            3,
+        )
+
+    @staticmethod
+    def _new_timings() -> dict[str, float]:
+        return {
+            "latest_document_lookup_ms": 0.0,
+            "retrieval_ms": 0.0,
+            "document_merge_ms": 0.0,
+            "prompt_build_ms": 0.0,
+            "llm_generation_ms": 0.0,
+            "response_validation_ms": 0.0,
+            "disclaimer_ms": 0.0,
+            "source_build_ms": 0.0,
+            "total_ms": 0.0,
+        }
+
+    @staticmethod
+    def _log_completion(
+        *,
+        task: str,
+        selected_document_count: int,
+        retrieved_count: int,
+        source_count: int,
+        timings: dict[str, float],
+    ) -> None:
+        logger.info(
+            "rag_query_completed "
+            "task=%s selected_count=%s "
+            "retrieved_count=%s "
+            "source_count=%s timings=%s",
+            task,
+            selected_document_count,
+            retrieved_count,
+            source_count,
+            timings,
+        )
 
     @staticmethod
     def _normalize_document_ids(
@@ -187,7 +239,12 @@ class RAGService:
         started_at: float,
         user_id: str | None,
     ) -> dict:
+        timings = cls._new_timings()
         document_records: list[dict] = []
+
+        retrieval_started_at = (
+            time.perf_counter()
+        )
 
         for (
             document_position,
@@ -218,6 +275,12 @@ class RAGService:
                 }
             )
 
+        timings["retrieval_ms"] = (
+            cls._elapsed_ms(
+                retrieval_started_at
+            )
+        )
+
         selected_document_id = (
             selected_ids[0]
             if len(selected_ids) == 1
@@ -228,6 +291,22 @@ class RAGService:
             answer = (
                 "No selected documents "
                 "were found."
+            )
+
+            timings["total_ms"] = (
+                cls._elapsed_ms(
+                    started_at
+                )
+            )
+
+            cls._log_completion(
+                task="document_identification",
+                selected_document_count=(
+                    len(selected_ids)
+                ),
+                retrieved_count=0,
+                source_count=0,
+                timings=timings,
             )
 
             return {
@@ -244,8 +323,10 @@ class RAGService:
                 ),
                 "sources": [],
                 "latency_seconds": round(
-                    time.perf_counter()
-                    - started_at,
+                    (
+                        time.perf_counter()
+                        - started_at
+                    ),
                     3,
                 ),
             }
@@ -264,6 +345,9 @@ class RAGService:
             "",
         ]
 
+        source_started_at = (
+            time.perf_counter()
+        )
         sources: list[dict] = []
 
         for (
@@ -322,6 +406,29 @@ class RAGService:
                 }
             )
 
+        timings["source_build_ms"] = (
+            cls._elapsed_ms(
+                source_started_at
+            )
+        )
+        timings["total_ms"] = (
+            cls._elapsed_ms(
+                started_at
+            )
+        )
+
+        cls._log_completion(
+            task="document_identification",
+            selected_document_count=(
+                len(selected_ids)
+            ),
+            retrieved_count=(
+                len(document_records)
+            ),
+            source_count=len(sources),
+            timings=timings,
+        )
+
         return {
             "query": query,
             "answer": "\n".join(
@@ -336,8 +443,10 @@ class RAGService:
             ),
             "sources": sources,
             "latency_seconds": round(
-                time.perf_counter()
-                - started_at,
+                (
+                    time.perf_counter()
+                    - started_at
+                ),
                 3,
             ),
         }
@@ -353,6 +462,7 @@ class RAGService:
         started_at = (
             time.perf_counter()
         )
+        timings = cls._new_timings()
 
         selected_ids = (
             cls._normalize_document_ids(
@@ -398,17 +508,29 @@ class RAGService:
             not selected_ids
             and is_summary
         ):
+            lookup_started_at = (
+                time.perf_counter()
+            )
             latest_document_id = (
                 LangChainRetrieverService
                 .get_latest_document_id(
                     user_id=user_id,
                 )
             )
+            timings[
+                "latest_document_lookup_ms"
+            ] = cls._elapsed_ms(
+                lookup_started_at
+            )
 
             if latest_document_id:
                 selected_ids = [
                     latest_document_id
                 ]
+
+        retrieval_started_at = (
+            time.perf_counter()
+        )
 
         if len(selected_ids) > 1:
             retrieved_documents = (
@@ -464,6 +586,12 @@ class RAGService:
 
             task = "qa"
 
+        timings["retrieval_ms"] = (
+            cls._elapsed_ms(
+                retrieval_started_at
+            )
+        )
+
         selected_document_id = (
             selected_ids[0]
             if len(selected_ids) == 1
@@ -477,11 +605,34 @@ class RAGService:
                 "uploaded document or documents."
             )
 
+            disclaimer_started_at = (
+                time.perf_counter()
+            )
             answer = (
                 MedicalPromptService
                 .ensure_disclaimer(
                     answer
                 )
+            )
+            timings["disclaimer_ms"] = (
+                cls._elapsed_ms(
+                    disclaimer_started_at
+                )
+            )
+            timings["total_ms"] = (
+                cls._elapsed_ms(
+                    started_at
+                )
+            )
+
+            cls._log_completion(
+                task=task,
+                selected_document_count=(
+                    len(selected_ids)
+                ),
+                retrieved_count=0,
+                source_count=0,
+                timings=timings,
             )
 
             return {
@@ -498,19 +649,32 @@ class RAGService:
                 ),
                 "sources": [],
                 "latency_seconds": round(
-                    time.perf_counter()
-                    - started_at,
+                    (
+                        time.perf_counter()
+                        - started_at
+                    ),
                     3,
                 ),
             }
 
+        merge_started_at = (
+            time.perf_counter()
+        )
         prompt_documents = (
             DocumentMergeService
             .merge_documents(
                 retrieved_documents
             )
         )
+        timings["document_merge_ms"] = (
+            cls._elapsed_ms(
+                merge_started_at
+            )
+        )
 
+        prompt_started_at = (
+            time.perf_counter()
+        )
         prompt = (
             PromptService.build_prompt(
                 query=query,
@@ -520,7 +684,15 @@ class RAGService:
                 task=task,
             )
         )
+        timings["prompt_build_ms"] = (
+            cls._elapsed_ms(
+                prompt_started_at
+            )
+        )
 
+        llm_started_at = (
+            time.perf_counter()
+        )
         answer = (
             LLMService.generate_response(
                 prompt=prompt,
@@ -530,28 +702,72 @@ class RAGService:
                 ),
             )
         )
+        timings["llm_generation_ms"] = (
+            cls._elapsed_ms(
+                llm_started_at
+            )
+        )
 
+        validation_started_at = (
+            time.perf_counter()
+        )
         answer = (
             ResponseValidationService
             .sanitize_document_answer(
                 answer
             )
         )
+        timings[
+            "response_validation_ms"
+        ] = cls._elapsed_ms(
+            validation_started_at
+        )
 
+        disclaimer_started_at = (
+            time.perf_counter()
+        )
         answer = (
             MedicalPromptService
             .ensure_disclaimer(
                 answer
             )
         )
+        timings["disclaimer_ms"] = (
+            cls._elapsed_ms(
+                disclaimer_started_at
+            )
+        )
 
-        # Sources now match the source numbers used in the prompt.
-        # Each source represents one complete merged document.
+        source_started_at = (
+            time.perf_counter()
+        )
         sources = (
             LangChainRetrieverService
             .to_source_dicts(
                 prompt_documents
             )
+        )
+        timings["source_build_ms"] = (
+            cls._elapsed_ms(
+                source_started_at
+            )
+        )
+        timings["total_ms"] = (
+            cls._elapsed_ms(
+                started_at
+            )
+        )
+
+        cls._log_completion(
+            task=task,
+            selected_document_count=(
+                len(selected_ids)
+            ),
+            retrieved_count=(
+                len(retrieved_documents)
+            ),
+            source_count=len(sources),
+            timings=timings,
         )
 
         return {
@@ -566,8 +782,10 @@ class RAGService:
             ),
             "sources": sources,
             "latency_seconds": round(
-                time.perf_counter()
-                - started_at,
+                (
+                    time.perf_counter()
+                    - started_at
+                ),
                 3,
             ),
         }
