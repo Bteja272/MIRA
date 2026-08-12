@@ -76,6 +76,16 @@ class Settings(BaseSettings):
     # unbounded number of chunks into application memory.
     retrieval_lexical_max_chunks: int = 2000
 
+    # Adaptive final retrieval depth for broad QA questions.
+    retrieval_adaptive_top_k_enabled: bool = True
+    retrieval_adaptive_top_k_max: int = 5
+
+    # Document-context budgets. These are conservative estimated
+    # token budgets, not provider-billed token counts.
+    rag_qa_context_max_estimated_tokens: int = 2200
+    rag_summary_context_max_estimated_tokens: int = 12000
+    rag_multi_document_context_max_estimated_tokens: int = 20000
+
     chunk_size: int = 500
     chunk_overlap: int = 100
 
@@ -281,6 +291,18 @@ class Settings(BaseSettings):
             "retrieval_reranker_batch_size": (
                 self.retrieval_reranker_batch_size
             ),
+            "retrieval_adaptive_top_k_max": (
+                self.retrieval_adaptive_top_k_max
+            ),
+            "rag_qa_context_max_estimated_tokens": (
+                self.rag_qa_context_max_estimated_tokens
+            ),
+            "rag_summary_context_max_estimated_tokens": (
+                self.rag_summary_context_max_estimated_tokens
+            ),
+            "rag_multi_document_context_max_estimated_tokens": (
+                self.rag_multi_document_context_max_estimated_tokens
+            ),
             "extraction_max_context_characters": (
                 self.extraction_max_context_characters
             ),
@@ -319,6 +341,26 @@ class Settings(BaseSettings):
                 "retrieval_candidate_k must be "
                 "greater than or equal to "
                 "retrieval_top_k."
+            )
+
+        if (
+            self.retrieval_adaptive_top_k_max
+            < self.retrieval_top_k
+        ):
+            raise ValueError(
+                "retrieval_adaptive_top_k_max must be "
+                "greater than or equal to "
+                "retrieval_top_k."
+            )
+
+        if (
+            self.retrieval_candidate_k
+            < self.retrieval_adaptive_top_k_max
+        ):
+            raise ValueError(
+                "retrieval_candidate_k must be "
+                "greater than or equal to "
+                "retrieval_adaptive_top_k_max."
             )
 
         if (

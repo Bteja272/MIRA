@@ -9,6 +9,9 @@ from app.services.document_merge_service import (
 from app.services.document_service import (
     DocumentService,
 )
+from app.services.context_optimization_service import (
+    ContextOptimizationService,
+)
 from app.services.langchain_retriever_service import (
     LangChainRetrieverService,
 )
@@ -57,6 +60,21 @@ class RAGService:
         "later",
     )
 
+    BROAD_QA_TERMS = {
+        "all",
+        "list",
+        "medications",
+        "medicines",
+        "labs",
+        "laboratory",
+        "results",
+        "findings",
+        "diagnoses",
+        "procedures",
+        "instructions",
+        "everything",
+    }
+
     DOCUMENT_IDENTIFICATION_QUERIES = {
         "what are the selected documents",
         "what are the two selected documents",
@@ -93,6 +111,7 @@ class RAGService:
             "latest_document_lookup_ms": 0.0,
             "retrieval_ms": 0.0,
             "document_merge_ms": 0.0,
+            "context_optimization_ms": 0.0,
             "prompt_build_ms": 0.0,
             "llm_generation_ms": 0.0,
             "response_validation_ms": 0.0,
@@ -212,6 +231,70 @@ class RAGService:
             keyword in normalized_query
             for keyword
             in cls.COMPARISON_KEYWORDS
+        )
+
+    @classmethod
+    def _qa_top_k(
+        cls,
+        query: str,
+    ) -> int:
+        base_top_k = (
+            settings.retrieval_top_k
+        )
+
+        if not (
+            settings
+            .retrieval_adaptive_top_k_enabled
+        ):
+            return base_top_k
+
+        normalized_query = (
+            cls._normalize_query_text(
+                query
+            )
+        )
+
+        query_terms = set(
+            normalized_query.split()
+        )
+
+        is_broad_query = bool(
+            query_terms
+            & cls.BROAD_QA_TERMS
+        )
+
+        if not is_broad_query:
+            return base_top_k
+
+        return max(
+            base_top_k,
+            min(
+                settings
+                .retrieval_adaptive_top_k_max,
+                settings
+                .retrieval_candidate_k,
+            ),
+        )
+
+    @staticmethod
+    def _context_token_budget(
+        task: str,
+    ) -> int:
+        if task == "qa":
+            return (
+                settings
+                .rag_qa_context_max_estimated_tokens
+            )
+
+        if task == "summarization":
+            return (
+                settings
+                .rag_summary_context_max_estimated_tokens
+            )
+
+        return (
+            settings
+            .rag_multi_document_context_max_estimated_tokens
         )
 
     @staticmethod
@@ -532,6 +615,10 @@ class RAGService:
             time.perf_counter()
         )
 
+        retrieval_top_k_used: (
+            int | None
+        ) = None
+
         if len(selected_ids) > 1:
             retrieved_documents = (
                 LangChainRetrieverService
@@ -569,13 +656,18 @@ class RAGService:
             task = "summarization"
 
         else:
+            retrieval_top_k_used = (
+                cls._qa_top_k(
+                    query
+                )
+            )
+
             retrieved_documents = (
                 LangChainRetrieverService
                 .retrieve(
                     query=query,
                     top_k=(
-                        settings
-                        .retrieval_top_k
+                        retrieval_top_k_used
                     ),
                     document_ids=(
                         selected_ids or None
@@ -672,6 +764,35 @@ class RAGService:
             )
         )
 
+        context_started_at = (
+            time.perf_counter()
+        )
+
+        context_result = (
+            ContextOptimizationService
+            .optimize(
+                documents=(
+                    prompt_documents
+                ),
+                token_budget=(
+                    cls
+                    ._context_token_budget(
+                        task
+                    )
+                ),
+            )
+        )
+
+        prompt_documents = (
+            context_result.documents
+        )
+
+        timings[
+            "context_optimization_ms"
+        ] = cls._elapsed_ms(
+            context_started_at
+        )
+
         prompt_started_at = (
             time.perf_counter()
         )
@@ -688,6 +809,52 @@ class RAGService:
             cls._elapsed_ms(
                 prompt_started_at
             )
+        )
+
+        context_metrics = (
+            context_result.metrics
+        )
+
+        logger.info(
+            "rag_context_prepared "
+            "task=%s retrieval_top_k=%s "
+            "input_document_count=%s "
+            "output_document_count=%s "
+            "input_characters=%s "
+            "output_characters=%s "
+            "input_estimated_tokens=%s "
+            "output_estimated_tokens=%s "
+            "token_budget=%s "
+            "truncated_document_count=%s "
+            "prompt_characters=%s "
+            "context_optimization_ms=%.3f",
+            task,
+            (
+                retrieval_top_k_used
+                if retrieval_top_k_used
+                is not None
+                else "full_document"
+            ),
+            context_metrics
+            .input_document_count,
+            context_metrics
+            .output_document_count,
+            context_metrics
+            .input_characters,
+            context_metrics
+            .output_characters,
+            context_metrics
+            .input_estimated_tokens,
+            context_metrics
+            .output_estimated_tokens,
+            context_metrics
+            .token_budget,
+            context_metrics
+            .truncated_document_count,
+            len(prompt),
+            timings[
+                "context_optimization_ms"
+            ],
         )
 
         llm_started_at = (

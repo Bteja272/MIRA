@@ -11,8 +11,9 @@ class PromptService:
         Convert one retrieved LangChain document into a clearly
         identified source block for the LLM.
 
-        For multi-document queries, document_position preserves the
-        order in which the user selected the documents.
+        Only prompt-useful metadata is included. Internal document
+        IDs, similarity scores, and chunk IDs are intentionally kept
+        out of the LLM prompt.
         """
         metadata = getattr(
             document,
@@ -23,11 +24,6 @@ class PromptService:
         source = metadata.get(
             "source",
             "Unknown source",
-        )
-
-        document_id = metadata.get(
-            "document_id",
-            "Unknown document",
         )
 
         document_type = metadata.get(
@@ -43,23 +39,26 @@ class PromptService:
             "page_number"
         )
 
-        chunk_index = metadata.get(
-            "chunk_index"
+        page_numbers = metadata.get(
+            "page_numbers"
         )
 
-        similarity_score = metadata.get(
-            "similarity_score"
+        context_truncated = bool(
+            metadata.get(
+                "context_truncated",
+                False,
+            )
         )
 
         details = [
             f"Document: {source}",
-            f"Document ID: {document_id}",
             f"Document type: {document_type}",
         ]
 
         if document_position is not None:
             details.append(
-                f"Selected document: {document_position}"
+                "Selected document: "
+                f"{document_position}"
             )
 
         if page_number is not None:
@@ -67,14 +66,22 @@ class PromptService:
                 f"Page: {page_number}"
             )
 
-        if chunk_index is not None:
+        elif isinstance(
+            page_numbers,
+            list,
+        ) and page_numbers:
             details.append(
-                f"Chunk: {chunk_index}"
+                "Pages: "
+                + ", ".join(
+                    str(page)
+                    for page in page_numbers
+                )
             )
 
-        if similarity_score is not None:
+        if context_truncated:
             details.append(
-                f"Similarity: {similarity_score}"
+                "Context status: truncated "
+                "to the configured context budget"
             )
 
         metadata_text = " | ".join(

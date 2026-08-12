@@ -1011,44 +1011,147 @@ class RetrievalService:
         user_id: str | None = None,
     ) -> list[dict]:
         started_at = perf_counter()
-        results: list[dict] = []
 
-        for (
-            position,
-            document_id,
-        ) in enumerate(
-            document_ids,
-            start=1,
-        ):
-            document_results = (
-                cls.retrieve_document(
-                    document_id=document_id,
-                    user_id=user_id,
-                    document_position=(
-                        position
-                    ),
+        selected_ids = (
+            cls._normalize_document_ids(
+                document_ids=document_ids
+            )
+        )
+
+        if not selected_ids:
+            logger.info(
+                "retrieval_documents_completed "
+                "document_count=0 chunk_count=0 "
+                "statement_build_ms=0.000 "
+                "document_load_ms=0.000 "
+                "result_build_ms=0.000 "
+                "total_ms=%.3f",
+                (
+                    perf_counter()
+                    - started_at
+                )
+                * 1000,
+            )
+            return []
+
+        statement_started_at = (
+            perf_counter()
+        )
+
+        statement = (
+            select(
+                DocumentChunk,
+                Document,
+            )
+            .join(
+                Document,
+                Document.document_id
+                == DocumentChunk.document_id,
+            )
+            .where(
+                DocumentChunk.document_id
+                .in_(selected_ids)
+            )
+        )
+
+        statement = cls._apply_user_scope(
+            statement=statement,
+            user_id=user_id,
+        )
+
+        statement_build_ms = (
+            perf_counter()
+            - statement_started_at
+        ) * 1000
+
+        db = SessionLocal()
+
+        try:
+            load_started_at = (
+                perf_counter()
+            )
+            rows = db.execute(
+                statement
+            ).all()
+            document_load_ms = (
+                perf_counter()
+                - load_started_at
+            ) * 1000
+
+            result_build_started_at = (
+                perf_counter()
+            )
+
+            position_map = (
+                cls._document_position_map(
+                    selected_ids
                 )
             )
 
-            results.extend(
-                document_results
+            ordered_rows = sorted(
+                rows,
+                key=lambda row: (
+                    position_map.get(
+                        row[0].document_id,
+                        10**9,
+                    ),
+                    (
+                        row[0].page_number
+                        if isinstance(
+                            row[0].page_number,
+                            int,
+                        )
+                        else -1
+                    ),
+                    row[0].chunk_index,
+                ),
             )
 
-        total_ms = (
-            perf_counter()
-            - started_at
-        ) * 1000
+            results = [
+                cls._to_result(
+                    chunk=chunk,
+                    document=document,
+                    similarity_score=None,
+                    document_position=(
+                        position_map.get(
+                            chunk.document_id
+                        )
+                    ),
+                )
+                for chunk, document
+                in ordered_rows
+            ]
 
-        logger.info(
-            "retrieval_documents_completed "
-            "document_count=%s "
-            "chunk_count=%s total_ms=%.3f",
-            len(document_ids),
-            len(results),
-            total_ms,
-        )
+            result_build_ms = (
+                perf_counter()
+                - result_build_started_at
+            ) * 1000
 
-        return results
+            total_ms = (
+                perf_counter()
+                - started_at
+            ) * 1000
+
+            logger.info(
+                "retrieval_documents_completed "
+                "document_count=%s "
+                "chunk_count=%s "
+                "statement_build_ms=%.3f "
+                "document_load_ms=%.3f "
+                "result_build_ms=%.3f "
+                "total_ms=%.3f",
+                len(selected_ids),
+                len(results),
+                statement_build_ms,
+                document_load_ms,
+                result_build_ms,
+                total_ms,
+            )
+
+            return results
+
+        finally:
+            db.close()
 
     @classmethod
     def get_latest_document_id(
