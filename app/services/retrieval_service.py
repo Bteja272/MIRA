@@ -13,6 +13,9 @@ from app.db.session import SessionLocal
 from app.services.bm25_service import (
     BM25Service,
 )
+from app.services.cross_encoder_reranker_service import (
+    CrossEncoderRerankerService,
+)
 from app.services.embedding_service import (
     EmbeddingService,
 )
@@ -747,18 +750,111 @@ class RetrievalService:
         fusion_started_at = (
             perf_counter()
         )
-        results = cls._fuse_candidates(
-            semantic_candidates=(
-                semantic_candidates
-            ),
-            lexical_candidates=(
-                lexical_candidates
-            ),
-            top_k=top_k,
+        fused_candidates = (
+            cls._fuse_candidates(
+                semantic_candidates=(
+                    semantic_candidates
+                ),
+                lexical_candidates=(
+                    lexical_candidates
+                ),
+                top_k=candidate_k,
+            )
         )
         fusion_ms = (
             perf_counter()
             - fusion_started_at
+        ) * 1000
+
+        rerank_started_at = (
+            perf_counter()
+        )
+        reranker_used = False
+        reranker_fallback = False
+
+        if (
+            settings.retrieval_reranker_enabled
+            and fused_candidates
+        ):
+            try:
+                results = (
+                    CrossEncoderRerankerService
+                    .rerank(
+                        query=query,
+                        candidates=(
+                            fused_candidates
+                        ),
+                        top_k=top_k,
+                    )
+                )
+                reranker_used = True
+
+            except Exception as exc:
+                if not (
+                    settings
+                    .retrieval_reranker_fail_open
+                ):
+                    raise
+
+                reranker_fallback = True
+
+                logger.warning(
+                    "retrieval_reranker_failed "
+                    "candidate_count=%s "
+                    "fail_open=true "
+                    "error_type=%s",
+                    len(fused_candidates),
+                    type(exc).__name__,
+                )
+
+                results = []
+
+                for (
+                    fallback_rank,
+                    candidate,
+                ) in enumerate(
+                    fused_candidates[:top_k],
+                    start=1,
+                ):
+                    results.append(
+                        {
+                            **candidate,
+                            "rerank_rank": (
+                                fallback_rank
+                            ),
+                            "rerank_score": None,
+                            "retrieval_method": (
+                                "hybrid"
+                            ),
+                        }
+                    )
+
+        else:
+            results = []
+
+            for (
+                fallback_rank,
+                candidate,
+            ) in enumerate(
+                fused_candidates[:top_k],
+                start=1,
+            ):
+                results.append(
+                    {
+                        **candidate,
+                        "rerank_rank": (
+                            fallback_rank
+                        ),
+                        "rerank_score": None,
+                        "retrieval_method": (
+                            "hybrid"
+                        ),
+                    }
+                )
+
+        rerank_ms = (
+            perf_counter()
+            - rerank_started_at
         ) * 1000
 
         total_ms = (
@@ -772,20 +868,30 @@ class RetrievalService:
             "top_k=%s candidate_k=%s "
             "semantic_candidate_count=%s "
             "lexical_candidate_count=%s "
+            "fused_candidate_count=%s "
             "result_count=%s "
+            "reranker_enabled=%s "
+            "reranker_used=%s "
+            "reranker_fallback=%s "
             "semantic_ms=%.3f "
             "lexical_ms=%.3f "
             "fusion_ms=%.3f "
+            "rerank_ms=%.3f "
             "total_ms=%.3f",
             len(selected_ids),
             top_k,
             candidate_k,
             len(semantic_candidates),
             len(lexical_candidates),
+            len(fused_candidates),
             len(results),
+            settings.retrieval_reranker_enabled,
+            reranker_used,
+            reranker_fallback,
             semantic_ms,
             lexical_ms,
             fusion_ms,
+            rerank_ms,
             total_ms,
         )
 

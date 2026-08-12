@@ -56,6 +56,22 @@ class Settings(BaseSettings):
     retrieval_bm25_k1: float = 1.5
     retrieval_bm25_b: float = 0.75
 
+    # Second-stage cross-encoder reranking.
+    retrieval_reranker_enabled: bool = True
+    retrieval_reranker_model_name: str = (
+        "cross-encoder/"
+        "ms-marco-MiniLM-L6-v2"
+    )
+    retrieval_reranker_batch_size: int = 16
+
+    # Empty means SentenceTransformers chooses the device.
+    retrieval_reranker_device: str = ""
+
+    # Reranking improves ranking quality but is not required
+    # for availability. When enabled, fall back to fused RRF
+    # ranking if model loading or inference fails.
+    retrieval_reranker_fail_open: bool = True
+
     # Protects unscoped lexical search from loading an
     # unbounded number of chunks into application memory.
     retrieval_lexical_max_chunks: int = 2000
@@ -262,6 +278,9 @@ class Settings(BaseSettings):
             "retrieval_lexical_max_chunks": (
                 self.retrieval_lexical_max_chunks
             ),
+            "retrieval_reranker_batch_size": (
+                self.retrieval_reranker_batch_size
+            ),
             "extraction_max_context_characters": (
                 self.extraction_max_context_characters
             ),
@@ -322,6 +341,18 @@ class Settings(BaseSettings):
             raise ValueError(
                 "At least one retrieval fusion "
                 "weight must be greater than zero."
+            )
+
+        if (
+            self.retrieval_reranker_enabled
+            and not self
+            .retrieval_reranker_model_name
+            .strip()
+        ):
+            raise ValueError(
+                "retrieval_reranker_model_name "
+                "is required when reranking "
+                "is enabled."
             )
 
         if self.retrieval_bm25_k1 <= 0:
