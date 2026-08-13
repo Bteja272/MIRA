@@ -1,0 +1,436 @@
+{
+  "version": "1.0",
+  "description": "Synthetic medical-document corpus for MIRA retrieval evaluation. Contains no real patient data.",
+  "evaluation_user": {
+    "user_id": "mira-eval-v1",
+    "email": "mira-eval-v1@example.invalid"
+  },
+  "documents": [
+    {
+      "document_id": "eval-lab-2026-01-15",
+      "filename": "synthetic_lab_2026-01-15.txt",
+      "document_type": "lab_report",
+      "chunks": [
+        {
+          "chunk_id": "eval-lab-jan-c1",
+          "page_number": 1,
+          "chunk_index": 0,
+          "text": "Laboratory Report dated 2026-01-15. Hemoglobin A1c: 7.2 %. Documented flag: High. Reference range: 4.0-5.6 %."
+        },
+        {
+          "chunk_id": "eval-lab-jan-c2",
+          "page_number": 1,
+          "chunk_index": 1,
+          "text": "Glucose: 154 mg/dL. Documented flag: High. Reference range: 70-99 mg/dL."
+        },
+        {
+          "chunk_id": "eval-lab-jan-c3",
+          "page_number": 1,
+          "chunk_index": 2,
+          "text": "LDL cholesterol: 118 mg/dL. HDL cholesterol: 46 mg/dL. Triglycerides: 162 mg/dL."
+        },
+        {
+          "chunk_id": "eval-lab-jan-c4",
+          "page_number": 1,
+          "chunk_index": 3,
+          "text": "Creatinine: 0.9 mg/dL. eGFR: 96 mL/min/1.73 m2. BUN: 14 mg/dL."
+        },
+        {
+          "chunk_id": "eval-lab-jan-c5",
+          "page_number": 1,
+          "chunk_index": 4,
+          "text": "Sodium: 139 mmol/L. Potassium: 4.2 mmol/L. Chloride: 102 mmol/L."
+        }
+      ]
+    },
+    {
+      "document_id": "eval-medications-2026-01-15",
+      "filename": "synthetic_medication_list_2026-01-15.txt",
+      "document_type": "medication_list",
+      "chunks": [
+        {
+          "chunk_id": "eval-meds-jan-c1",
+          "page_number": 1,
+          "chunk_index": 0,
+          "text": "Active medication: Metformin 500 mg tablet. Instructions: take one tablet by mouth twice daily."
+        },
+        {
+          "chunk_id": "eval-meds-jan-c2",
+          "page_number": 1,
+          "chunk_index": 1,
+          "text": "Active medication: Lisinopril 10 mg tablet. Instructions: take one tablet by mouth once daily."
+        },
+        {
+          "chunk_id": "eval-meds-jan-c3",
+          "page_number": 1,
+          "chunk_index": 2,
+          "text": "Active medication: Atorvastatin 20 mg tablet. Instructions: take one tablet by mouth nightly."
+        },
+        {
+          "chunk_id": "eval-meds-jan-c4",
+          "page_number": 1,
+          "chunk_index": 3,
+          "text": "Medication reconciliation completed on 2026-01-15. No medication allergies are documented in this synthetic list."
+        },
+        {
+          "chunk_id": "eval-meds-jan-c5",
+          "page_number": 1,
+          "chunk_index": 4,
+          "text": "The medication list contains no insulin, anticoagulant, or inhaler entry."
+        }
+      ]
+    },
+    {
+      "document_id": "eval-discharge-2026-02-03",
+      "filename": "synthetic_discharge_summary_2026-02-03.txt",
+      "document_type": "discharge_summary",
+      "chunks": [
+        {
+          "chunk_id": "eval-discharge-feb-c1",
+          "page_number": 1,
+          "chunk_index": 0,
+          "text": "Discharge Summary dated 2026-02-03. Principal documented diagnosis: Type 2 diabetes mellitus without complications. ICD-10-CM: E11.9."
+        },
+        {
+          "chunk_id": "eval-discharge-feb-c2",
+          "page_number": 1,
+          "chunk_index": 1,
+          "text": "Medication reconciliation lists metformin 500 mg twice daily, lisinopril 10 mg once daily, and atorvastatin 20 mg nightly."
+        },
+        {
+          "chunk_id": "eval-discharge-feb-c3",
+          "page_number": 1,
+          "chunk_index": 2,
+          "text": "Discharge instruction: follow up with primary care within 14 days."
+        },
+        {
+          "chunk_id": "eval-discharge-feb-c4",
+          "page_number": 1,
+          "chunk_index": 3,
+          "text": "Diet instruction: follow the written carbohydrate-consistent meal plan supplied at discharge."
+        },
+        {
+          "chunk_id": "eval-discharge-feb-c5",
+          "page_number": 1,
+          "chunk_index": 4,
+          "text": "No surgical procedure is documented in this discharge summary. Disposition: home."
+        }
+      ]
+    },
+    {
+      "document_id": "eval-visit-2026-03-20",
+      "filename": "synthetic_primary_care_visit_2026-03-20.txt",
+      "document_type": "visit_note",
+      "chunks": [
+        {
+          "chunk_id": "eval-visit-mar-c1",
+          "page_number": 1,
+          "chunk_index": 0,
+          "text": "Primary Care Visit dated 2026-03-20. Blood pressure documented as 132/84 mmHg."
+        },
+        {
+          "chunk_id": "eval-visit-mar-c2",
+          "page_number": 1,
+          "chunk_index": 1,
+          "text": "Medication list reviewed: metformin 500 mg twice daily, lisinopril 10 mg daily, atorvastatin 20 mg nightly."
+        },
+        {
+          "chunk_id": "eval-visit-mar-c3",
+          "page_number": 1,
+          "chunk_index": 2,
+          "text": "The note documents no new diagnosis at this visit."
+        },
+        {
+          "chunk_id": "eval-visit-mar-c4",
+          "page_number": 1,
+          "chunk_index": 3,
+          "text": "Follow-up plan: return to primary care in approximately three months."
+        },
+        {
+          "chunk_id": "eval-visit-mar-c5",
+          "page_number": 1,
+          "chunk_index": 4,
+          "text": "The visit note states that the medication list was unchanged."
+        }
+      ]
+    },
+    {
+      "document_id": "eval-imaging-2026-04-02",
+      "filename": "synthetic_chest_xray_2026-04-02.txt",
+      "document_type": "imaging_report",
+      "chunks": [
+        {
+          "chunk_id": "eval-imaging-apr-c1",
+          "page_number": 1,
+          "chunk_index": 0,
+          "text": "Chest radiograph dated 2026-04-02. Indication: cough."
+        },
+        {
+          "chunk_id": "eval-imaging-apr-c2",
+          "page_number": 1,
+          "chunk_index": 1,
+          "text": "Findings: no focal airspace opacity is identified."
+        },
+        {
+          "chunk_id": "eval-imaging-apr-c3",
+          "page_number": 1,
+          "chunk_index": 2,
+          "text": "Findings: no pleural effusion is identified."
+        },
+        {
+          "chunk_id": "eval-imaging-apr-c4",
+          "page_number": 1,
+          "chunk_index": 3,
+          "text": "Cardiomediastinal silhouette is within the documented report limits."
+        },
+        {
+          "chunk_id": "eval-imaging-apr-c5",
+          "page_number": 1,
+          "chunk_index": 4,
+          "text": "Impression: no acute cardiopulmonary abnormality is documented."
+        }
+      ]
+    },
+    {
+      "document_id": "eval-lab-2026-05-10",
+      "filename": "synthetic_lab_2026-05-10.txt",
+      "document_type": "lab_report",
+      "chunks": [
+        {
+          "chunk_id": "eval-lab-may-c1",
+          "page_number": 1,
+          "chunk_index": 0,
+          "text": "Laboratory Report dated 2026-05-10. Hemoglobin A1c: 6.8 %. Documented flag: High. Reference range: 4.0-5.6 %."
+        },
+        {
+          "chunk_id": "eval-lab-may-c2",
+          "page_number": 1,
+          "chunk_index": 1,
+          "text": "Glucose: 128 mg/dL. Documented flag: High. Reference range: 70-99 mg/dL."
+        },
+        {
+          "chunk_id": "eval-lab-may-c3",
+          "page_number": 1,
+          "chunk_index": 2,
+          "text": "LDL cholesterol: 104 mg/dL. HDL cholesterol: 48 mg/dL. Triglycerides: 148 mg/dL."
+        },
+        {
+          "chunk_id": "eval-lab-may-c4",
+          "page_number": 1,
+          "chunk_index": 3,
+          "text": "Creatinine: 0.8 mg/dL. eGFR: 101 mL/min/1.73 m2. BUN: 13 mg/dL."
+        },
+        {
+          "chunk_id": "eval-lab-may-c5",
+          "page_number": 1,
+          "chunk_index": 4,
+          "text": "Sodium: 140 mmol/L. Potassium: 4.1 mmol/L. Chloride: 103 mmol/L."
+        }
+      ]
+    },
+    {
+      "document_id": "eval-medications-2026-05-10",
+      "filename": "synthetic_medication_list_2026-05-10.txt",
+      "document_type": "medication_list",
+      "chunks": [
+        {
+          "chunk_id": "eval-meds-may-c1",
+          "page_number": 1,
+          "chunk_index": 0,
+          "text": "Active medication: Metformin 500 mg tablet. Instructions: take one tablet by mouth twice daily."
+        },
+        {
+          "chunk_id": "eval-meds-may-c2",
+          "page_number": 1,
+          "chunk_index": 1,
+          "text": "Active medication: Lisinopril 10 mg tablet. Instructions: take one tablet by mouth once daily."
+        },
+        {
+          "chunk_id": "eval-meds-may-c3",
+          "page_number": 1,
+          "chunk_index": 2,
+          "text": "Active medication: Atorvastatin 20 mg tablet. Instructions: take one tablet by mouth nightly."
+        },
+        {
+          "chunk_id": "eval-meds-may-c4",
+          "page_number": 1,
+          "chunk_index": 3,
+          "text": "Medication reconciliation completed on 2026-05-10. The listed doses are documented as unchanged from the prior list."
+        },
+        {
+          "chunk_id": "eval-meds-may-c5",
+          "page_number": 1,
+          "chunk_index": 4,
+          "text": "The synthetic medication record contains no documented insulin prescription."
+        }
+      ]
+    },
+    {
+      "document_id": "eval-visit-2026-05-12",
+      "filename": "synthetic_specialty_visit_2026-05-12.txt",
+      "document_type": "visit_note",
+      "chunks": [
+        {
+          "chunk_id": "eval-visit-may-c1",
+          "page_number": 1,
+          "chunk_index": 0,
+          "text": "Specialty Visit dated 2026-05-12. Medication section lists atorvastatin 40 mg nightly."
+        },
+        {
+          "chunk_id": "eval-visit-may-c2",
+          "page_number": 1,
+          "chunk_index": 1,
+          "text": "The same note lists metformin 500 mg twice daily."
+        },
+        {
+          "chunk_id": "eval-visit-may-c3",
+          "page_number": 1,
+          "chunk_index": 2,
+          "text": "The specialty note does not explain why the atorvastatin dose differs from the medication list dated 2026-05-10."
+        },
+        {
+          "chunk_id": "eval-visit-may-c4",
+          "page_number": 1,
+          "chunk_index": 3,
+          "text": "No medication-change instruction is documented in the assessment section."
+        },
+        {
+          "chunk_id": "eval-visit-may-c5",
+          "page_number": 1,
+          "chunk_index": 4,
+          "text": "Follow-up is documented for six weeks."
+        }
+      ]
+    }
+  ],
+  "retrieval_cases": [
+    {
+      "case_id": "exact_hba1c_january",
+      "query": "What HbA1c value is documented on January 15?",
+      "document_ids": [
+        "eval-lab-2026-01-15"
+      ],
+      "relevant_chunk_ids": [
+        "eval-lab-jan-c1"
+      ]
+    },
+    {
+      "case_id": "exact_icd10_e119",
+      "query": "What does the discharge summary document for ICD-10-CM E11.9?",
+      "document_ids": [
+        "eval-discharge-2026-02-03"
+      ],
+      "relevant_chunk_ids": [
+        "eval-discharge-feb-c1"
+      ]
+    },
+    {
+      "case_id": "exact_lisinopril_dose",
+      "query": "What dose of lisinopril is listed?",
+      "document_ids": [
+        "eval-medications-2026-01-15"
+      ],
+      "relevant_chunk_ids": [
+        "eval-meds-jan-c2"
+      ]
+    },
+    {
+      "case_id": "exact_ldl",
+      "query": "What LDL cholesterol result is documented?",
+      "document_ids": [
+        "eval-lab-2026-01-15"
+      ],
+      "relevant_chunk_ids": [
+        "eval-lab-jan-c3"
+      ]
+    },
+    {
+      "case_id": "semantic_renal_function",
+      "query": "What kidney function results are documented?",
+      "document_ids": [
+        "eval-lab-2026-01-15"
+      ],
+      "relevant_chunk_ids": [
+        "eval-lab-jan-c4"
+      ]
+    },
+    {
+      "case_id": "discharge_follow_up",
+      "query": "When should the patient follow up after discharge?",
+      "document_ids": [
+        "eval-discharge-2026-02-03"
+      ],
+      "relevant_chunk_ids": [
+        "eval-discharge-feb-c3"
+      ]
+    },
+    {
+      "case_id": "imaging_airspace_opacity",
+      "query": "Does the chest radiograph document focal airspace opacity?",
+      "document_ids": [
+        "eval-imaging-2026-04-02"
+      ],
+      "relevant_chunk_ids": [
+        "eval-imaging-apr-c2"
+      ]
+    },
+    {
+      "case_id": "broad_medication_list",
+      "query": "List all active medications and doses.",
+      "document_ids": [
+        "eval-medications-2026-01-15"
+      ],
+      "relevant_chunk_ids": [
+        "eval-meds-jan-c1",
+        "eval-meds-jan-c2",
+        "eval-meds-jan-c3"
+      ]
+    },
+    {
+      "case_id": "a1c_change_across_labs",
+      "query": "What HbA1c values are documented in the January and May laboratory reports?",
+      "document_ids": [
+        "eval-lab-2026-01-15",
+        "eval-lab-2026-05-10"
+      ],
+      "relevant_chunk_ids": [
+        "eval-lab-jan-c1",
+        "eval-lab-may-c1"
+      ]
+    },
+    {
+      "case_id": "ldl_change_across_labs",
+      "query": "What LDL cholesterol values are documented in the two lab reports?",
+      "document_ids": [
+        "eval-lab-2026-01-15",
+        "eval-lab-2026-05-10"
+      ],
+      "relevant_chunk_ids": [
+        "eval-lab-jan-c3",
+        "eval-lab-may-c3"
+      ]
+    },
+    {
+      "case_id": "conflicting_atorvastatin_dose",
+      "query": "What atorvastatin doses are documented across these two records?",
+      "document_ids": [
+        "eval-medications-2026-05-10",
+        "eval-visit-2026-05-12"
+      ],
+      "relevant_chunk_ids": [
+        "eval-meds-may-c3",
+        "eval-visit-may-c1"
+      ]
+    },
+    {
+      "case_id": "blood_pressure_visit",
+      "query": "What blood pressure is documented at the March primary care visit?",
+      "document_ids": [
+        "eval-visit-2026-03-20"
+      ],
+      "relevant_chunk_ids": [
+        "eval-visit-mar-c1"
+      ]
+    }
+  ]
+}
