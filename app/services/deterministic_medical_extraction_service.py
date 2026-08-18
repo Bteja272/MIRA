@@ -132,7 +132,16 @@ class DeterministicMedicalExtractionService:
         r"^\s*(?:"
         r"medication\s+reconciliation\s+(?:lists|includes)"
         r"|medications?\s+(?:list|lists|include|includes)"
+        r"|medication\s+section\s+(?:lists|includes)"
+        r"|the\s+same\s+note\s+(?:lists|includes)"
         r")\s*[:\-]?\s*(?P<body>.+?)\s*$",
+        re.IGNORECASE,
+    )
+
+    MEDICATION_CONTEXT_SENTENCE_PATTERN = re.compile(
+        r"^\s*.*?[.!?]\s+"
+        r"(?:medication\s+section\s+(?:lists|includes))"
+        r"\s*[:\-]?\s*(?P<body>.+?)\s*$",
         re.IGNORECASE,
     )
 
@@ -1078,6 +1087,13 @@ class DeterministicMedicalExtractionService:
                         cleaned_line
                     )
                 )
+
+                if reconciliation_match is None:
+                    reconciliation_match = (
+                        cls.MEDICATION_CONTEXT_SENTENCE_PATTERN.match(
+                            cleaned_line
+                        )
+                    )
 
                 if reconciliation_match:
                     for medication_body in (

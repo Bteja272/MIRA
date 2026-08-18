@@ -10,10 +10,10 @@
       "unsupported_medical_value_rate": 0.0,
       "pass_rate": 1.0,
       "latency": {
-        "mean_ms": 989.962,
-        "median_ms": 797.296,
-        "p95_ms": 1632.057,
-        "max_ms": 1747.1
+        "mean_ms": 1036.022,
+        "median_ms": 785.798,
+        "p95_ms": 1874.871,
+        "max_ms": 2046.628
       }
     },
     "cases": [
@@ -46,7 +46,7 @@
         "unsupported_medical_values": [],
         "medical_value_claim_count": 14,
         "source_count": 1,
-        "latency_ms": 791.384,
+        "latency_ms": 546.789,
         "pass": true,
         "facts": [
           {
@@ -62,7 +62,7 @@
       },
       {
         "case_id": "rag_lisinopril_dose",
-        "answer": "The medication record lists **10\u202fmg** of lisinopril per tablet. [Source 1]\n\nThis information is for educational purposes only and is not a diagnosis or treatment recommendation. Consult a licensed healthcare professional for medical advice.",
+        "answer": "I could not safely preserve the generated answer, so the relevant source-grounded document text is shown below.\n\nDocument: synthetic_medication_list_2026-01-15.txt\nActive medication: Lisinopril 10 mg tablet [Source 1].\nInstructions: take one tablet by mouth once daily [Source 1].\nActive medication: Atorvastatin 20 mg tablet [Source 1].\nInstructions: take one tablet by mouth nightly [Source 1].\nThe medication list contains no insulin, anticoagulant, or inhaler entry [Source 1].\n\nThis information is for educational purposes only and is not a diagnosis or treatment recommendation. Consult a licensed healthcare professional for medical advice.",
         "sources": [
           {
             "source_number": 1,
@@ -84,12 +84,12 @@
         "grounded_required_fact_rate": 1.0,
         "citation_attribution_rate": 1.0,
         "citation_validity_rate": 1.0,
-        "citation_count": 1,
+        "citation_count": 5,
         "unsupported_medical_value_rate": 0.0,
         "unsupported_medical_values": [],
-        "medical_value_claim_count": 0,
+        "medical_value_claim_count": 2,
         "source_count": 1,
-        "latency_ms": 644.025,
+        "latency_ms": 691.516,
         "pass": true,
         "facts": [
           {
@@ -105,7 +105,7 @@
       },
       {
         "case_id": "rag_discharge_followup",
-        "answer": "I could not safely preserve the generated answer, so the relevant source-grounded document text is shown below.\n\nDocument: synthetic_discharge_summary_2026-02-03.txt\nDischarge Summary dated 2026-02-03 [Source 1].\nPrincipal documented diagnosis: Type 2 diabetes mellitus without complications [Source 1].\nICD-10-CM: E11.9 [Source 1].\nMedication reconciliation lists metformin 500 mg twice daily, lisinopril 10 mg once daily, and atorvastatin 20 mg nightly [Source 1].\nDischarge instruction: follow up with primary care within 14 days [Source 1].\nDiet instruction: follow the written carbohydrate-consistent meal plan supplied at discharge [Source 1].\nNo surgical procedure is documented in this discharge summary [Source 1].\nDisposition: home [Source 1].\n\nThis information is for educational purposes only and is not a diagnosis or treatment recommendation. Consult a licensed healthcare professional for medical advice.",
+        "answer": "The discharge summary states that you should follow up with primary care **within 14 days**. [Source 1]\n\nThis information is for educational purposes only and is not a diagnosis or treatment recommendation. Consult a licensed healthcare professional for medical advice.",
         "sources": [
           {
             "source_number": 1,
@@ -127,12 +127,12 @@
         "grounded_required_fact_rate": 1.0,
         "citation_attribution_rate": 1.0,
         "citation_validity_rate": 1.0,
-        "citation_count": 8,
+        "citation_count": 1,
         "unsupported_medical_value_rate": 0.0,
         "unsupported_medical_values": [],
-        "medical_value_claim_count": 6,
+        "medical_value_claim_count": 0,
         "source_count": 1,
-        "latency_ms": 803.209,
+        "latency_ms": 767.898,
         "pass": true,
         "facts": [
           {
@@ -148,7 +148,7 @@
       },
       {
         "case_id": "rag_imaging_opacity",
-        "answer": "The chest radiograph reports that **no focal airspace opacity is identified**.[Source 1]\n\nThis information is for educational purposes only and is not a diagnosis or treatment recommendation. Consult a licensed healthcare professional for medical advice.",
+        "answer": "The chest radiograph reports that no focal airspace opacity was identified. [Source 1]\n\nThis information is for educational purposes only and is not a diagnosis or treatment recommendation. Consult a licensed healthcare professional for medical advice.",
         "sources": [
           {
             "source_number": 1,
@@ -175,7 +175,7 @@
         "unsupported_medical_values": [],
         "medical_value_claim_count": 0,
         "source_count": 1,
-        "latency_ms": 667.121,
+        "latency_ms": 803.698,
         "pass": true,
         "facts": [
           {
@@ -231,7 +231,7 @@
         "unsupported_medical_values": [],
         "medical_value_claim_count": 25,
         "source_count": 2,
-        "latency_ms": 1747.1,
+        "latency_ms": 2046.628,
         "pass": true,
         "facts": [
           {
@@ -296,7 +296,7 @@
         "unsupported_medical_values": [],
         "medical_value_claim_count": 6,
         "source_count": 2,
-        "latency_ms": 1286.93,
+        "latency_ms": 1359.602,
         "pass": true,
         "facts": [
           {
@@ -322,8 +322,173 @@
     ]
   },
   "extraction": {
-    "case_count": 0,
-    "aggregate": {},
-    "cases": []
+    "case_count": 4,
+    "aggregate": {
+      "schema_validity_rate": 1.0,
+      "fact_precision": 1.0,
+      "fact_recall": 1.0,
+      "field_precision": 1.0,
+      "field_recall": 1.0,
+      "completeness": 1.0,
+      "evidence_validity_rate": 1.0,
+      "pass_rate": 1.0,
+      "latency": {
+        "mean_ms": 25378.544,
+        "median_ms": 24128.232,
+        "p95_ms": 51133.192,
+        "max_ms": 51938.821
+      }
+    },
+    "cases": [
+      {
+        "case_id": "extract_lab_january",
+        "document_id": "eval-lab-2026-01-15",
+        "schema_valid": true,
+        "schema_error": null,
+        "status": "completed",
+        "warning_codes": [],
+        "fact_precision": 1.0,
+        "fact_recall": 1.0,
+        "field_precision": 1.0,
+        "field_recall": 1.0,
+        "completeness": 1.0,
+        "evidence_validity_rate": 1.0,
+        "evidence_reference_count": 12,
+        "invalid_evidence": [],
+        "latency_ms": 1318.892,
+        "pass": true,
+        "categories": {
+          "lab_results": {
+            "fact_tp": 11,
+            "fact_fp": 0,
+            "fact_fn": 0,
+            "field_tp": 37,
+            "field_fp": 0,
+            "field_fn": 0,
+            "fact_precision": 1.0,
+            "fact_recall": 1.0,
+            "field_precision": 1.0,
+            "field_recall": 1.0,
+            "mismatches": []
+          }
+        }
+      },
+      {
+        "case_id": "extract_medications_january",
+        "document_id": "eval-medications-2026-01-15",
+        "schema_valid": true,
+        "schema_error": null,
+        "status": "partial",
+        "warning_codes": [
+          "unsupported_candidate_facts_removed"
+        ],
+        "fact_precision": 1.0,
+        "fact_recall": 1.0,
+        "field_precision": 1.0,
+        "field_recall": 1.0,
+        "completeness": 1.0,
+        "evidence_validity_rate": 1.0,
+        "evidence_reference_count": 3,
+        "invalid_evidence": [],
+        "latency_ms": 51938.821,
+        "pass": true,
+        "categories": {
+          "medications": {
+            "fact_tp": 3,
+            "fact_fp": 0,
+            "fact_fn": 0,
+            "field_tp": 12,
+            "field_fp": 0,
+            "field_fn": 0,
+            "fact_precision": 1.0,
+            "fact_recall": 1.0,
+            "field_precision": 1.0,
+            "field_recall": 1.0,
+            "mismatches": []
+          }
+        }
+      },
+      {
+        "case_id": "extract_discharge",
+        "document_id": "eval-discharge-2026-02-03",
+        "schema_valid": true,
+        "schema_error": null,
+        "status": "completed",
+        "warning_codes": [],
+        "fact_precision": 1.0,
+        "fact_recall": 1.0,
+        "field_precision": 1.0,
+        "field_recall": 1.0,
+        "completeness": 1.0,
+        "evidence_validity_rate": 1.0,
+        "evidence_reference_count": 7,
+        "invalid_evidence": [],
+        "latency_ms": 1688.507,
+        "pass": true,
+        "categories": {
+          "diagnoses": {
+            "fact_tp": 1,
+            "fact_fp": 0,
+            "fact_fn": 0,
+            "field_tp": 3,
+            "field_fp": 0,
+            "field_fn": 0,
+            "fact_precision": 1.0,
+            "fact_recall": 1.0,
+            "field_precision": 1.0,
+            "field_recall": 1.0,
+            "mismatches": []
+          },
+          "medications": {
+            "fact_tp": 3,
+            "fact_fp": 0,
+            "fact_fn": 0,
+            "field_tp": 9,
+            "field_fp": 0,
+            "field_fn": 0,
+            "fact_precision": 1.0,
+            "fact_recall": 1.0,
+            "field_precision": 1.0,
+            "field_recall": 1.0,
+            "mismatches": []
+          }
+        }
+      },
+      {
+        "case_id": "extract_specialty_visit",
+        "document_id": "eval-visit-2026-05-12",
+        "schema_valid": true,
+        "schema_error": null,
+        "status": "partial",
+        "warning_codes": [
+          "unsupported_candidate_fields_removed"
+        ],
+        "fact_precision": 1.0,
+        "fact_recall": 1.0,
+        "field_precision": 1.0,
+        "field_recall": 1.0,
+        "completeness": 1.0,
+        "evidence_validity_rate": 1.0,
+        "evidence_reference_count": 3,
+        "invalid_evidence": [],
+        "latency_ms": 46567.958,
+        "pass": true,
+        "categories": {
+          "medications": {
+            "fact_tp": 2,
+            "fact_fp": 0,
+            "fact_fn": 0,
+            "field_tp": 6,
+            "field_fp": 0,
+            "field_fn": 0,
+            "fact_precision": 1.0,
+            "fact_recall": 1.0,
+            "field_precision": 1.0,
+            "field_recall": 1.0,
+            "mismatches": []
+          }
+        }
+      }
+    ]
   }
 }

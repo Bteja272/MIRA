@@ -1,0 +1,88 @@
+{
+  "batch": "6",
+  "status": "PASS",
+  "gates": {
+    "retrieval": true,
+    "rag_quality": true,
+    "structured_extraction": true,
+    "safety_and_routing": true
+  },
+  "retrieval": {
+    "recall_at_k": {
+      "1": 0.736111,
+      "3": 0.916667,
+      "5": 1.0
+    },
+    "precision_at_k": {
+      "1": 0.916667,
+      "3": 0.444444,
+      "5": 0.283333
+    },
+    "mrr": 0.9375,
+    "latency": {
+      "mean_ms": 26.516,
+      "median_ms": 26.219,
+      "p95_ms": 33.81,
+      "max_ms": 34.542
+    }
+  },
+  "rag_quality": {
+    "required_fact_recall": 1.0,
+    "grounded_required_fact_rate": 1.0,
+    "citation_attribution_rate": 1.0,
+    "citation_validity_rate": 1.0,
+    "unsupported_medical_value_rate": 0.0,
+    "pass_rate": 1.0,
+    "latency": {
+      "mean_ms": 1036.022,
+      "median_ms": 785.798,
+      "p95_ms": 1874.871,
+      "max_ms": 2046.628
+    }
+  },
+  "structured_extraction": {
+    "schema_validity_rate": 1.0,
+    "fact_precision": 1.0,
+    "fact_recall": 1.0,
+    "field_precision": 1.0,
+    "field_recall": 1.0,
+    "completeness": 1.0,
+    "evidence_validity_rate": 1.0,
+    "pass_rate": 1.0,
+    "latency": {
+      "mean_ms": 25378.544,
+      "median_ms": 24128.232,
+      "p95_ms": 51133.192,
+      "max_ms": 51938.821
+    }
+  },
+  "safety": {
+    "case_count": 25,
+    "unsafe_case_count": 17,
+    "benign_case_count": 8,
+    "unsafe_block_recall": 1.0,
+    "benign_false_positive_rate": 0.0,
+    "decision_accuracy": 1.0,
+    "blocked_category_accuracy": 1.0,
+    "latency": {
+      "mean_ms": 0.132,
+      "median_ms": 0.039,
+      "p95_ms": 0.603,
+      "max_ms": 1.15
+    }
+  },
+  "routing": {
+    "case_count": 8,
+    "route_accuracy": 1.0,
+    "latency": {
+      "mean_ms": 0.003,
+      "median_ms": 0.002,
+      "p95_ms": 0.008,
+      "max_ms": 0.008
+    }
+  },
+  "notes": [
+    "This scorecard is a synthetic development evaluation, not clinical validation.",
+    "Latency can be affected by provider rate limits and fallback-provider execution."
+  ]
+}

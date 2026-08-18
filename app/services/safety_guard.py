@@ -13,8 +13,12 @@ class SafetyGuard:
     """
     Deterministic pre-routing medical safety check.
 
-    This runs before the LangGraph LLM classifier so unsafe requests
-    never reach document retrieval, web search, or model generation.
+    This runs before the LangGraph classifier so unsafe requests never
+    reach document retrieval, web search, or model generation.
+
+    The guard intentionally uses narrow intent-aware patterns rather
+    than broad medical keywords so benign educational and
+    document-explanation requests remain allowed.
     """
 
     DOCUMENT_TERMS = (
@@ -29,13 +33,18 @@ class SafetyGuard:
         "according to",
         "the file",
         "my records",
+        "medication list",
     )
 
     SELF_HARM_PATTERNS = (
         r"\bkill myself\b",
-        r"\bhurt myself\b",
+        r"\bhurt(?:ing)? myself\b",
+        r"\bharm(?:ing)? myself\b",
         r"\bend my life\b",
         r"\bwant to die\b",
+        r"\bdo not want to be alive\b",
+        r"\bdon't want to be alive\b",
+        r"\bno longer want to be alive\b",
         r"\bi am suicidal\b",
         r"\bi'm suicidal\b",
     )
@@ -53,18 +62,48 @@ class SafetyGuard:
         r"\b(can't breathe|cannot breathe|struggling to breathe)\b",
         r"\b(i overdosed|i have overdosed|i took too many pills)\b",
         r"\b(bleeding heavily|severe uncontrolled bleeding)\b",
-        r"\b(someone is unconscious|i am unconscious)\b",
+        (
+            r"\b(someone|somebody|person|he|she|they)"
+            r".{0,30}\bunconscious\b"
+        ),
+        (
+            r"\bunconscious\b"
+            r".{0,40}\b(not responding|unresponsive)\b"
+        ),
+        (
+            r"\b(face|facial)\b"
+            r".{0,30}\b(droop|drooping|drooped)\b"
+            r".{0,80}\b(arm|leg)\b"
+            r".{0,30}\b(weak|weakness|numb|numbness)\b"
+        ),
+        (
+            r"\b(arm|leg)\b"
+            r".{0,30}\b(weak|weakness|numb|numbness)\b"
+            r".{0,80}\b(face|facial)\b"
+            r".{0,30}\b(droop|drooping|drooped)\b"
+        ),
+        (
+            r"\bsudden(?:ly)?\b"
+            r".{0,80}\b(face|facial)\b"
+            r".{0,30}\b(droop|drooping|drooped)\b"
+        ),
     )
 
     MEDICATION_PATTERNS = (
         (
             r"\bshould i "
-            r"(start|stop|increase|decrease|change|skip|double|replace)"
+            r"(start|stop|increase|decrease|reduce|change|"
+            r"skip|double|replace|switch|adjust)"
             r"\b"
         ),
-        r"\bcan i (start|stop|combine|mix)\b",
         (
-            r"\b(change|increase|decrease|double|skip|adjust)"
+            r"\bcan i "
+            r"(start|stop|increase|decrease|reduce|change|"
+            r"combine|mix|replace|switch|adjust)"
+            r"\b"
+        ),
+        (
+            r"\b(change|increase|decrease|reduce|double|skip|adjust)"
             r" (my )?(dose|dosage|medication|medicine)\b"
         ),
         r"\bshould i take more\b",
@@ -74,10 +113,21 @@ class SafetyGuard:
     PROGNOSIS_PATTERNS = (
         r"\bwill i be (okay|fine|alright)\b",
         r"\bhow long do i have\b",
+        r"\bhow long will i live\b",
         r"\bwill (this|it) kill me\b",
         r"\bwhat are my chances\b",
         r"\bwill i recover\b",
+        r"\bwill i definitely recover\b",
+        r"\bwill i fully recover\b",
         r"\blife expectancy\b",
+        (
+            r"\bwhat will (my|the) "
+            r"(treatment |medical )?outcome be\b"
+        ),
+        (
+            r"\bwhat (is|will be) my "
+            r"(treatment |medical )?outcome\b"
+        ),
     )
 
     THIRD_PARTY_PATTERNS = (
@@ -95,10 +145,23 @@ class SafetyGuard:
         r"\bcould i have\b",
         r"\bmight i have\b",
         r"\bwhat do i have\b",
+        r"\bwhat disease do i have\b",
         r"\bwhat is wrong with me\b",
         r"\bdiagnose me\b",
         r"\bwhat condition do i have\b",
         r"\bare these symptoms (of|from)\b",
+        (
+            r"\bbased on (these|my) symptoms\b"
+            r".{0,80}"
+            r"\b(tell me|what|which)\b"
+            r".{0,40}"
+            r"\b(condition|disease|diagnosis)\b"
+        ),
+        (
+            r"\bthese symptoms\b"
+            r".{0,80}"
+            r"\bwhat (condition|disease)\b"
+        ),
     )
 
     RESPONSES = {
@@ -150,7 +213,10 @@ class SafetyGuard:
 
     @classmethod
     def _references_document(cls, query: str) -> bool:
-        return any(term in query for term in cls.DOCUMENT_TERMS)
+        return any(
+            term in query
+            for term in cls.DOCUMENT_TERMS
+        )
 
     @classmethod
     def evaluate(cls, query: str) -> SafetyDecision:
@@ -163,51 +229,80 @@ class SafetyGuard:
                 response="Please provide a question.",
             )
 
-        if cls._matches(normalized, cls.SELF_HARM_PATTERNS):
+        if cls._matches(
+            normalized,
+            cls.SELF_HARM_PATTERNS,
+        ):
             return SafetyDecision(
                 allowed=False,
                 category="self_harm",
                 response=cls.RESPONSES["self_harm"],
             )
 
-        if cls._matches(normalized, cls.EMERGENCY_PATTERNS):
+        if cls._matches(
+            normalized,
+            cls.EMERGENCY_PATTERNS,
+        ):
             return SafetyDecision(
                 allowed=False,
                 category="emergency",
                 response=cls.RESPONSES["emergency"],
             )
 
-        if cls._matches(normalized, cls.MEDICATION_PATTERNS):
+        if cls._matches(
+            normalized,
+            cls.MEDICATION_PATTERNS,
+        ):
             return SafetyDecision(
                 allowed=False,
                 category="medication_request",
-                response=cls.RESPONSES["medication_request"],
+                response=cls.RESPONSES[
+                    "medication_request"
+                ],
             )
 
-        if cls._matches(normalized, cls.PROGNOSIS_PATTERNS):
+        if cls._matches(
+            normalized,
+            cls.PROGNOSIS_PATTERNS,
+        ):
             return SafetyDecision(
                 allowed=False,
                 category="prognosis_request",
-                response=cls.RESPONSES["prognosis_request"],
+                response=cls.RESPONSES[
+                    "prognosis_request"
+                ],
             )
 
-        if cls._matches(normalized, cls.THIRD_PARTY_PATTERNS):
+        if cls._matches(
+            normalized,
+            cls.THIRD_PARTY_PATTERNS,
+        ):
             return SafetyDecision(
                 allowed=False,
                 category="third_party_request",
-                response=cls.RESPONSES["third_party_request"],
+                response=cls.RESPONSES[
+                    "third_party_request"
+                ],
             )
 
-        # A documented diagnosis may be explained. An undocumented
-        # symptom-based diagnosis request must be blocked.
+        # A diagnosis already documented in a selected record may be
+        # explained. A symptom-based request for MIRA to determine a
+        # diagnosis must be blocked.
         if (
-            cls._matches(normalized, cls.DIAGNOSIS_PATTERNS)
-            and not cls._references_document(normalized)
+            cls._matches(
+                normalized,
+                cls.DIAGNOSIS_PATTERNS,
+            )
+            and not cls._references_document(
+                normalized
+            )
         ):
             return SafetyDecision(
                 allowed=False,
                 category="diagnosis_request",
-                response=cls.RESPONSES["diagnosis_request"],
+                response=cls.RESPONSES[
+                    "diagnosis_request"
+                ],
             )
 
         return SafetyDecision(
