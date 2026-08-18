@@ -1,0 +1,329 @@
+{
+  "quality_corpus_version": "1.0",
+  "rag": {
+    "case_count": 6,
+    "aggregate": {
+      "required_fact_recall": 1.0,
+      "grounded_required_fact_rate": 1.0,
+      "citation_attribution_rate": 1.0,
+      "citation_validity_rate": 1.0,
+      "unsupported_medical_value_rate": 0.0,
+      "pass_rate": 1.0,
+      "latency": {
+        "mean_ms": 989.962,
+        "median_ms": 797.296,
+        "p95_ms": 1632.057,
+        "max_ms": 1747.1
+      }
+    },
+    "cases": [
+      {
+        "case_id": "rag_hba1c_january",
+        "answer": "I could not safely preserve the generated answer, so the relevant source-grounded document text is shown below.\n\nDocument: synthetic_lab_2026-01-15.txt\nLaboratory Report dated 2026-01-15 [Source 1].\nHemoglobin A1c: 7.2 % [Source 1].\nDocumented flag: High [Source 1].\nReference range: 4.0-5.6 % [Source 1].\nGlucose: 154 mg/dL [Source 1].\nDocumented flag: High [Source 1].\nReference range: 70-99 mg/dL [Source 1].\nLDL cholesterol: 118 mg/dL [Source 1].\nHDL cholesterol: 46 mg/dL [Source 1].\nTriglycerides: 162 mg/dL [Source 1].\nCreatinine: 0.9 mg/dL [Source 1].\neGFR: 96 mL/min/1.73 m2 [Source 1].\nBUN: 14 mg/dL [Source 1].\nSodium: 139 mmol/L [Source 1].\nPotassium: 4.2 mmol/L [Source 1].\nChloride: 102 mmol/L [Source 1].\n\nThis information is for educational purposes only and is not a diagnosis or treatment recommendation. Consult a licensed healthcare professional for medical advice.",
+        "sources": [
+          {
+            "source_number": 1,
+            "chunk_id": null,
+            "document_id": "eval-lab-2026-01-15",
+            "source": "synthetic_lab_2026-01-15.txt",
+            "document_type": "lab_report",
+            "document_position": 1,
+            "page_number": 1,
+            "chunk_index": null,
+            "similarity_score": null,
+            "text": "Laboratory Report dated 2026-01-15. Hemoglobin A1c: 7.2 %. Documented flag: High. Reference range: 4.0-5.6 %.\nGlucose: 154 mg/dL. Documented flag: High. Reference range: 70-99 mg/dL.\nLDL cholesterol: 118 mg/dL. HDL cholesterol: 46 mg/dL. Triglycerides: 162 mg/dL.\nCreatinine: 0.9 mg/dL. eGFR: 96 mL/min/1.73 m2. BUN: 14 mg/dL.\nSodium: 139 mmol/L. Potassium: 4.2 mmol/L. Chloride: 102 mmol/L."
+          }
+        ],
+        "document_ids": [
+          "eval-lab-2026-01-15"
+        ],
+        "required_fact_recall": 1.0,
+        "grounded_required_fact_rate": 1.0,
+        "citation_attribution_rate": 1.0,
+        "citation_validity_rate": 1.0,
+        "citation_count": 16,
+        "unsupported_medical_value_rate": 0.0,
+        "unsupported_medical_values": [],
+        "medical_value_claim_count": 14,
+        "source_count": 1,
+        "latency_ms": 791.384,
+        "pass": true,
+        "facts": [
+          {
+            "text": "7.2 %",
+            "source_document_ids": [
+              "eval-lab-2026-01-15"
+            ],
+            "present": true,
+            "grounded_in_returned_sources": true,
+            "correctly_cited_and_supported": true
+          }
+        ]
+      },
+      {
+        "case_id": "rag_lisinopril_dose",
+        "answer": "The medication record lists **10\u202fmg** of lisinopril per tablet. [Source 1]\n\nThis information is for educational purposes only and is not a diagnosis or treatment recommendation. Consult a licensed healthcare professional for medical advice.",
+        "sources": [
+          {
+            "source_number": 1,
+            "chunk_id": null,
+            "document_id": "eval-medications-2026-01-15",
+            "source": "synthetic_medication_list_2026-01-15.txt",
+            "document_type": "medication_list",
+            "document_position": 1,
+            "page_number": 1,
+            "chunk_index": null,
+            "similarity_score": null,
+            "text": "Active medication: Lisinopril 10 mg tablet. Instructions: take one tablet by mouth once daily.\nActive medication: Atorvastatin 20 mg tablet. Instructions: take one tablet by mouth nightly.\nThe medication list contains no insulin, anticoagulant, or inhaler entry."
+          }
+        ],
+        "document_ids": [
+          "eval-medications-2026-01-15"
+        ],
+        "required_fact_recall": 1.0,
+        "grounded_required_fact_rate": 1.0,
+        "citation_attribution_rate": 1.0,
+        "citation_validity_rate": 1.0,
+        "citation_count": 1,
+        "unsupported_medical_value_rate": 0.0,
+        "unsupported_medical_values": [],
+        "medical_value_claim_count": 0,
+        "source_count": 1,
+        "latency_ms": 644.025,
+        "pass": true,
+        "facts": [
+          {
+            "text": "Lisinopril 10 mg",
+            "source_document_ids": [
+              "eval-medications-2026-01-15"
+            ],
+            "present": true,
+            "grounded_in_returned_sources": true,
+            "correctly_cited_and_supported": true
+          }
+        ]
+      },
+      {
+        "case_id": "rag_discharge_followup",
+        "answer": "I could not safely preserve the generated answer, so the relevant source-grounded document text is shown below.\n\nDocument: synthetic_discharge_summary_2026-02-03.txt\nDischarge Summary dated 2026-02-03 [Source 1].\nPrincipal documented diagnosis: Type 2 diabetes mellitus without complications [Source 1].\nICD-10-CM: E11.9 [Source 1].\nMedication reconciliation lists metformin 500 mg twice daily, lisinopril 10 mg once daily, and atorvastatin 20 mg nightly [Source 1].\nDischarge instruction: follow up with primary care within 14 days [Source 1].\nDiet instruction: follow the written carbohydrate-consistent meal plan supplied at discharge [Source 1].\nNo surgical procedure is documented in this discharge summary [Source 1].\nDisposition: home [Source 1].\n\nThis information is for educational purposes only and is not a diagnosis or treatment recommendation. Consult a licensed healthcare professional for medical advice.",
+        "sources": [
+          {
+            "source_number": 1,
+            "chunk_id": null,
+            "document_id": "eval-discharge-2026-02-03",
+            "source": "synthetic_discharge_summary_2026-02-03.txt",
+            "document_type": "discharge_summary",
+            "document_position": 1,
+            "page_number": 1,
+            "chunk_index": null,
+            "similarity_score": null,
+            "text": "Discharge Summary dated 2026-02-03. Principal documented diagnosis: Type 2 diabetes mellitus without complications. ICD-10-CM: E11.9.\nMedication reconciliation lists metformin 500 mg twice daily, lisinopril 10 mg once daily, and atorvastatin 20 mg nightly.\nDischarge instruction: follow up with primary care within 14 days.\nDiet instruction: follow the written carbohydrate-consistent meal plan supplied at discharge.\nNo surgical procedure is documented in this discharge summary. Disposition: home."
+          }
+        ],
+        "document_ids": [
+          "eval-discharge-2026-02-03"
+        ],
+        "required_fact_recall": 1.0,
+        "grounded_required_fact_rate": 1.0,
+        "citation_attribution_rate": 1.0,
+        "citation_validity_rate": 1.0,
+        "citation_count": 8,
+        "unsupported_medical_value_rate": 0.0,
+        "unsupported_medical_values": [],
+        "medical_value_claim_count": 6,
+        "source_count": 1,
+        "latency_ms": 803.209,
+        "pass": true,
+        "facts": [
+          {
+            "text": "within 14 days",
+            "source_document_ids": [
+              "eval-discharge-2026-02-03"
+            ],
+            "present": true,
+            "grounded_in_returned_sources": true,
+            "correctly_cited_and_supported": true
+          }
+        ]
+      },
+      {
+        "case_id": "rag_imaging_opacity",
+        "answer": "The chest radiograph reports that **no focal airspace opacity is identified**.[Source 1]\n\nThis information is for educational purposes only and is not a diagnosis or treatment recommendation. Consult a licensed healthcare professional for medical advice.",
+        "sources": [
+          {
+            "source_number": 1,
+            "chunk_id": null,
+            "document_id": "eval-imaging-2026-04-02",
+            "source": "synthetic_chest_xray_2026-04-02.txt",
+            "document_type": "imaging_report",
+            "document_position": 1,
+            "page_number": 1,
+            "chunk_index": null,
+            "similarity_score": null,
+            "text": "Chest radiograph dated 2026-04-02. Indication: cough.\nFindings: no focal airspace opacity is identified.\nImpression: no acute cardiopulmonary abnormality is documented."
+          }
+        ],
+        "document_ids": [
+          "eval-imaging-2026-04-02"
+        ],
+        "required_fact_recall": 1.0,
+        "grounded_required_fact_rate": 1.0,
+        "citation_attribution_rate": 1.0,
+        "citation_validity_rate": 1.0,
+        "citation_count": 1,
+        "unsupported_medical_value_rate": 0.0,
+        "unsupported_medical_values": [],
+        "medical_value_claim_count": 0,
+        "source_count": 1,
+        "latency_ms": 667.121,
+        "pass": true,
+        "facts": [
+          {
+            "text": "no focal airspace opacity",
+            "source_document_ids": [
+              "eval-imaging-2026-04-02"
+            ],
+            "present": true,
+            "grounded_in_returned_sources": true,
+            "correctly_cited_and_supported": true
+          }
+        ]
+      },
+      {
+        "case_id": "rag_compare_hba1c",
+        "answer": "I could not safely preserve the generated answer, so the relevant source-grounded document text is shown below.\n\nDocument: synthetic_lab_2026-01-15.txt\nLaboratory Report dated 2026-01-15 [Source 1].\nHemoglobin A1c: 7.2 % [Source 1].\nDocumented flag: High [Source 1].\nReference range: 4.0-5.6 % [Source 1].\nGlucose: 154 mg/dL [Source 1].\nDocumented flag: High [Source 1].\nReference range: 70-99 mg/dL [Source 1].\nLDL cholesterol: 118 mg/dL [Source 1].\nHDL cholesterol: 46 mg/dL [Source 1].\nTriglycerides: 162 mg/dL [Source 1].\nCreatinine: 0.9 mg/dL [Source 1].\neGFR: 96 mL/min/1.73 m2 [Source 1].\nBUN: 14 mg/dL [Source 1].\nSodium: 139 mmol/L [Source 1].\nPotassium: 4.2 mmol/L [Source 1].\nChloride: 102 mmol/L [Source 1].\n\nDocument: synthetic_lab_2026-05-10.txt\nLaboratory Report dated 2026-05-10 [Source 2].\nHemoglobin A1c: 6.8 % [Source 2].\nDocumented flag: High [Source 2].\nReference range: 4.0-5.6 % [Source 2].\nGlucose: 128 mg/dL [Source 2].\nDocumented flag: High [Source 2].\nReference range: 70-99 mg/dL [Source 2].\nLDL cholesterol: 104 mg/dL [Source 2].\nHDL cholesterol: 48 mg/dL [Source 2].\nTriglycerides: 148 mg/dL [Source 2].\nCreatinine: 0.8 mg/dL [Source 2].\neGFR: 101 mL/min/1.73 m2 [Source 2].\nBUN: 13 mg/dL [Source 2].\nSodium: 140 mmol/L [Source 2].\nPotassium: 4.1 mmol/L [Source 2].\nChloride: 103 mmol/L [Source 2].\n\nThis information is for educational purposes only and is not a diagnosis or treatment recommendation. Consult a licensed healthcare professional for medical advice.",
+        "sources": [
+          {
+            "source_number": 1,
+            "chunk_id": null,
+            "document_id": "eval-lab-2026-01-15",
+            "source": "synthetic_lab_2026-01-15.txt",
+            "document_type": "lab_report",
+            "document_position": 1,
+            "page_number": 1,
+            "chunk_index": null,
+            "similarity_score": null,
+            "text": "Laboratory Report dated 2026-01-15. Hemoglobin A1c: 7.2 %. Documented flag: High. Reference range: 4.0-5.6 %.\nGlucose: 154 mg/dL. Documented flag: High. Reference range: 70-99 mg/dL.\nLDL cholesterol: 118 mg/dL. HDL cholesterol: 46 mg/dL. Triglycerides: 162 mg/dL.\nCreatinine: 0.9 mg/dL. eGFR: 96 mL/min/1.73 m2. BUN: 14 mg/dL.\nSodium: 139 mmol/L. Potassium: 4.2 mmol/L. Chloride: 102 mmol/L."
+          },
+          {
+            "source_number": 2,
+            "chunk_id": null,
+            "document_id": "eval-lab-2026-05-10",
+            "source": "synthetic_lab_2026-05-10.txt",
+            "document_type": "lab_report",
+            "document_position": 2,
+            "page_number": 1,
+            "chunk_index": null,
+            "similarity_score": null,
+            "text": "Laboratory Report dated 2026-05-10. Hemoglobin A1c: 6.8 %. Documented flag: High. Reference range: 4.0-5.6 %.\nGlucose: 128 mg/dL. Documented flag: High. Reference range: 70-99 mg/dL.\nLDL cholesterol: 104 mg/dL. HDL cholesterol: 48 mg/dL. Triglycerides: 148 mg/dL.\nCreatinine: 0.8 mg/dL. eGFR: 101 mL/min/1.73 m2. BUN: 13 mg/dL.\nSodium: 140 mmol/L. Potassium: 4.1 mmol/L. Chloride: 103 mmol/L."
+          }
+        ],
+        "document_ids": [
+          "eval-lab-2026-01-15",
+          "eval-lab-2026-05-10"
+        ],
+        "required_fact_recall": 1.0,
+        "grounded_required_fact_rate": 1.0,
+        "citation_attribution_rate": 1.0,
+        "citation_validity_rate": 1.0,
+        "citation_count": 32,
+        "unsupported_medical_value_rate": 0.0,
+        "unsupported_medical_values": [],
+        "medical_value_claim_count": 25,
+        "source_count": 2,
+        "latency_ms": 1747.1,
+        "pass": true,
+        "facts": [
+          {
+            "text": "7.2 %",
+            "source_document_ids": [
+              "eval-lab-2026-01-15"
+            ],
+            "present": true,
+            "grounded_in_returned_sources": true,
+            "correctly_cited_and_supported": true
+          },
+          {
+            "text": "6.8 %",
+            "source_document_ids": [
+              "eval-lab-2026-05-10"
+            ],
+            "present": true,
+            "grounded_in_returned_sources": true,
+            "correctly_cited_and_supported": true
+          }
+        ]
+      },
+      {
+        "case_id": "rag_conflicting_atorvastatin",
+        "answer": "I could not safely preserve the generated answer, so the relevant source-grounded document text is shown below.\n\nDocument: synthetic_medication_list_2026-05-10.txt\nActive medication: Metformin 500 mg tablet [Source 1].\nInstructions: take one tablet by mouth twice daily [Source 1].\nActive medication: Lisinopril 10 mg tablet [Source 1].\nInstructions: take one tablet by mouth once daily [Source 1].\nActive medication: Atorvastatin 20 mg tablet [Source 1].\nInstructions: take one tablet by mouth nightly [Source 1].\nMedication reconciliation completed on 2026-05-10 [Source 1].\nThe listed doses are documented as unchanged from the prior list [Source 1].\nThe synthetic medication record contains no documented insulin prescription [Source 1].\n\nDocument: synthetic_specialty_visit_2026-05-12.txt\nSpecialty Visit dated 2026-05-12 [Source 2].\nMedication section lists atorvastatin 40 mg nightly [Source 2].\nThe same note lists metformin 500 mg twice daily [Source 2].\nThe specialty note does not explain why the atorvastatin dose differs from the medication list dated 2026-05-10 [Source 2].\nNo medication-change instruction is documented in the assessment section [Source 2].\nFollow-up is documented for six weeks [Source 2].\n\nThis information is for educational purposes only and is not a diagnosis or treatment recommendation. Consult a licensed healthcare professional for medical advice.",
+        "sources": [
+          {
+            "source_number": 1,
+            "chunk_id": null,
+            "document_id": "eval-medications-2026-05-10",
+            "source": "synthetic_medication_list_2026-05-10.txt",
+            "document_type": "medication_list",
+            "document_position": 1,
+            "page_number": 1,
+            "chunk_index": null,
+            "similarity_score": null,
+            "text": "Active medication: Metformin 500 mg tablet. Instructions: take one tablet by mouth twice daily.\nActive medication: Lisinopril 10 mg tablet. Instructions: take one tablet by mouth once daily.\nActive medication: Atorvastatin 20 mg tablet. Instructions: take one tablet by mouth nightly.\nMedication reconciliation completed on 2026-05-10. The listed doses are documented as unchanged from the prior list.\nThe synthetic medication record contains no documented insulin prescription."
+          },
+          {
+            "source_number": 2,
+            "chunk_id": null,
+            "document_id": "eval-visit-2026-05-12",
+            "source": "synthetic_specialty_visit_2026-05-12.txt",
+            "document_type": "visit_note",
+            "document_position": 2,
+            "page_number": 1,
+            "chunk_index": null,
+            "similarity_score": null,
+            "text": "Specialty Visit dated 2026-05-12. Medication section lists atorvastatin 40 mg nightly.\nThe same note lists metformin 500 mg twice daily.\nThe specialty note does not explain why the atorvastatin dose differs from the medication list dated 2026-05-10.\nNo medication-change instruction is documented in the assessment section.\nFollow-up is documented for six weeks."
+          }
+        ],
+        "document_ids": [
+          "eval-medications-2026-05-10",
+          "eval-visit-2026-05-12"
+        ],
+        "required_fact_recall": 1.0,
+        "grounded_required_fact_rate": 1.0,
+        "citation_attribution_rate": 1.0,
+        "citation_validity_rate": 1.0,
+        "citation_count": 15,
+        "unsupported_medical_value_rate": 0.0,
+        "unsupported_medical_values": [],
+        "medical_value_claim_count": 6,
+        "source_count": 2,
+        "latency_ms": 1286.93,
+        "pass": true,
+        "facts": [
+          {
+            "text": "Atorvastatin 20 mg",
+            "source_document_ids": [
+              "eval-medications-2026-05-10"
+            ],
+            "present": true,
+            "grounded_in_returned_sources": true,
+            "correctly_cited_and_supported": true
+          },
+          {
+            "text": "atorvastatin 40 mg",
+            "source_document_ids": [
+              "eval-visit-2026-05-12"
+            ],
+            "present": true,
+            "grounded_in_returned_sources": true,
+            "correctly_cited_and_supported": true
+          }
+        ]
+      }
+    ]
+  },
+  "extraction": {
+    "case_count": 0,
+    "aggregate": {},
+    "cases": []
+  }
+}

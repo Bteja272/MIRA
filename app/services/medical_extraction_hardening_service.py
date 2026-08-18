@@ -87,16 +87,30 @@ class MedicalExtractionHardeningService:
         if value is None:
             return True
 
+        raw_value = value.strip().casefold()
+        raw_quote = quote.casefold()
+
+        # Check the literal source text first. This is required for
+        # medically meaningful symbolic values such as "%", because
+        # the alphanumeric normalizer intentionally removes symbols.
+        if raw_value and raw_value in raw_quote:
+            return True
+
         normalized_quote = cls._normalize(quote)
         normalized_value = cls._normalize(value)
 
-        if not normalized_value:
-            return False
-
-        if normalized_value in normalized_quote:
+        if (
+            normalized_value
+            and normalized_value in normalized_quote
+        ):
             return True
 
         for alias in aliases:
+            raw_alias = alias.strip().casefold()
+
+            if raw_alias and raw_alias in raw_quote:
+                return True
+
             normalized_alias = cls._normalize(alias)
 
             if (

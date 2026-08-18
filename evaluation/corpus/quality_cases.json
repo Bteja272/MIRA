@@ -1,0 +1,440 @@
+{
+  "version": "1.0",
+  "description": "Synthetic deterministic RAG and structured-extraction quality cases for MIRA. Contains no real patient data.",
+  "rag_cases": [
+    {
+      "case_id": "rag_hba1c_january",
+      "query": "What HbA1c value is documented in this laboratory report?",
+      "document_ids": [
+        "eval-lab-2026-01-15"
+      ],
+      "required_facts": [
+        {
+          "text": "7.2 %",
+          "aliases": [
+            "7.2%",
+            "7.2 %"
+          ],
+          "source_document_ids": [
+            "eval-lab-2026-01-15"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "rag_lisinopril_dose",
+      "query": "What dose of lisinopril is listed in this medication record?",
+      "document_ids": [
+        "eval-medications-2026-01-15"
+      ],
+      "required_facts": [
+        {
+          "text": "Lisinopril 10 mg",
+          "aliases": [
+            "Lisinopril 10 mg",
+            "lisinopril 10 mg",
+            "10 mg"
+          ],
+          "source_document_ids": [
+            "eval-medications-2026-01-15"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "rag_discharge_followup",
+      "query": "When does the discharge summary say to follow up with primary care?",
+      "document_ids": [
+        "eval-discharge-2026-02-03"
+      ],
+      "required_facts": [
+        {
+          "text": "within 14 days",
+          "aliases": [
+            "within 14 days",
+            "14 days"
+          ],
+          "source_document_ids": [
+            "eval-discharge-2026-02-03"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "rag_imaging_opacity",
+      "query": "What does the chest radiograph say about focal airspace opacity?",
+      "document_ids": [
+        "eval-imaging-2026-04-02"
+      ],
+      "required_facts": [
+        {
+          "text": "no focal airspace opacity",
+          "aliases": [
+            "no focal airspace opacity",
+            "no focal airspace opacity is identified"
+          ],
+          "source_document_ids": [
+            "eval-imaging-2026-04-02"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "rag_compare_hba1c",
+      "query": "Compare the documented HbA1c values in these two laboratory reports.",
+      "document_ids": [
+        "eval-lab-2026-01-15",
+        "eval-lab-2026-05-10"
+      ],
+      "required_facts": [
+        {
+          "text": "7.2 %",
+          "aliases": [
+            "7.2%",
+            "7.2 %"
+          ],
+          "source_document_ids": [
+            "eval-lab-2026-01-15"
+          ]
+        },
+        {
+          "text": "6.8 %",
+          "aliases": [
+            "6.8%",
+            "6.8 %"
+          ],
+          "source_document_ids": [
+            "eval-lab-2026-05-10"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "rag_conflicting_atorvastatin",
+      "query": "Compare the atorvastatin doses documented in these two records. Report only what each record states.",
+      "document_ids": [
+        "eval-medications-2026-05-10",
+        "eval-visit-2026-05-12"
+      ],
+      "required_facts": [
+        {
+          "text": "Atorvastatin 20 mg",
+          "aliases": [
+            "Atorvastatin 20 mg",
+            "atorvastatin 20 mg"
+          ],
+          "source_document_ids": [
+            "eval-medications-2026-05-10"
+          ]
+        },
+        {
+          "text": "atorvastatin 40 mg",
+          "aliases": [
+            "Atorvastatin 40 mg",
+            "atorvastatin 40 mg"
+          ],
+          "source_document_ids": [
+            "eval-visit-2026-05-12"
+          ]
+        }
+      ]
+    }
+  ],
+  "extraction_cases": [
+    {
+      "case_id": "extract_lab_january",
+      "document_id": "eval-lab-2026-01-15",
+      "evaluated_categories": [
+        "lab_results"
+      ],
+      "expected": {
+        "lab_results": [
+          {
+            "test_name": [
+              "Hemoglobin A1c"
+            ],
+            "raw_value": [
+              "7.2",
+              "7.2 %"
+            ],
+            "unit": [
+              "%"
+            ],
+            "reference_range": [
+              "4.0-5.6 %"
+            ],
+            "flag": [
+              "high"
+            ]
+          },
+          {
+            "test_name": [
+              "Glucose"
+            ],
+            "raw_value": [
+              "154"
+            ],
+            "unit": [
+              "mg/dL"
+            ],
+            "reference_range": [
+              "70-99 mg/dL"
+            ],
+            "flag": [
+              "high"
+            ]
+          },
+          {
+            "test_name": [
+              "LDL cholesterol"
+            ],
+            "raw_value": [
+              "118"
+            ],
+            "unit": [
+              "mg/dL"
+            ]
+          },
+          {
+            "test_name": [
+              "HDL cholesterol"
+            ],
+            "raw_value": [
+              "46"
+            ],
+            "unit": [
+              "mg/dL"
+            ]
+          },
+          {
+            "test_name": [
+              "Triglycerides"
+            ],
+            "raw_value": [
+              "162"
+            ],
+            "unit": [
+              "mg/dL"
+            ]
+          },
+          {
+            "test_name": [
+              "Creatinine"
+            ],
+            "raw_value": [
+              "0.9"
+            ],
+            "unit": [
+              "mg/dL"
+            ]
+          },
+          {
+            "test_name": [
+              "eGFR"
+            ],
+            "raw_value": [
+              "96"
+            ],
+            "unit": [
+              "mL/min/1.73 m2"
+            ]
+          },
+          {
+            "test_name": [
+              "BUN"
+            ],
+            "raw_value": [
+              "14"
+            ],
+            "unit": [
+              "mg/dL"
+            ]
+          },
+          {
+            "test_name": [
+              "Sodium"
+            ],
+            "raw_value": [
+              "139"
+            ],
+            "unit": [
+              "mmol/L"
+            ]
+          },
+          {
+            "test_name": [
+              "Potassium"
+            ],
+            "raw_value": [
+              "4.2"
+            ],
+            "unit": [
+              "mmol/L"
+            ]
+          },
+          {
+            "test_name": [
+              "Chloride"
+            ],
+            "raw_value": [
+              "102"
+            ],
+            "unit": [
+              "mmol/L"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "extract_medications_january",
+      "document_id": "eval-medications-2026-01-15",
+      "evaluated_categories": [
+        "medications"
+      ],
+      "expected": {
+        "medications": [
+          {
+            "name": [
+              "Metformin"
+            ],
+            "dose": [
+              "500 mg"
+            ],
+            "route": [
+              "by mouth",
+              "oral"
+            ],
+            "frequency": [
+              "twice daily"
+            ]
+          },
+          {
+            "name": [
+              "Lisinopril"
+            ],
+            "dose": [
+              "10 mg"
+            ],
+            "route": [
+              "by mouth",
+              "oral"
+            ],
+            "frequency": [
+              "once daily",
+              "daily"
+            ]
+          },
+          {
+            "name": [
+              "Atorvastatin"
+            ],
+            "dose": [
+              "20 mg"
+            ],
+            "route": [
+              "by mouth",
+              "oral"
+            ],
+            "frequency": [
+              "nightly"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "extract_discharge",
+      "document_id": "eval-discharge-2026-02-03",
+      "evaluated_categories": [
+        "diagnoses",
+        "medications"
+      ],
+      "expected": {
+        "diagnoses": [
+          {
+            "name": [
+              "Type 2 diabetes mellitus without complications"
+            ],
+            "code": [
+              "E11.9"
+            ],
+            "code_system": [
+              "ICD-10-CM",
+              "ICD-10"
+            ]
+          }
+        ],
+        "medications": [
+          {
+            "name": [
+              "metformin"
+            ],
+            "dose": [
+              "500 mg"
+            ],
+            "frequency": [
+              "twice daily"
+            ]
+          },
+          {
+            "name": [
+              "lisinopril"
+            ],
+            "dose": [
+              "10 mg"
+            ],
+            "frequency": [
+              "once daily",
+              "daily"
+            ]
+          },
+          {
+            "name": [
+              "atorvastatin"
+            ],
+            "dose": [
+              "20 mg"
+            ],
+            "frequency": [
+              "nightly"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "extract_specialty_visit",
+      "document_id": "eval-visit-2026-05-12",
+      "evaluated_categories": [
+        "medications"
+      ],
+      "expected": {
+        "medications": [
+          {
+            "name": [
+              "atorvastatin"
+            ],
+            "dose": [
+              "40 mg"
+            ],
+            "frequency": [
+              "nightly"
+            ]
+          },
+          {
+            "name": [
+              "metformin"
+            ],
+            "dose": [
+              "500 mg"
+            ],
+            "frequency": [
+              "twice daily"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

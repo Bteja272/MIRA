@@ -2,19 +2,27 @@ from typing import Any
 
 
 class PromptService:
+    CITATION_CONTRACT = """
+Citation requirements:
+
+- Every sentence or bullet containing a fact from the document context
+  must include at least one supporting citation in the exact form
+  [Source N].
+- Put the citation immediately after the fact it supports, before moving
+  to another fact.
+- Use only source numbers that appear in DOCUMENT CONTEXT.
+- Do not invent source numbers, use bare numeric citations such as [1],
+  or omit citations for document-derived facts.
+- When one sentence contains facts from different documents, cite each
+  fact with its own supporting source label.
+- For comparisons, cite each compared value individually.
+""".strip()
+
     @staticmethod
     def _build_source_block(
         document: Any,
         source_number: int,
     ) -> str:
-        """
-        Convert one retrieved LangChain document into a clearly
-        identified source block for the LLM.
-
-        Only prompt-useful metadata is included. Internal document
-        IDs, similarity scores, and chunk IDs are intentionally kept
-        out of the LLM prompt.
-        """
         metadata = getattr(
             document,
             "metadata",
@@ -25,24 +33,19 @@ class PromptService:
             "source",
             "Unknown source",
         )
-
         document_type = metadata.get(
             "document_type",
             "unknown",
         )
-
         document_position = metadata.get(
             "document_position"
         )
-
         page_number = metadata.get(
             "page_number"
         )
-
         page_numbers = metadata.get(
             "page_numbers"
         )
-
         context_truncated = bool(
             metadata.get(
                 "context_truncated",
@@ -65,7 +68,6 @@ class PromptService:
             details.append(
                 f"Page: {page_number}"
             )
-
         elif isinstance(
             page_numbers,
             list,
@@ -84,13 +86,9 @@ class PromptService:
                 "to the configured context budget"
             )
 
-        metadata_text = " | ".join(
-            details
-        )
-
         return (
             f"[Source {source_number}]\n"
-            f"{metadata_text}\n"
+            f"{' | '.join(details)}\n"
             f"{document.page_content.strip()}"
         )
 
@@ -98,9 +96,6 @@ class PromptService:
     def _task_instruction(
         task: str,
     ) -> str:
-        """
-        Return instructions for the requested RAG task.
-        """
         if task == "comparison":
             return """
 Compare the selected medical documents using only the supplied context.
@@ -118,10 +113,9 @@ Required structure:
    or a treatment recommendation.
 7. When information is absent from one document, say "not documented"
    rather than guessing.
-8. Cite each fact immediately using the source label that supports it.
-9. Preserve every number, unit, reference range, medication, dosage,
+8. Preserve every number, unit, reference range, medication, dosage,
    documented flag, and date exactly.
-10. Do not combine facts from different patients or documents.
+9. Do not combine facts from different patients or documents.
 """.strip()
 
         if task == "multi_document_overview":
@@ -141,8 +135,7 @@ Required structure:
 6. Do not infer a diagnosis, prognosis, treatment recommendation, or
    causal relationship.
 7. When information is absent, say "not documented."
-8. Cite each fact immediately using the source label that supports it.
-9. Preserve every number, unit, reference range, medication, dosage,
+8. Preserve every number, unit, reference range, medication, dosage,
    documented flag, and date exactly.
 """.strip()
 
@@ -160,7 +153,6 @@ General instructions:
   instructions, and numerical values exactly as documented.
 - Do not state that the context is incomplete merely because the
   document is divided into multiple chunks.
-- Cite facts immediately using the supporting source label.
 - Do not place empty source markers at the end.
 
 For laboratory reports:
@@ -181,7 +173,6 @@ Answer the user's question using only the supplied document context.
 
 Instructions:
 
-- Cite each fact immediately using the source label that supports it.
 - Preserve numerical values, units, dates, medication names, dosages,
   reference ranges, and documented flags exactly.
 - Do not invent missing information.
@@ -191,16 +182,19 @@ Instructions:
   documented in the supplied context.
 """.strip()
 
+
     @classmethod
-    def build_prompt(
+    def build_repair_prompt(
         cls,
+        *,
         query: str,
         documents: list[Any],
-        task: str = "qa",
+        answer: str,
+        validation_issues: list[str],
     ) -> str:
         """
-        Build the final grounded prompt for single- or multi-document
-        retrieval.
+        Build a constrained repair prompt from the same numbered source
+        context used by the original answer.
         """
         source_blocks = [
             cls._build_source_block(
@@ -217,15 +211,54 @@ Instructions:
             source_blocks
         )
 
-        task_instruction = (
-            cls._task_instruction(
-                task
+        issues = "\n".join(
+            f"- {issue}"
+            for issue in validation_issues
+        )
+
+        return f"""
+DOCUMENT CONTEXT
+{context}
+
+ORIGINAL USER QUESTION
+{query}
+
+VALIDATION ISSUES
+{issues}
+
+ANSWER TO REPAIR
+{answer}
+
+REPAIRED ANSWER
+""".strip()
+
+    @classmethod
+    def build_prompt(
+        cls,
+        query: str,
+        documents: list[Any],
+        task: str = "qa",
+    ) -> str:
+        source_blocks = [
+            cls._build_source_block(
+                document=document,
+                source_number=index,
             )
+            for index, document in enumerate(
+                documents,
+                start=1,
+            )
+        ]
+
+        context = "\n\n".join(
+            source_blocks
         )
 
         return f"""
 TASK
-{task_instruction}
+{cls._task_instruction(task)}
+
+{cls.CITATION_CONTRACT}
 
 DOCUMENT CONTEXT
 {context}

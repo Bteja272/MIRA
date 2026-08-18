@@ -92,6 +92,24 @@ class DeterministicMedicalExtractionService:
         re.IGNORECASE,
     )
 
+    LAB_UNIT_PATTERN = re.compile(
+        r"^(?P<unit>"
+        r"%"
+        r"|mg/dL"
+        r"|g/dL"
+        r"|mg/L"
+        r"|ng/mL"
+        r"|pg/mL"
+        r"|mmol/L"
+        r"|mEq/L"
+        r"|U/L"
+        r"|IU/L"
+        r"|mL/min/1\.73\s*m2"
+        r"|10\^?[369]/(?:uL|µL|mL|L)"
+        r")(?=\s|[.,;:)\]]|$)",
+        re.IGNORECASE,
+    )
+
     MEDICATION_SECTION_PATTERN = re.compile(
         r"^\s*(?:"
         r"medications?"
@@ -107,6 +125,14 @@ class DeterministicMedicalExtractionService:
         r"|current\s+medication"
         r"|discharge\s+medication"
         r")\s*[:\-]\s*(?P<body>.+?)\s*$",
+        re.IGNORECASE,
+    )
+
+    MEDICATION_RECONCILIATION_PATTERN = re.compile(
+        r"^\s*(?:"
+        r"medication\s+reconciliation\s+(?:lists|includes)"
+        r"|medications?\s+(?:list|lists|include|includes)"
+        r")\s*[:\-]?\s*(?P<body>.+?)\s*$",
         re.IGNORECASE,
     )
 
@@ -134,6 +160,7 @@ class DeterministicMedicalExtractionService:
         "creatinine",
         "crp",
         "d dimer",
+        "egfr",
         "ferritin",
         "glucose",
         "hba1c",
@@ -576,6 +603,81 @@ class DeterministicMedicalExtractionService:
             return None
 
     @classmethod
+    def _is_known_lab_name(
+        cls,
+        value: str,
+    ) -> bool:
+        normalized = cls._normalize_text(value)
+
+        if normalized in cls.NON_LAB_LABELS:
+            return False
+
+        return any(
+            keyword in normalized
+            for keyword in cls.LAB_NAME_KEYWORDS
+        )
+
+    @classmethod
+    def _lab_segments(
+        cls,
+        line: str,
+    ) -> list[str]:
+        """
+        Split one physical line into independent lab-result segments.
+
+        Medical reports commonly place several results on one line.
+        Only labels that look like known lab names start a new segment,
+        so labels such as "Documented flag" and "Reference range"
+        remain attached to the preceding lab result.
+        """
+        starts: list[int] = []
+
+        for match in re.finditer(r"[:=]", line):
+            delimiter_index = match.start()
+            prefix = line[:delimiter_index]
+
+            boundary = max(
+                prefix.rfind(". "),
+                prefix.rfind("; "),
+                prefix.rfind("\n"),
+            )
+
+            label_start = (
+                boundary + 2
+                if boundary >= 0
+                else 0
+            )
+
+            label = line[
+                label_start:delimiter_index
+            ].strip(" \t-*•")
+
+            if cls._is_known_lab_name(label):
+                starts.append(label_start)
+
+        if not starts:
+            return [line]
+
+        unique_starts = sorted(set(starts))
+        segments: list[str] = []
+
+        for index, segment_start in enumerate(unique_starts):
+            segment_end = (
+                unique_starts[index + 1]
+                if index + 1 < len(unique_starts)
+                else len(line)
+            )
+
+            segment = line[
+                segment_start:segment_end
+            ].strip(" \t.;")
+
+            if segment:
+                segments.append(segment)
+
+        return segments or [line]
+
+    @classmethod
     def _parse_lab_line(
         cls,
         document: dict[str, Any],
@@ -597,80 +699,97 @@ class DeterministicMedicalExtractionService:
         test_name = parts[0].strip(
             " \t-*•"
         )
-
         result_text = parts[1].strip()
 
         if not test_name or not result_text:
             return None
 
-        normalized_name = (
-            cls._normalize_text(
-                test_name
-            )
-        )
+        # If a report heading precedes the lab label on the same line,
+        # keep only the final sentence fragment containing the lab name.
+        for separator in (". ", "; "):
+            if separator in test_name:
+                test_name = test_name.rsplit(
+                    separator,
+                    maxsplit=1,
+                )[-1].strip()
 
-        if normalized_name in cls.NON_LAB_LABELS:
+        if not cls._is_known_lab_name(test_name):
             return None
 
-        value_match = (
-            cls.LAB_VALUE_PATTERN
-            .match(result_text)
+        value_match = cls.LAB_VALUE_PATTERN.match(
+            result_text
         )
 
         if value_match is None:
             return None
 
-        raw_value = (
-            value_match.group(
-                "value"
+        raw_value = value_match.group(
+            "value"
+        ).strip()
+
+        remaining_text = result_text[
+            value_match.end():
+        ].strip()
+
+        unit = None
+        unit_match = cls.LAB_UNIT_PATTERN.match(
+            remaining_text
+        )
+
+        if unit_match is not None:
+            unit = unit_match.group(
+                "unit"
             ).strip()
-        )
+            remaining_after_unit = remaining_text[
+                unit_match.end():
+            ].lstrip(" \t,;")
+        else:
+            remaining_after_unit = remaining_text
 
-        remaining_text = (
-            result_text[
-                value_match.end():
-            ]
-            .strip()
-        )
-
-        range_match = (
-            cls.REFERENCE_RANGE_PATTERN
-            .search(remaining_text)
+        range_match = cls.REFERENCE_RANGE_PATTERN.search(
+            remaining_after_unit
         )
 
         if range_match is None:
-            range_match = (
-                cls.PARENTHETICAL_RANGE_PATTERN
-                .search(remaining_text)
+            range_match = cls.PARENTHETICAL_RANGE_PATTERN.search(
+                remaining_after_unit
             )
 
         reference_range = None
 
         if range_match is not None:
-            reference_range = (
-                range_match.group(
-                    "range"
-                ).strip()
+            reference_range = range_match.group(
+                "range"
+            ).strip()
+
+            range_tail = remaining_after_unit[
+                range_match.end():
+            ]
+
+            range_unit_match = cls.LAB_UNIT_PATTERN.match(
+                range_tail.lstrip()
             )
 
-        flag_search_text = (
-            remaining_text
-        )
+            if range_unit_match is not None:
+                reference_range = (
+                    reference_range
+                    + " "
+                    + range_unit_match.group(
+                        "unit"
+                    ).strip()
+                )
+
+        flag_search_text = remaining_after_unit
 
         if range_match is not None:
             flag_search_text = (
-                remaining_text[
-                    :range_match.start()
-                ]
+                remaining_after_unit[:range_match.start()]
                 + " "
-                + remaining_text[
-                    range_match.end():
-                ]
+                + remaining_after_unit[range_match.end():]
             )
 
-        flag_match = (
-            cls.LAB_FLAG_PATTERN
-            .search(flag_search_text)
+        flag_match = cls.LAB_FLAG_PATTERN.search(
+            flag_search_text
         )
 
         raw_flag = (
@@ -679,81 +798,21 @@ class DeterministicMedicalExtractionService:
             else None
         )
 
-        cut_positions: list[int] = []
-
-        if range_match is not None:
-            cut_positions.append(
-                range_match.start()
-            )
-
-        if flag_match is not None:
-            cut_positions.append(
-                flag_match.start()
-            )
-
-        unit_end = (
-            min(cut_positions)
-            if cut_positions
-            else len(remaining_text)
-        )
-
-        unit_candidate = (
-            remaining_text[:unit_end]
-            .strip(" \t,;()[]-")
-        )
-
-        unit = None
-
-        if (
-            unit_candidate
-            and len(unit_candidate) <= 50
-            and not re.search(
-                r"\b(?:reference|range|high|low|"
-                r"normal|abnormal|critical)\b",
-                unit_candidate,
-                re.IGNORECASE,
-            )
-        ):
-            unit = unit_candidate
-
-        has_known_lab_name = any(
-            keyword in normalized_name
-            for keyword
-            in cls.LAB_NAME_KEYWORDS
-        )
-
-        has_structured_lab_evidence = any(
-            (
-                unit,
-                reference_range,
-                raw_flag,
-                has_known_lab_name,
-            )
-        )
-
-        if not has_structured_lab_evidence:
-            return None
-
         return LabResultInformation(
             test_name=test_name,
             raw_value=raw_value,
-            numeric_value=(
-                cls._numeric_value(
-                    raw_value
-                )
+            numeric_value=cls._numeric_value(
+                raw_value
             ),
             unit=unit,
-            reference_range=(
-                reference_range
-            ),
+            reference_range=reference_range,
             flag=cls._map_lab_flag(
                 raw_flag=raw_flag,
                 raw_value=raw_value,
             ),
             confidence=0.98,
             extraction_method=(
-                ExtractionMethod
-                .DETERMINISTIC
+                ExtractionMethod.DETERMINISTIC
             ),
             sources=[
                 cls._build_source(
@@ -770,10 +829,7 @@ class DeterministicMedicalExtractionService:
         document: dict[str, Any],
         chunks: list[dict[str, Any]],
     ) -> list[LabResultInformation]:
-        results: list[
-            LabResultInformation
-        ] = []
-
+        results: list[LabResultInformation] = []
         seen_keys: set[
             tuple[str, str, str]
         ] = set()
@@ -787,32 +843,35 @@ class DeterministicMedicalExtractionService:
                 if not cleaned_line:
                     continue
 
-                result = cls._parse_lab_line(
-                    document=document,
-                    chunk=chunk,
-                    line=cleaned_line,
-                )
+                for segment in cls._lab_segments(
+                    cleaned_line
+                ):
+                    result = cls._parse_lab_line(
+                        document=document,
+                        chunk=chunk,
+                        line=segment,
+                    )
 
-                if result is None:
-                    continue
+                    if result is None:
+                        continue
 
-                key = (
-                    cls._normalize_text(
-                        result.test_name
-                    ),
-                    cls._normalize_text(
-                        result.raw_value
-                    ),
-                    cls._normalize_text(
-                        result.unit or ""
-                    ),
-                )
+                    key = (
+                        cls._normalize_text(
+                            result.test_name
+                        ),
+                        cls._normalize_text(
+                            result.raw_value
+                        ),
+                        cls._normalize_text(
+                            result.unit or ""
+                        ),
+                    )
 
-                if key in seen_keys:
-                    continue
+                    if key in seen_keys:
+                        continue
 
-                seen_keys.add(key)
-                results.append(result)
+                    seen_keys.add(key)
+                    results.append(result)
 
         return results
 
@@ -932,23 +991,72 @@ class DeterministicMedicalExtractionService:
         )
 
     @classmethod
+    def _split_medication_list_body(
+        cls,
+        body: str,
+    ) -> list[str]:
+        cleaned = body.strip().rstrip(".")
+
+        parts = re.split(
+            r"\s*,\s*(?:and\s+)?",
+            cleaned,
+        )
+
+        if len(parts) == 1:
+            parts = re.split(
+                r"\s+and\s+(?=[A-Za-z][A-Za-z0-9 .()/-]{0,80}\s+\d)",
+                cleaned,
+                flags=re.IGNORECASE,
+            )
+
+        return [
+            part.strip(" \t,;.")
+            for part in parts
+            if part.strip(" \t,;.")
+        ]
+
+    @classmethod
     def _extract_medications(
         cls,
         document: dict[str, Any],
         chunks: list[dict[str, Any]],
     ) -> list[MedicationInformation]:
-        medications: list[
-            MedicationInformation
-        ] = []
+        medications: list[MedicationInformation] = []
+        seen_keys: set[tuple[str, str]] = set()
 
-        seen_keys: set[
-            tuple[str, str]
-        ] = set()
+        def add_medication(
+            *,
+            chunk: dict[str, Any],
+            body: str,
+            source_line: str,
+        ) -> None:
+            medication = cls._parse_medication_body(
+                document=document,
+                chunk=chunk,
+                body=body,
+                source_line=source_line,
+            )
+
+            if medication is None:
+                return
+
+            key = (
+                cls._normalize_text(
+                    medication.name
+                ),
+                cls._normalize_text(
+                    medication.dose or ""
+                ),
+            )
+
+            if key in seen_keys:
+                return
+
+            seen_keys.add(key)
+            medications.append(medication)
 
         for chunk in chunks:
-            inside_medication_section = (
-                False
-            )
+            inside_medication_section = False
 
             for line in str(
                 chunk.get("text") or ""
@@ -956,82 +1064,69 @@ class DeterministicMedicalExtractionService:
                 cleaned_line = line.strip()
 
                 if not cleaned_line:
-                    inside_medication_section = (
-                        False
-                    )
+                    inside_medication_section = False
                     continue
 
-                if (
-                    cls.MEDICATION_SECTION_PATTERN
-                    .match(cleaned_line)
+                if cls.MEDICATION_SECTION_PATTERN.match(
+                    cleaned_line
                 ):
-                    inside_medication_section = (
-                        True
-                    )
+                    inside_medication_section = True
                     continue
 
-                inline_match = (
-                    cls.MEDICATION_INLINE_PATTERN
-                    .match(cleaned_line)
+                reconciliation_match = (
+                    cls.MEDICATION_RECONCILIATION_PATTERN.match(
+                        cleaned_line
+                    )
+                )
+
+                if reconciliation_match:
+                    for medication_body in (
+                        cls._split_medication_list_body(
+                            reconciliation_match.group(
+                                "body"
+                            )
+                        )
+                    ):
+                        add_medication(
+                            chunk=chunk,
+                            body=medication_body,
+                            source_line=cleaned_line,
+                        )
+
+                    continue
+
+                inline_match = cls.MEDICATION_INLINE_PATTERN.match(
+                    cleaned_line
                 )
 
                 if inline_match:
-                    medication_body = (
-                        inline_match.group(
-                            "body"
-                        )
-                    )
-
-                elif inside_medication_section:
-                    # Stop when another heading begins.
-                    if (
-                        cleaned_line.endswith(":")
-                        and not re.search(
-                            r"\d",
-                            cleaned_line,
-                        )
-                    ):
-                        inside_medication_section = (
-                            False
-                        )
-                        continue
-
-                    medication_body = (
-                        cleaned_line
-                    )
-
-                else:
-                    continue
-
-                medication = (
-                    cls._parse_medication_body(
-                        document=document,
+                    add_medication(
                         chunk=chunk,
-                        body=medication_body,
-                        source_line=(
-                            cleaned_line
+                        body=inline_match.group(
+                            "body"
                         ),
+                        source_line=cleaned_line,
                     )
-                )
-
-                if medication is None:
                     continue
 
-                key = (
-                    cls._normalize_text(
-                        medication.name
-                    ),
-                    cls._normalize_text(
-                        medication.dose or ""
-                    ),
-                )
-
-                if key in seen_keys:
+                if not inside_medication_section:
                     continue
 
-                seen_keys.add(key)
-                medications.append(
-                    medication
+                # Stop when another heading begins.
+                if (
+                    cleaned_line.endswith(":")
+                    and not re.search(
+                        r"\d",
+                        cleaned_line,
+                    )
+                ):
+                    inside_medication_section = False
+                    continue
+
+                add_medication(
+                    chunk=chunk,
+                    body=cleaned_line,
+                    source_line=cleaned_line,
                 )
 
         return medications

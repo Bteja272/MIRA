@@ -115,6 +115,9 @@ class RAGService:
             "prompt_build_ms": 0.0,
             "llm_generation_ms": 0.0,
             "response_validation_ms": 0.0,
+            "response_repair_ms": 0.0,
+            "response_revalidation_ms": 0.0,
+            "response_fallback_ms": 0.0,
             "disclaimer_ms": 0.0,
             "source_build_ms": 0.0,
             "total_ms": 0.0,
@@ -534,6 +537,109 @@ class RAGService:
             ),
         }
 
+
+    @classmethod
+    def _build_source_grounded_fallback(
+        cls,
+        documents: list,
+    ) -> str:
+        """
+        Build a deterministic extractive fallback from the exact
+        optimized source context supplied to the LLM.
+
+        Every retained source sentence is copied verbatim and receives
+        the source label for the document it came from. No new medical
+        facts, calculations, interpretations, or source labels are
+        generated.
+        """
+        sections: list[str] = []
+
+        for source_number, document in enumerate(
+            documents,
+            start=1,
+        ):
+            metadata = getattr(
+                document,
+                "metadata",
+                {},
+            ) or {}
+
+            source_name = str(
+                metadata.get(
+                    "source",
+                    f"Source {source_number}",
+                )
+            )
+
+            cited_sentences: list[str] = []
+
+            for raw_line in str(
+                document.page_content or ""
+            ).splitlines():
+                line = raw_line.strip()
+
+                if not line:
+                    continue
+
+                # Keep sentence boundaries so each factual sentence has
+                # its own deterministic citation.
+                sentence_parts = re.split(
+                    r"(?<=[.!?])\s+",
+                    line,
+                )
+
+                for sentence in sentence_parts:
+                    cleaned = sentence.strip()
+
+                    if not cleaned:
+                        continue
+
+                    terminal = ""
+                    sentence_body = cleaned
+
+                    if cleaned[-1:] in {
+                        ".",
+                        "!",
+                        "?",
+                    }:
+                        terminal = cleaned[-1]
+                        sentence_body = (
+                            cleaned[:-1]
+                            .rstrip()
+                        )
+
+                    cited_sentences.append(
+                        f"{sentence_body} "
+                        f"[Source {source_number}]"
+                        f"{terminal}"
+                    )
+
+            if not cited_sentences:
+                continue
+
+            sections.append(
+                "\n".join(
+                    [
+                        f"Document: {source_name}",
+                        *cited_sentences,
+                    ]
+                )
+            )
+
+        if not sections:
+            return (
+                "I could not find source-grounded information in the "
+                "selected document context."
+            )
+
+        return (
+            "I could not safely preserve the generated answer, so the "
+            "relevant source-grounded document text is shown below.\n\n"
+            + "\n\n".join(
+                sections
+            )
+        )
+
     @classmethod
     def query(
         cls,
@@ -857,6 +963,50 @@ class RAGService:
             ],
         )
 
+        # Build source dictionaries before post-generation validation so
+        # citation labels can be checked against the exact numbered
+        # prompt context.
+        source_started_at = (
+            time.perf_counter()
+        )
+        sources = (
+            LangChainRetrieverService
+            .to_source_dicts(
+                prompt_documents
+            )
+        )
+
+        # Ensure validation always has the same source text that the LLM
+        # saw even if the public source serializer omits chunk text.
+        for index, (
+            source,
+            document,
+        ) in enumerate(
+            zip(
+                sources,
+                prompt_documents,
+                strict=False,
+            ),
+            start=1,
+        ):
+            source.setdefault(
+                "source_number",
+                index,
+            )
+
+            if not source.get(
+                "text"
+            ):
+                source["text"] = (
+                    document.page_content
+                )
+
+        timings["source_build_ms"] = (
+            cls._elapsed_ms(
+                source_started_at
+            )
+        )
+
         llm_started_at = (
             time.perf_counter()
         )
@@ -884,11 +1034,98 @@ class RAGService:
                 answer
             )
         )
+        validation = (
+            ResponseValidationService
+            .validate_grounded_answer(
+                answer=answer,
+                sources=sources,
+            )
+        )
         timings[
             "response_validation_ms"
         ] = cls._elapsed_ms(
             validation_started_at
         )
+
+        if not validation.is_valid:
+            logger.warning(
+                "rag_response_validation_failed "
+                "task=%s issues=%s "
+                "unsupported_values=%s "
+                "invalid_citations=%s "
+                "uncited_values=%s "
+                "misattributed_values=%s",
+                task,
+                validation.issues,
+                validation
+                .unsupported_medical_values,
+                validation
+                .invalid_citation_numbers,
+                validation
+                .uncited_medical_values,
+                validation
+                .misattributed_medical_values,
+            )
+
+            fallback_started_at = (
+                time.perf_counter()
+            )
+
+            fallback_answer = (
+                cls
+                ._build_source_grounded_fallback(
+                    prompt_documents
+                )
+            )
+
+            fallback_answer = (
+                ResponseValidationService
+                .sanitize_document_answer(
+                    fallback_answer
+                )
+            )
+
+            fallback_validation = (
+                ResponseValidationService
+                .validate_grounded_answer(
+                    answer=fallback_answer,
+                    sources=sources,
+                )
+            )
+
+            timings[
+                "response_fallback_ms"
+            ] = cls._elapsed_ms(
+                fallback_started_at
+            )
+
+            if fallback_validation.is_valid:
+                answer = fallback_answer
+            else:
+                logger.error(
+                    "rag_response_fallback_failed "
+                    "task=%s issues=%s "
+                    "unsupported_values=%s "
+                    "invalid_citations=%s "
+                    "uncited_values=%s "
+                    "misattributed_values=%s",
+                    task,
+                    fallback_validation.issues,
+                    fallback_validation
+                    .unsupported_medical_values,
+                    fallback_validation
+                    .invalid_citation_numbers,
+                    fallback_validation
+                    .uncited_medical_values,
+                    fallback_validation
+                    .misattributed_medical_values,
+                )
+
+                answer = (
+                    "I could not produce a fully source-validated "
+                    "answer from the selected document context. "
+                    "Please review the source material."
+                )
 
         disclaimer_started_at = (
             time.perf_counter()
@@ -905,20 +1142,6 @@ class RAGService:
             )
         )
 
-        source_started_at = (
-            time.perf_counter()
-        )
-        sources = (
-            LangChainRetrieverService
-            .to_source_dicts(
-                prompt_documents
-            )
-        )
-        timings["source_build_ms"] = (
-            cls._elapsed_ms(
-                source_started_at
-            )
-        )
         timings["total_ms"] = (
             cls._elapsed_ms(
                 started_at

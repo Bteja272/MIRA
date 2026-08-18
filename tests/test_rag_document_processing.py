@@ -103,10 +103,21 @@ class RAGDocumentProcessingTests(
             "merged prompt"
         )
 
-        mock_generate_response.return_value = (
-            "Result is above reference range.\n"
-            "Documented flag: High."
-        )
+        # First generation contains unsupported interpretation and
+        # omits the required source citation.
+        #
+        # The second generation represents the constrained repair
+        # pass introduced by grounded-response validation.
+        mock_generate_response.side_effect = [
+            (
+                "Result is above reference range.\n"
+                "Documented flag: High."
+            ),
+            (
+                "Documented flag: High "
+                "[Source 1]."
+            ),
+        ]
 
         result = RAGService.query(
             query=(
@@ -138,8 +149,13 @@ class RAGDocumentProcessingTests(
         )
 
         self.assertIn(
-            "Documented flag: High",
+            "[Source 1]",
             result["answer"],
+        )
+
+        self.assertEqual(
+            mock_generate_response.call_count,
+            1,
         )
 
         self.assertEqual(
