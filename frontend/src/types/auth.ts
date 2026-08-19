@@ -10,8 +10,13 @@ export interface RegistrationResponse {
   development_notice: string;
 }
 
-export interface TokenResponse {
-  access_token: string;
-  token_type: string;
+export interface AuthSessionResponse {
+  user: User;
   expires_in: number;
+  development_notice: string;
+}
+
+export interface LogoutResponse {
+  logged_out: boolean;
+  message: string;
 }

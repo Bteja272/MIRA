@@ -1,11 +1,11 @@
 import {
-  clearAccessToken,
-  getAccessToken,
+  getCsrfToken,
   notifyUnauthorized,
 } from "../auth/tokenStorage";
 
 export const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL
+  import.meta.env
+    .VITE_API_BASE_URL
   ?? "http://127.0.0.1:8001"
 ).replace(/\/+$/, "");
 
@@ -39,9 +39,13 @@ export function extractApiErrorMessage(
     && "detail" in body
   ) {
     const detail =
-      (body as FastApiErrorBody).detail;
+      (body as FastApiErrorBody)
+        .detail;
 
-    if (typeof detail === "string") {
+    if (
+      typeof detail
+      === "string"
+    ) {
       return detail;
     }
 
@@ -50,9 +54,11 @@ export function extractApiErrorMessage(
         .map((item) => {
           if (
             item
-            && typeof item === "object"
+            && typeof item
+              === "object"
             && "msg" in item
-            && typeof item.msg === "string"
+            && typeof item.msg
+              === "string"
           ) {
             return item.msg;
           }
@@ -66,16 +72,23 @@ export function extractApiErrorMessage(
             message !== null,
         );
 
-      if (messages.length > 0) {
-        return messages.join(" ");
+      if (
+        messages.length > 0
+      ) {
+        return messages.join(
+          " ",
+        );
       }
     }
 
     if (
       detail
-      && typeof detail === "object"
+      && typeof detail
+        === "object"
     ) {
-      return JSON.stringify(detail);
+      return JSON.stringify(
+        detail,
+      );
     }
   }
 
@@ -125,31 +138,38 @@ async function parseResponseBody(
   return rawBody;
 }
 
-export async function apiRequest<T>(
-  path: string,
-  init: RequestInit = {},
-): Promise<T> {
+const UNSAFE_METHODS =
+  new Set([
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+  ]);
+
+let refreshPromise:
+  Promise<boolean> | null =
+    null;
+
+function buildHeaders(
+  init: RequestInit,
+): Headers {
   const headers =
     new Headers(init.headers);
-
-  const token = getAccessToken();
 
   headers.set(
     "Accept",
     "application/json",
   );
 
-  if (token) {
-    headers.set(
-      "Authorization",
-      `Bearer ${token}`,
-    );
-  }
-
   if (
     init.body !== undefined
-    && !(init.body instanceof FormData)
-    && !headers.has("Content-Type")
+    && !(
+      init.body
+      instanceof FormData
+    )
+    && !headers.has(
+      "Content-Type",
+    )
   ) {
     headers.set(
       "Content-Type",
@@ -157,59 +177,188 @@ export async function apiRequest<T>(
     );
   }
 
-  let response: Response;
+  const method = (
+    init.method ?? "GET"
+  ).toUpperCase();
 
-  try {
-    response = await fetch(
-      `${API_BASE_URL}${path}`,
-      {
-        ...init,
-        headers,
-        credentials: "omit",
-      },
-    );
-  } catch (error) {
-    if (
-      error instanceof DOMException
-      && error.name === "AbortError"
-    ) {
-      throw error;
+  if (
+    UNSAFE_METHODS.has(
+      method,
+    )
+  ) {
+    const csrfToken =
+      getCsrfToken();
+
+    if (csrfToken) {
+      headers.set(
+        "X-CSRF-Token",
+        csrfToken,
+      );
     }
-
-    throw new ApiError(
-      "The MIRA API could not be reached.",
-      0,
-      null,
-    );
   }
 
-  const body =
-    await parseResponseBody(response);
+  return headers;
+}
 
-  if (!response.ok) {
-    if (
-      response.status === 401
-      && token
-    ) {
-      clearAccessToken();
-      notifyUnauthorized(
-        "unauthorized",
+async function performRefresh():
+  Promise<boolean> {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (
+    async () => {
+      const headers =
+        new Headers();
+
+      headers.set(
+        "Accept",
+        "application/json",
+      );
+
+      const csrfToken =
+        getCsrfToken();
+
+      if (csrfToken) {
+        headers.set(
+          "X-CSRF-Token",
+          csrfToken,
+        );
+      }
+
+      try {
+        const response =
+          await fetch(
+            (
+              `${API_BASE_URL}`
+              + "/auth/refresh"
+            ),
+            {
+              method: "POST",
+              headers,
+              credentials:
+                "include",
+            },
+          );
+
+        return response.ok;
+      } catch {
+        return false;
+      }
+    }
+  )();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+function canAttemptRefresh(
+  path: string,
+): boolean {
+  return ![
+    "/auth/login",
+    "/auth/register",
+    "/auth/refresh",
+  ].includes(path);
+}
+
+export async function apiRequest<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  async function execute(
+    allowRefresh: boolean,
+  ): Promise<T> {
+    const headers =
+      buildHeaders(init);
+
+    let response: Response;
+
+    try {
+      response = await fetch(
+        `${API_BASE_URL}${path}`,
+        {
+          ...init,
+          headers,
+          credentials: "include",
+        },
+      );
+    } catch (error) {
+      if (
+        error
+        instanceof DOMException
+        && error.name
+          === "AbortError"
+      ) {
+        throw error;
+      }
+
+      throw new ApiError(
+        (
+          "The MIRA API "
+          + "could not be reached."
+        ),
+        0,
+        null,
       );
     }
 
-    throw new ApiError(
-      extractApiErrorMessage(
-        body,
-        (
-          "Request failed with status "
-          + response.status
-          + "."
+    if (
+      response.status === 401
+      && allowRefresh
+      && canAttemptRefresh(
+        path,
+      )
+    ) {
+      const refreshed =
+        await performRefresh();
+
+      if (refreshed) {
+        // Rebuild headers on the
+        // retry so the newly rotated
+        // CSRF cookie is used.
+        return execute(false);
+      }
+
+      notifyUnauthorized(
+        "expired",
+      );
+    }
+
+    const body =
+      await parseResponseBody(
+        response,
+      );
+
+    if (!response.ok) {
+      if (
+        response.status === 401
+      ) {
+        notifyUnauthorized(
+          "unauthorized",
+        );
+      }
+
+      throw new ApiError(
+        extractApiErrorMessage(
+          body,
+          (
+            "Request failed "
+            + "with status "
+            + response.status
+            + "."
+          ),
         ),
-      ),
-      response.status,
-      body,
-    );
+        response.status,
+        body,
+      );
+    }
+
+    return body as T;
   }
 
-  return body as T;
+  return execute(true);
 }

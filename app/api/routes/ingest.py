@@ -359,10 +359,11 @@ async def ingest_file(
         logger.exception(
             (
                 "document_ingestion_failed "
-                "user_id=%s filename=%s"
+                "user_id=%s "
+                "document_id=%s"
             ),
             current_user.user_id,
-            original_filename,
+            document_id,
         )
 
         raise HTTPException(

@@ -1,4 +1,5 @@
 import {
+  beforeEach,
   describe,
   expect,
   it,
@@ -6,120 +7,152 @@ import {
 } from "vitest";
 
 import {
-  clearAccessToken,
-  getAccessToken,
-  getTokenExpirationTime,
-  isAccessTokenExpired,
-  setAccessToken,
+  AUTH_UNAUTHORIZED_EVENT,
+  getCsrfToken,
+  notifyUnauthorized,
 } from "./tokenStorage";
 
-function createJwt(
-  expirationSeconds: number,
-): string {
-  const encode = (
-    value: unknown,
-  ): string =>
-    btoa(
-      JSON.stringify(value),
-    )
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
-
-  return [
-    encode({
-      alg: "none",
-      typ: "JWT",
-    }),
-    encode({
-      exp: expirationSeconds,
-    }),
-    "signature",
-  ].join(".");
-}
 
 describe(
   "tokenStorage",
   () => {
-    it(
-      "stores and clears the access token",
+    beforeEach(
       () => {
-        setAccessToken("token-value");
+        document.cookie =
+          "mira_csrf=; "
+          + "expires=Thu, 01 Jan 1970 "
+          + "00:00:00 GMT; path=/";
+      },
+    );
+
+    it(
+      "reads the CSRF token from cookies",
+      () => {
+        document.cookie =
+          "mira_csrf=test-csrf-token; "
+          + "path=/";
 
         expect(
-          getAccessToken(),
-        ).toBe("token-value");
+          getCsrfToken(),
+        ).toBe(
+          "test-csrf-token",
+        );
+      },
+    );
 
-        clearAccessToken();
+    it(
+      "decodes an encoded CSRF token",
+      () => {
+        document.cookie =
+          "mira_csrf="
+          + encodeURIComponent(
+            "token/value+example",
+          )
+          + "; path=/";
 
         expect(
-          getAccessToken(),
+          getCsrfToken(),
+        ).toBe(
+          "token/value+example",
+        );
+      },
+    );
+
+    it(
+      "returns null when CSRF cookie is absent",
+      () => {
+        expect(
+          getCsrfToken(),
         ).toBeNull();
       },
     );
 
     it(
-      "reads the JWT expiration time",
+      "ignores unrelated cookies",
       () => {
-        const token =
-          createJwt(1_800_000_000);
+        document.cookie =
+          "other_cookie=value; "
+          + "path=/";
 
         expect(
-          getTokenExpirationTime(token),
-        ).toBe(1_800_000_000_000);
+          getCsrfToken(),
+        ).toBeNull();
       },
     );
 
     it(
-      "detects an expired JWT",
+      "dispatches the unauthorized event",
       () => {
-        vi.useFakeTimers();
+        const listener =
+          vi.fn();
 
-        vi.setSystemTime(
-          new Date(
-            "2026-08-05T18:00:00Z",
-          ),
+        window.addEventListener(
+          AUTH_UNAUTHORIZED_EVENT,
+          listener,
         );
 
-        const nowSeconds =
-          Math.floor(
-            Date.now() / 1000,
-          );
+        notifyUnauthorized(
+          "unauthorized",
+        );
 
         expect(
-          isAccessTokenExpired(
-            createJwt(
-              nowSeconds - 60,
-            ),
-          ),
-        ).toBe(true);
+          listener,
+        ).toHaveBeenCalledTimes(
+          1,
+        );
+
+        const event = (
+          listener.mock.calls[0][0]
+        ) as CustomEvent;
 
         expect(
-          isAccessTokenExpired(
-            createJwt(
-              nowSeconds + 600,
-            ),
-          ),
-        ).toBe(false);
+          event.detail,
+        ).toBe(
+          "unauthorized",
+        );
 
-        vi.useRealTimers();
+        window.removeEventListener(
+          AUTH_UNAUTHORIZED_EVENT,
+          listener,
+        );
       },
     );
 
     it(
-      "treats non-JWT tokens as having no known expiration",
+      "dispatches the expired reason",
       () => {
-        expect(
-          getTokenExpirationTime(
-            "not-a-jwt",
-          ),
-        ).toBeNull();
+        const listener =
+          vi.fn();
+
+        window.addEventListener(
+          AUTH_UNAUTHORIZED_EVENT,
+          listener,
+        );
+
+        notifyUnauthorized(
+          "expired",
+        );
 
         expect(
-          isAccessTokenExpired(
-            "not-a-jwt",
-          ),
-        ).toBe(false);
+          listener,
+        ).toHaveBeenCalledTimes(
+          1,
+        );
+
+        const event = (
+          listener.mock.calls[0][0]
+        ) as CustomEvent;
+
+        expect(
+          event.detail,
+        ).toBe(
+          "expired",
+        );
+
+        window.removeEventListener(
+          AUTH_UNAUTHORIZED_EVENT,
+          listener,
+        );
       },
     );
   },

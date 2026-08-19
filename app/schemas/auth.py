@@ -31,7 +31,11 @@ class RegisterRequest(BaseModel):
         cls,
         value,
     ) -> str:
-        return str(value).strip().lower()
+        return (
+            str(value)
+            .strip()
+            .lower()
+        )
 
 
 class UserResponse(BaseModel):
@@ -45,12 +49,21 @@ class UserResponse(BaseModel):
     created_at: datetime
 
 
-class RegistrationResponse(BaseModel):
+class RegistrationResponse(
+    BaseModel
+):
     user: UserResponse
     development_notice: str
 
 
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+class AuthSessionResponse(
+    BaseModel
+):
+    user: UserResponse
     expires_in: int
+    development_notice: str
+
+
+class LogoutResponse(BaseModel):
+    logged_out: bool
+    message: str

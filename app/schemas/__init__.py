@@ -1,29 +1,18 @@
 from app.schemas.auth import (
-    RegistrationResponse,
+    AuthSessionResponse,
+    LogoutResponse,
     RegisterRequest,
-    TokenResponse,
+    RegistrationResponse,
     UserResponse,
 )
-from app.schemas.medical_extraction import (
-    DiagnosisInformation,
-    DiagnosisStatus,
-    ExtractionMethod,
-    ExtractionStatus,
-    ExtractionWarning,
-    FollowUpInstruction,
-    LabResultFlag,
-    LabResultInformation,
-    MedicalDocumentExtraction,
-    MedicalDocumentType,
-    MedicationInformation,
-    MedicationStatus,
-    PatientInformation,
-    ProcedureInformation,
-    ProviderInformation,
-    SourceEvidence,
-    SourcedDateValue,
-    SourcedTextValue,
-)
+
+__all__ = [
+    "AuthSessionResponse",
+    "LogoutResponse",
+    "RegisterRequest",
+    "RegistrationResponse",
+    "UserResponse",
+]
 
 
 __all__ = [

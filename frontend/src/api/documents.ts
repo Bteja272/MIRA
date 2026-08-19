@@ -5,8 +5,7 @@ import {
   extractApiErrorMessage,
 } from "./http";
 import {
-  clearAccessToken,
-  getAccessToken,
+  getCsrfToken,
   notifyUnauthorized,
 } from "../auth/tokenStorage";
 import type {
@@ -88,17 +87,20 @@ export function uploadDocument(
         `${API_BASE_URL}/ingest`,
       );
 
+      xhr.withCredentials = true;
+
       xhr.setRequestHeader(
         "Accept",
         "application/json",
       );
 
-      const token = getAccessToken();
+      const csrfToken =
+        getCsrfToken();
 
-      if (token) {
+      if (csrfToken) {
         xhr.setRequestHeader(
-          "Authorization",
-          `Bearer ${token}`,
+          "X-CSRF-Token",
+          csrfToken,
         );
       }
 
@@ -143,14 +145,13 @@ export function uploadDocument(
             resolve(
               body as IngestResponse,
             );
+
             return;
           }
 
           if (
             xhr.status === 401
-            && token
           ) {
-            clearAccessToken();
             notifyUnauthorized(
               "unauthorized",
             );

@@ -1,6 +1,3 @@
-const ACCESS_TOKEN_KEY =
-  "mira_access_token";
-
 export const AUTH_UNAUTHORIZED_EVENT =
   "mira:unauthorized";
 
@@ -8,98 +5,46 @@ export type UnauthorizedReason =
   | "expired"
   | "unauthorized";
 
-interface JwtPayload {
-  exp?: unknown;
-}
+const CSRF_COOKIE_NAME =
+  import.meta.env
+    .VITE_CSRF_COOKIE_NAME
+  ?? "mira_csrf";
 
-function decodeBase64Url(
-  value: string,
-): string {
-  const normalized = value
-    .replace(/-/g, "+")
-    .replace(/_/g, "/");
-
-  const paddingLength =
-    (4 - normalized.length % 4) % 4;
-
-  return atob(
-    normalized
-    + "=".repeat(paddingLength),
-  );
-}
-
-export function getAccessToken():
+export function getCsrfToken():
   string | null {
-  return sessionStorage.getItem(
-    ACCESS_TOKEN_KEY,
-  );
-}
+  const prefix =
+    `${CSRF_COOKIE_NAME}=`;
 
-export function setAccessToken(
-  token: string,
-): void {
-  sessionStorage.setItem(
-    ACCESS_TOKEN_KEY,
-    token,
-  );
-}
+  const cookies =
+    document.cookie.split(";");
 
-export function clearAccessToken(): void {
-  sessionStorage.removeItem(
-    ACCESS_TOKEN_KEY,
-  );
-}
-
-export function getTokenExpirationTime(
-  token: string,
-): number | null {
-  const parts = token.split(".");
-
-  if (parts.length !== 3) {
-    return null;
-  }
-
-  try {
-    const payload = JSON.parse(
-      decodeBase64Url(parts[1]),
-    ) as JwtPayload;
+  for (const cookie of cookies) {
+    const cleaned =
+      cookie.trim();
 
     if (
-      typeof payload.exp !== "number"
-      || !Number.isFinite(payload.exp)
+      cleaned.startsWith(
+        prefix,
+      )
     ) {
-      return null;
+      return decodeURIComponent(
+        cleaned.slice(
+          prefix.length,
+        ),
+      );
     }
-
-    return payload.exp * 1000;
-  } catch {
-    return null;
-  }
-}
-
-export function isAccessTokenExpired(
-  token: string,
-  clockSkewSeconds = 15,
-): boolean {
-  const expirationTime =
-    getTokenExpirationTime(token);
-
-  if (expirationTime === null) {
-    return false;
   }
 
-  return (
-    expirationTime
-    <= Date.now()
-      + clockSkewSeconds * 1000
-  );
+  return null;
 }
 
 export function notifyUnauthorized(
   reason: UnauthorizedReason,
 ): void {
   window.dispatchEvent(
-    new CustomEvent<UnauthorizedReason>(
+    new CustomEvent<
+      UnauthorizedReason
+    >(
       AUTH_UNAUTHORIZED_EVENT,
       {
         detail: reason,

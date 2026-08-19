@@ -1,7 +1,11 @@
-import { apiRequest } from "./http";
+import {
+  apiRequest,
+} from "./http";
+
 import type {
+  AuthSessionResponse,
+  LogoutResponse,
   RegistrationResponse,
-  TokenResponse,
   User,
 } from "../types/auth";
 
@@ -9,7 +13,9 @@ export function registerAccount(
   email: string,
   password: string,
 ): Promise<RegistrationResponse> {
-  return apiRequest<RegistrationResponse>(
+  return apiRequest<
+    RegistrationResponse
+  >(
     "/auth/register",
     {
       method: "POST",
@@ -24,25 +30,63 @@ export function registerAccount(
 export function loginAccount(
   email: string,
   password: string,
-): Promise<TokenResponse> {
-  const form = new URLSearchParams();
+): Promise<AuthSessionResponse> {
+  const form =
+    new URLSearchParams();
 
-  form.set("username", email);
-  form.set("password", password);
+  form.set(
+    "username",
+    email,
+  );
 
-  return apiRequest<TokenResponse>(
+  form.set(
+    "password",
+    password,
+  );
+
+  return apiRequest<
+    AuthSessionResponse
+  >(
     "/auth/login",
     {
       method: "POST",
       headers: {
         "Content-Type":
-          "application/x-www-form-urlencoded",
+          "application/"
+          + "x-www-form-urlencoded",
       },
       body: form,
     },
   );
 }
 
-export function getCurrentUser(): Promise<User> {
-  return apiRequest<User>("/auth/me");
+export function refreshSession():
+  Promise<AuthSessionResponse> {
+  return apiRequest<
+    AuthSessionResponse
+  >(
+    "/auth/refresh",
+    {
+      method: "POST",
+    },
+  );
+}
+
+export function logoutAccount():
+  Promise<LogoutResponse> {
+  return apiRequest<
+    LogoutResponse
+  >(
+    "/auth/logout",
+    {
+      method: "POST",
+    },
+  );
+}
+
+export function getCurrentUser():
+  Promise<User> {
+  return apiRequest<User>(
+    "/auth/me",
+  );
 }
