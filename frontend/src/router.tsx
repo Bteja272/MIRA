@@ -27,62 +27,79 @@ import {
   LoginPage,
 } from "./pages/LoginPage";
 import {
+  MedicalIntelligencePage,
+} from "./pages/MedicalIntelligencePage";
+import {
   NotFoundPage,
 } from "./pages/NotFoundPage";
 import {
   RegisterPage,
 } from "./pages/RegisterPage";
 
-export const router = createBrowserRouter([
-  {
-    element: <RouteAccessibility />,
-    children: [
-      {
-        element: <ProtectedRoute />,
-        children: [
-          {
-            element: <AppShell />,
-            children: [
-              {
-                index: true,
-                element: (
-                  <DashboardPage />
-                ),
-              },
-              {
-                path: "documents",
-                element: (
-                  <DocumentsPage />
-                ),
-              },
-              {
-                path: "ask",
-                element: (
-                  <AskMiraPage />
-                ),
-              },
-              {
-                path: "extractions",
-                element: (
-                  <ExtractionsPage />
-                ),
-              },
-            ],
-          },
-        ],
-      },
-      {
-        path: "/login",
-        element: <LoginPage />,
-      },
-      {
-        path: "/register",
-        element: <RegisterPage />,
-      },
-      {
-        path: "*",
-        element: <NotFoundPage />,
-      },
-    ],
-  },
-]);
+
+export const router =
+  createBrowserRouter([
+    {
+      element: (
+        <RouteAccessibility />
+      ),
+      children: [
+        {
+          element: (
+            <ProtectedRoute />
+          ),
+          children: [
+            {
+              element: (
+                <AppShell />
+              ),
+              children: [
+                {
+                  index: true,
+                  element: (
+                    <DashboardPage />
+                  ),
+                },
+                {
+                  path: "documents",
+                  element: (
+                    <DocumentsPage />
+                  ),
+                },
+                {
+                  path: "ask",
+                  element: (
+                    <AskMiraPage />
+                  ),
+                },
+                {
+                  path: "extractions",
+                  element: (
+                    <ExtractionsPage />
+                  ),
+                },
+                {
+                  path: "intelligence",
+                  element: (
+                    <MedicalIntelligencePage />
+                  ),
+                },
+              ],
+            },
+          ],
+        },
+        {
+          path: "/login",
+          element: <LoginPage />,
+        },
+        {
+          path: "/register",
+          element: <RegisterPage />,
+        },
+        {
+          path: "*",
+          element: <NotFoundPage />,
+        },
+      ],
+    },
+  ]);

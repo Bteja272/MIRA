@@ -46,32 +46,42 @@ class User(Base):
         nullable=False,
     )
 
-    password_hash: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
+    password_hash: Mapped[str] = (
+        mapped_column(
+            String(255),
+            nullable=False,
+        )
     )
 
-    is_active: Mapped[bool] = mapped_column(
-        Boolean,
-        nullable=False,
-        default=True,
-        server_default=true(),
+    is_active: Mapped[bool] = (
+        mapped_column(
+            Boolean,
+            nullable=False,
+            default=True,
+            server_default=true(),
+        )
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        default=datetime.utcnow,
+    created_at: Mapped[datetime] = (
+        mapped_column(
+            DateTime,
+            nullable=False,
+            default=datetime.utcnow,
+        )
     )
 
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+    updated_at: Mapped[datetime] = (
+        mapped_column(
+            DateTime,
+            nullable=False,
+            default=datetime.utcnow,
+            onupdate=datetime.utcnow,
+        )
     )
 
-    documents: Mapped[list[Document]] = relationship(
+    documents: Mapped[
+        list[Document]
+    ] = relationship(
         back_populates="user",
     )
 
@@ -96,14 +106,15 @@ class Document(Base):
         autoincrement=True,
     )
 
-    document_id: Mapped[str] = mapped_column(
-        String,
-        unique=True,
-        index=True,
-        nullable=False,
+    document_id: Mapped[str] = (
+        mapped_column(
+            String,
+            unique=True,
+            index=True,
+            nullable=False,
+        )
     )
 
-    # Every document must belong to an authenticated user.
     user_id: Mapped[str] = mapped_column(
         String,
         ForeignKey(
@@ -119,46 +130,60 @@ class Document(Base):
         nullable=False,
     )
 
-    original_filename: Mapped[str] = mapped_column(
-        String,
-        nullable=False,
+    original_filename: Mapped[str] = (
+        mapped_column(
+            String,
+            nullable=False,
+        )
     )
 
-    stored_filename: Mapped[str] = mapped_column(
-        String,
-        nullable=False,
+    stored_filename: Mapped[str] = (
+        mapped_column(
+            String,
+            nullable=False,
+        )
     )
 
-    document_type: Mapped[str] = mapped_column(
-        String,
-        index=True,
-        nullable=False,
-        default="unknown",
-        server_default="unknown",
+    document_type: Mapped[str] = (
+        mapped_column(
+            String,
+            index=True,
+            nullable=False,
+            default="unknown",
+            server_default="unknown",
+        )
     )
 
-    file_hash: Mapped[str | None] = mapped_column(
+    file_hash: Mapped[
+        str | None
+    ] = mapped_column(
         String(64),
         index=True,
         nullable=True,
     )
 
-    file_size_bytes: Mapped[int | None] = mapped_column(
+    file_size_bytes: Mapped[
+        int | None
+    ] = mapped_column(
         BigInteger,
         nullable=True,
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        default=datetime.utcnow,
+    created_at: Mapped[datetime] = (
+        mapped_column(
+            DateTime,
+            nullable=False,
+            default=datetime.utcnow,
+        )
     )
 
     user: Mapped[User] = relationship(
         back_populates="documents",
     )
 
-    chunks: Mapped[list[DocumentChunk]] = relationship(
+    chunks: Mapped[
+        list[DocumentChunk]
+    ] = relationship(
         back_populates="document",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -181,24 +206,30 @@ class DocumentChunk(Base):
         nullable=False,
     )
 
-    document_id: Mapped[str] = mapped_column(
-        String,
-        ForeignKey(
-            "documents.document_id",
-            ondelete="CASCADE",
-        ),
-        index=True,
-        nullable=False,
+    document_id: Mapped[str] = (
+        mapped_column(
+            String,
+            ForeignKey(
+                "documents.document_id",
+                ondelete="CASCADE",
+            ),
+            index=True,
+            nullable=False,
+        )
     )
 
-    page_number: Mapped[int | None] = mapped_column(
+    page_number: Mapped[
+        int | None
+    ] = mapped_column(
         Integer,
         nullable=True,
     )
 
-    chunk_index: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False,
+    chunk_index: Mapped[int] = (
+        mapped_column(
+            Integer,
+            nullable=False,
+        )
     )
 
     text: Mapped[str] = mapped_column(
@@ -206,22 +237,31 @@ class DocumentChunk(Base):
         nullable=False,
     )
 
-    embedding: Mapped[list[float]] = mapped_column(
+    embedding: Mapped[
+        list[float]
+    ] = mapped_column(
         Vector(384),
         nullable=False,
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        default=datetime.utcnow,
+    created_at: Mapped[datetime] = (
+        mapped_column(
+            DateTime,
+            nullable=False,
+            default=datetime.utcnow,
+        )
     )
 
-    document: Mapped[Document] = relationship(
-        back_populates="chunks",
+    document: Mapped[Document] = (
+        relationship(
+            back_populates="chunks",
+        )
     )
 
 
-from app.db.extraction_models import (
+from app.db.extraction_models import (  # noqa: E402,F401
     DocumentExtraction,
+)
+from app.db.intelligence_models import (  # noqa: E402,F401
+    DocumentIntelligence,
 )

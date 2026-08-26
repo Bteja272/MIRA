@@ -49,6 +49,9 @@ from app.core.security_config import (
 from app.services.audit_service import (
     AuditService,
 )
+from app.api.routes.intelligence import (
+    router as intelligence_router,
+)
 
 OPENAPI_TAGS = [
     {
@@ -89,6 +92,14 @@ OPENAPI_TAGS = [
         "description": (
             "Structured medical "
             "extraction operations."
+        ),
+    },
+    {
+        "name": "intelligence",
+        "description": (
+            "Safe medical document understanding, "
+            "normalization, timeline, and "
+            "longitudinal comparison."
         ),
     },
 ]
@@ -340,6 +351,56 @@ def _audit_metadata(
             stored_extraction_match
             .group(1),
         )
+    
+    intelligence_match = (
+        re.fullmatch(
+            r"/documents/"
+            r"([^/]+)/intelligence",
+            path,
+        )
+    )
+
+    if intelligence_match:
+        if method == "POST":
+            return (
+                "intelligence_generate",
+                "document",
+                intelligence_match.group(1),
+            )
+
+        if method == "GET":
+            return (
+                "intelligence_read",
+                "document",
+                intelligence_match.group(1),
+            )
+
+        if method == "DELETE":
+            return (
+                "intelligence_delete",
+                "document",
+                intelligence_match.group(1),
+            )
+
+    if (
+        path == "/intelligence/timeline"
+        and method == "POST"
+    ):
+        return (
+            "intelligence_timeline",
+            "medical_intelligence",
+            None,
+        )
+
+    if (
+        path == "/intelligence/compare"
+        and method == "POST"
+    ):
+        return (
+            "intelligence_compare",
+            "medical_intelligence",
+            None,
+        )
 
     document_match = (
         re.fullmatch(
@@ -546,7 +607,9 @@ app.include_router(
 app.include_router(
     extractions_router
 )
-
+app.include_router(
+    intelligence_router
+)
 
 @app.get("/")
 def root():

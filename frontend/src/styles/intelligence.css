@@ -1,0 +1,119 @@
+.intelligence-stack {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.intelligence-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(220px, 1fr)
+    );
+  gap: 1rem;
+}
+
+.intelligence-card,
+.guidance-card,
+.timeline-card,
+.longitudinal-result {
+  border: 1px solid
+    rgba(127, 127, 127, 0.25);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.intelligence-card {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.intelligence-card h4,
+.guidance-card h4,
+.guidance-card h5 {
+  margin: 0;
+}
+
+.intelligence-card p,
+.guidance-card p,
+.timeline-card p {
+  margin: 0;
+}
+
+.intelligence-guidance-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.guidance-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.guidance-card > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.guidance-block {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.guidance-block ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.guidance-block--warning {
+  border-left: 3px solid
+    currentColor;
+  padding-left: 1rem;
+}
+
+.timeline-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.timeline-card {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.timeline-card > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.timeline-card > div span,
+.timeline-card time {
+  opacity: 0.75;
+}
+
+.intelligence-document-picker {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.intelligence-document-picker label {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.longitudinal-result {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.intelligence-notice {
+  margin: 0;
+  font-size: 0.95rem;
+  opacity: 0.8;
+}

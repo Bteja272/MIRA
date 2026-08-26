@@ -8,6 +8,7 @@ import {
   useAuth,
 } from "../auth/useAuth";
 
+
 function navClassName({
   isActive,
 }: {
@@ -20,6 +21,7 @@ function navClassName({
     )
     : "app-nav__link";
 }
+
 
 function navigationLinks() {
   return (
@@ -52,9 +54,17 @@ function navigationLinks() {
       >
         Extractions
       </NavLink>
+
+      <NavLink
+        to="/intelligence"
+        className={navClassName}
+      >
+        Medical Intelligence
+      </NavLink>
     </>
   );
 }
+
 
 export function AppShell() {
   const {

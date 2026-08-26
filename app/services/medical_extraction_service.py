@@ -135,6 +135,20 @@ class MedicalExtractionService:
             (perf_counter() - started_at) * 1000,
             3,
         )
+    
+    @staticmethod
+    def _safe_error_type(
+        exc: BaseException,
+    ) -> str:
+        """
+        Return only the exception class name for logs.
+
+        Exception messages are intentionally excluded
+        because model, validation, or provider errors
+        may contain medical document content.
+        """
+
+        return type(exc).__name__
 
     @staticmethod
     def _normalize_document_type(
@@ -1898,6 +1912,7 @@ class MedicalExtractionService:
 
         previous_output = ""
         previous_error = ""
+        previous_error_type = "none"
 
         maximum_attempts = (
             cls.MAX_ATTEMPTS
@@ -1996,7 +2011,9 @@ class MedicalExtractionService:
                             "document_id=%s timings=%s error=%s",
                             cleaned_document_id,
                             timings,
-                            str(exc),
+                            cls._safe_error_type(
+                                exc
+                            )
                         )
 
                     if fallback is not None:
@@ -2012,7 +2029,9 @@ class MedicalExtractionService:
                         "document_id=%s timings=%s error=%s",
                         cleaned_document_id,
                         timings,
-                        str(exc),
+                        cls._safe_error_type(
+                            exc
+                        ),
                     )
 
                 raise MedicalExtractionValidationError(
@@ -2113,16 +2132,23 @@ class MedicalExtractionService:
                 ] = cls._elapsed_ms(
                     stage_started_at
                 )
+                
                 previous_output = response_text
                 previous_error = str(exc)
+                previous_error_type = (
+                    cls._safe_error_type(
+                        exc
+                    )
+                )
 
                 if settings.extraction_log_timings:
                     logger.warning(
                         "medical_extraction_validation_failed "
-                        "document_id=%s attempt=%s error=%s",
+                        "document_id=%s attempt=%s "
+                        "error_type=%s",
                         cleaned_document_id,
                         attempt_number,
-                        previous_error[:2000],
+                        previous_error_type,
                     )
 
         timings["total_ms"] = cls._elapsed_ms(
@@ -2135,7 +2161,7 @@ class MedicalExtractionService:
                 "document_id=%s timings=%s last_error=%s",
                 cleaned_document_id,
                 timings,
-                previous_error[:2000],
+                previous_error_type,
             )
 
         raise MedicalExtractionValidationError(

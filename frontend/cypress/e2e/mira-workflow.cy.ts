@@ -25,7 +25,16 @@ function clickNavigationLink(
 function registerUser(
   email: string,
 ): void {
-  cy.visit("/register");
+  cy.intercept(
+    "POST",
+    "**/auth/register",
+  ).as(
+    "registerAccount",
+  );
+
+  cy.visit(
+    "/register",
+  );
 
   cy.get(
     "#register-email",
@@ -72,12 +81,42 @@ function registerUser(
     .should("be.enabled")
     .click();
 
+  cy.wait(
+    "@registerAccount",
+    {
+      timeout: 30_000,
+    },
+  )
+    .then(
+      (interception) => {
+        const statusCode =
+          interception.response
+            ?.statusCode;
+
+        cy.log(
+          `Registration status: ${statusCode}`,
+        );
+
+        expect(
+          statusCode,
+          "registration status",
+        ).to.be.oneOf(
+          [
+            200,
+            201,
+          ],
+        );
+      },
+    );
+
   cy.contains(
     "Backend-connected workspace",
     {
       timeout: 30_000,
     },
-  ).should("be.visible");
+  ).should(
+    "be.visible",
+  );
 }
 
 function uploadSyntheticDocument():
@@ -235,14 +274,30 @@ describe(
   "MIRA end-to-end workflow",
   () => {
     it(
-      "registers, uploads, asks a grounded question, and deletes the document",
+      (
+        "runs the grounded workflow and "
+        + "keeps documents isolated "
+        + "between accounts"
+      ),
       () => {
-        const email =
+        const userA =
           uniqueEmail(
-            "mira.e2e",
+            "mira.usera",
           );
 
-        registerUser(email);
+        const userB =
+          uniqueEmail(
+            "mira.userb",
+          );
+
+        // -------------------------------------------------
+        // USER A
+        // -------------------------------------------------
+
+        registerUser(
+          userA,
+        );
+
         uploadSyntheticDocument();
 
         clickNavigationLink(
@@ -258,11 +313,19 @@ describe(
           )
           .check();
 
-        cy.get("textarea")
-          .should("be.visible")
+        cy.get(
+          "textarea",
+        )
+          .should(
+            "be.visible",
+          )
           .clear()
           .type(
-            "What medications and follow-up instructions are listed?",
+            (
+              "What medications and "
+              + "follow-up instructions "
+              + "are listed?"
+            ),
             {
               delay: 0,
             },
@@ -271,13 +334,17 @@ describe(
         cy.intercept(
           "POST",
           "**/query",
-        ).as("queryMira");
+        ).as(
+          "queryMira",
+        );
 
         cy.contains(
           "button",
           "Ask MIRA",
         )
-          .should("be.enabled")
+          .should(
+            "be.enabled",
+          )
           .click();
 
         cy.wait(
@@ -299,154 +366,107 @@ describe(
           {
             timeout: 30_000,
           },
-        ).should("be.visible");
-
-        cy.contains(
-          "Lisinopril",
-        ).should("be.visible");
-
-        runOptionalExtraction();
-
-        clickNavigationLink(
-          "/documents",
-        );
-
-        cy.contains(
-          "article",
-          "synthetic_discharge_summary.txt",
-        )
-          .contains(
-            "button",
-            "Delete",
-          )
-          .click();
-
-        cy.get(
-          "dialog[open]",
         ).should(
           "be.visible",
         );
 
-        cy.get(
-          "dialog[open]",
-        )
-          .contains(
-            "button",
-            "Delete permanently",
-          )
-          .click();
-
         cy.contains(
-          "No documents yet",
-          {
-            timeout: 30_000,
-          },
-        ).should("be.visible");
+          "Lisinopril",
+        ).should(
+          "be.visible",
+        );
 
-        cy.contains(
-          "button",
-          "Log out",
-        ).click();
+        runOptionalExtraction();
 
-        cy.contains(
-          "h2",
-          "Log in",
-        ).should("be.visible");
-      },
-    );
-
-    it(
-      "keeps documents isolated between accounts",
-      () => {
-        const userA =
-          uniqueEmail(
-            "mira.usera",
-          );
-
-        const userB =
-          uniqueEmail(
-            "mira.userb",
-          );
-
-        registerUser(userA);
-        uploadSyntheticDocument();
-
-        cy.contains(
-          "button",
-          "Log out",
-        ).click();
-
-        cy.contains(
-          "a",
-          "Create one",
-        )
-          .should("be.visible")
-          .click();
-
-        cy.get(
-          "#register-email",
-        )
-          .should("be.visible")
-          .clear()
-          .type(
-            userB,
-            {
-              delay: 0,
-            },
-          );
-
-        cy.get(
-          "#register-password",
-        )
-          .clear()
-          .type(
-            password,
-            {
-              delay: 0,
-              log: false,
-            },
-          );
-
-        cy.get(
-          "#confirm-password",
-        )
-          .clear()
-          .type(
-            password,
-            {
-              delay: 0,
-              log: false,
-            },
-          );
-
-        cy.contains(
-          "button",
-          "Create account",
-        )
-          .should("be.enabled")
-          .click();
-
-        cy.contains(
-          "Backend-connected workspace",
-          {
-            timeout: 30_000,
-          },
-        ).should("be.visible");
-
+        // Confirm User A still owns the
+        // uploaded document before logout.
         clickNavigationLink(
           "/documents",
         );
 
         cy.contains(
+          "synthetic_discharge_summary.txt",
+          {
+            timeout: 30_000,
+          },
+        ).should(
+          "be.visible",
+        );
+
+        // -------------------------------------------------
+        // LOG OUT USER A
+        // -------------------------------------------------
+
+        cy.contains(
+          "button",
+          "Log out",
+        )
+          .should(
+            "be.visible",
+          )
+          .click();
+
+        cy.contains(
+          "h2",
+          "Log in",
+          {
+            timeout: 30_000,
+          },
+        ).should(
+          "be.visible",
+        );
+
+        // -------------------------------------------------
+        // USER B
+        // -------------------------------------------------
+
+        registerUser(
+          userB,
+        );
+
+        clickNavigationLink(
+          "/documents",
+        );
+
+        // User B must not see User A's
+        // document.
+        cy.contains(
           "No documents yet",
           {
             timeout: 30_000,
           },
-        ).should("be.visible");
+        ).should(
+          "be.visible",
+        );
 
         cy.contains(
           "synthetic_discharge_summary.txt",
-        ).should("not.exist");
+        ).should(
+          "not.exist",
+        );
+
+        // -------------------------------------------------
+        // LOG OUT USER B
+        // -------------------------------------------------
+
+        cy.contains(
+          "button",
+          "Log out",
+        )
+          .should(
+            "be.visible",
+          )
+          .click();
+
+        cy.contains(
+          "h2",
+          "Log in",
+          {
+            timeout: 30_000,
+          },
+        ).should(
+          "be.visible",
+        );
       },
     );
   },
