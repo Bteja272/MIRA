@@ -155,9 +155,22 @@ class RAGDocumentProcessingTests(
 
         self.assertEqual(
             mock_generate_response.call_count,
-            1,
+            2,
+        )
+        repair_call = (
+            mock_generate_response
+            .call_args_list[1]
         )
 
+        self.assertIn(
+            "VALIDATION ISSUES",
+            repair_call.kwargs["prompt"],
+        )
+
+        self.assertIn(
+            "ANSWER TO REPAIR",
+            repair_call.kwargs["prompt"],
+        )
         self.assertEqual(
             result["document_ids"],
             selected_ids,

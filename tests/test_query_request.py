@@ -82,6 +82,61 @@ class QueryRequestTests(
             "Provide an overview.",
         )
 
+    def test_accepts_conversation_id(
+        self,
+    ):
+        request = QueryRequest(
+            query="Explain that again.",
+            conversation_id=(
+                "conversation-123"
+            ),
+        )
+
+        self.assertEqual(
+            request.conversation_id,
+            "conversation-123",
+        )
+
+    def test_strips_conversation_id_whitespace(
+        self,
+    ):
+        request = QueryRequest(
+            query="Explain that again.",
+            conversation_id=(
+                "  conversation-123  "
+            ),
+        )
+
+        self.assertEqual(
+            request.conversation_id,
+            "conversation-123",
+        )
+
+    def test_blank_conversation_id_becomes_none(
+        self,
+    ):
+        request = QueryRequest(
+            query="Explain this.",
+            conversation_id="   ",
+        )
+
+        self.assertIsNone(
+            request.conversation_id
+        )
+
+    def test_rejects_overlong_conversation_id(
+        self,
+    ):
+        with self.assertRaises(
+            ValidationError
+        ):
+            QueryRequest(
+                query="Explain this.",
+                conversation_id=(
+                    "x" * 37
+                ),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

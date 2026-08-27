@@ -265,3 +265,7 @@ from app.db.extraction_models import (  # noqa: E402,F401
 from app.db.intelligence_models import (  # noqa: E402,F401
     DocumentIntelligence,
 )
+from app.db.conversation_models import (  # noqa: E402,F401
+    Conversation,
+    ConversationMessage,
+)

@@ -27,8 +27,14 @@ class AgentState(
     total=False,
 ):
     query: str
+    retrieval_query: str
+
     document_ids: list[str]
     user_id: str | None
+
+    conversation_context: list[
+        dict[str, str]
+    ]
 
     route: str
     result: dict
@@ -89,6 +95,10 @@ def _run_safety_guard(
 def safety_node(
     state: AgentState,
 ) -> dict:
+    # Deliberately evaluate only the current
+    # user request. Conversation history is
+    # not permitted to alter pre-routing
+    # safety behavior.
     decision = (
         _run_safety_guard(
             state["query"]
@@ -196,14 +206,6 @@ def safety_block_node(
 def fallback_classify(
     query: str,
 ) -> str:
-    """
-    Apply deterministic routing.
-
-    Selected documents are handled in classify_node().
-    This function routes only explicit current-information
-    requests to web. All other unscoped questions use the
-    direct educational route.
-    """
     normalized_query = (
         " ".join(
             query.lower().split()
@@ -284,9 +286,20 @@ def rag_node(
 
     result = RAGService.query(
         query=state["query"],
+        retrieval_query=(
+            state.get(
+                "retrieval_query"
+            )
+        ),
         document_ids=selected_ids,
         user_id=state.get(
             "user_id"
+        ),
+        conversation_context=(
+            state.get(
+                "conversation_context"
+            )
+            or []
         ),
     )
 
@@ -300,7 +313,13 @@ def direct_node(
 ) -> dict:
     result = (
         DirectLLMService.query(
-            state["query"]
+            query=state["query"],
+            conversation_context=(
+                state.get(
+                    "conversation_context"
+                )
+                or []
+            ),
         )
     )
 
@@ -314,7 +333,10 @@ def web_node(
 ) -> dict:
     result = (
         WebSearchService.query(
-            state["query"]
+            state.get(
+                "retrieval_query"
+            )
+            or state["query"]
         )
     )
 
@@ -451,6 +473,13 @@ class LangGraphAgentService:
             list[str] | None
         ) = None,
         user_id: str | None = None,
+        conversation_context: (
+            list[dict[str, str]]
+            | None
+        ) = None,
+        retrieval_query: (
+            str | None
+        ) = None,
     ) -> dict:
         selected_ids = (
             cls
@@ -468,10 +497,18 @@ class LangGraphAgentService:
             agent_graph.invoke(
                 {
                     "query": query,
+                    "retrieval_query": (
+                        retrieval_query
+                        or query
+                    ),
                     "document_ids": (
                         selected_ids
                     ),
                     "user_id": user_id,
+                    "conversation_context": (
+                        conversation_context
+                        or []
+                    ),
                 }
             )
         )

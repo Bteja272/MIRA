@@ -52,6 +52,9 @@ from app.services.audit_service import (
 from app.api.routes.intelligence import (
     router as intelligence_router,
 )
+from app.api.routes.conversations import (
+    router as conversations_router,
+)
 
 OPENAPI_TAGS = [
     {
@@ -100,6 +103,13 @@ OPENAPI_TAGS = [
             "Safe medical document understanding, "
             "normalization, timeline, and "
             "longitudinal comparison."
+        ),
+    },
+    {
+        "name": "conversations",
+        "description": (
+            "Authenticated bounded "
+            "conversation-memory operations."
         ),
     },
 ]
@@ -516,13 +526,34 @@ async def security_middleware(
         ),
     )
 
-    response.headers.setdefault(
-        "Content-Security-Policy",
-        (
-            "default-src 'none'; "
-            "frame-ancestors 'none'"
-        ),
-    )
+    if (
+        docs_enabled
+        and request.url.path
+        in {
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+        }
+    ):
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            (
+                "default-src 'self' https:; "
+                "script-src 'self' https: 'unsafe-inline'; "
+                "style-src 'self' https: 'unsafe-inline'; "
+                "img-src 'self' data: https:; "
+                "font-src 'self' https: data:; "
+                "frame-ancestors 'none'"
+            ),
+        )
+    else:
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            (
+                "default-src 'none'; "
+                "frame-ancestors 'none'"
+            ),
+        )
 
     if (
         security_settings
@@ -609,6 +640,9 @@ app.include_router(
 )
 app.include_router(
     intelligence_router
+)
+app.include_router(
+    conversations_router
 )
 
 @app.get("/")

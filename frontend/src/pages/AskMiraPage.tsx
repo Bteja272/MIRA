@@ -62,6 +62,7 @@ export function AskMiraPage() {
   const [question, setQuestion] = useState("");
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [result, setResult] = useState<QueryResponse | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -82,6 +83,8 @@ export function AskMiraPage() {
             selectedDocumentIds.length > 0
               ? selectedDocumentIds
               : undefined,
+          conversation_id:
+            conversationId ?? undefined,
         },
         controller.signal,
       );
@@ -92,6 +95,9 @@ export function AskMiraPage() {
     },
     onSuccess: (response) => {
       setResult(response);
+      setConversationId(
+      response.conversation_id,
+  );
     },
     onSettled: () => {
       abortControllerRef.current = null;

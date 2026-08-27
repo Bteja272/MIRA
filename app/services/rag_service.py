@@ -27,6 +27,9 @@ from app.services.prompt_service import (
 from app.services.response_validation_service import (
     ResponseValidationService,
 )
+from app.services.conversation_memory_service import (
+    ConversationMemoryService,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -647,11 +650,20 @@ class RAGService:
         document_id: str | None = None,
         document_ids: list[str] | None = None,
         user_id: str | None = None,
+        conversation_context: (
+            list[dict[str, str]]
+            | None
+        ) = None,
+        retrieval_query: str | None = None,
     ) -> dict:
         started_at = (
             time.perf_counter()
         )
         timings = cls._new_timings()
+
+        effective_retrieval_query = (
+            retrieval_query or query
+        )
 
         selected_ids = (
             cls._normalize_document_ids(
@@ -771,7 +783,9 @@ class RAGService:
             retrieved_documents = (
                 LangChainRetrieverService
                 .retrieve(
-                    query=query,
+                    query=(
+                        effective_retrieval_query
+                    ),
                     top_k=(
                         retrieval_top_k_used
                     ),
@@ -902,9 +916,18 @@ class RAGService:
         prompt_started_at = (
             time.perf_counter()
         )
+        prompt_query = (
+            ConversationMemoryService
+            .build_prompt_query(
+                query=query,
+                context=(
+                    conversation_context
+                ),
+            )
+        )
         prompt = (
             PromptService.build_prompt(
-                query=query,
+                query=prompt_query,
                 documents=(
                     prompt_documents
                 ),
@@ -1034,6 +1057,7 @@ class RAGService:
                 answer
             )
         )
+
         validation = (
             ResponseValidationService
             .validate_grounded_answer(
@@ -1041,6 +1065,7 @@ class RAGService:
                 sources=sources,
             )
         )
+
         timings[
             "response_validation_ms"
         ] = cls._elapsed_ms(
@@ -1051,81 +1076,205 @@ class RAGService:
             logger.warning(
                 "rag_response_validation_failed "
                 "task=%s issues=%s "
-                "unsupported_values=%s "
-                "invalid_citations=%s "
-                "uncited_values=%s "
-                "misattributed_values=%s",
+                "unsupported_value_count=%s "
+                "invalid_citation_count=%s "
+                "uncited_value_count=%s "
+                "misattributed_value_count=%s",
                 task,
                 validation.issues,
-                validation
-                .unsupported_medical_values,
-                validation
-                .invalid_citation_numbers,
-                validation
-                .uncited_medical_values,
-                validation
-                .misattributed_medical_values,
+                len(
+                    validation
+                    .unsupported_medical_values
+                ),
+                len(
+                    validation
+                    .invalid_citation_numbers
+                ),
+                len(
+                    validation
+                    .uncited_medical_values
+                ),
+                len(
+                    validation
+                    .misattributed_medical_values
+                ),
             )
 
-            fallback_started_at = (
+            # -------------------------------------------------
+            # First recovery attempt:
+            # constrained LLM repair
+            # -------------------------------------------------
+
+            repair_started_at = (
                 time.perf_counter()
             )
 
-            fallback_answer = (
-                cls
-                ._build_source_grounded_fallback(
-                    prompt_documents
+            repair_prompt = (
+                PromptService
+                .build_repair_prompt(
+                    query=prompt_query,
+                    documents=(
+                        prompt_documents
+                    ),
+                    answer=answer,
+                    validation_issues=list(
+                        validation.issues
+                    ),
                 )
             )
 
-            fallback_answer = (
+            repaired_answer = (
+                LLMService
+                .generate_response(
+                    prompt=repair_prompt,
+                    system_prompt=(
+                        MedicalPromptService
+                        .document_repair_system_prompt()
+                    ),
+                )
+            )
+
+            repaired_answer = (
                 ResponseValidationService
                 .sanitize_document_answer(
-                    fallback_answer
+                    repaired_answer
                 )
             )
 
-            fallback_validation = (
+            timings[
+                "response_repair_ms"
+            ] = cls._elapsed_ms(
+                repair_started_at
+            )
+
+            # -------------------------------------------------
+            # Revalidate repaired answer
+            # -------------------------------------------------
+
+            revalidation_started_at = (
+                time.perf_counter()
+            )
+
+            repair_validation = (
                 ResponseValidationService
                 .validate_grounded_answer(
-                    answer=fallback_answer,
+                    answer=repaired_answer,
                     sources=sources,
                 )
             )
 
             timings[
-                "response_fallback_ms"
+                "response_revalidation_ms"
             ] = cls._elapsed_ms(
-                fallback_started_at
+                revalidation_started_at
             )
 
-            if fallback_validation.is_valid:
-                answer = fallback_answer
+            if repair_validation.is_valid:
+                answer = repaired_answer
+
             else:
-                logger.error(
-                    "rag_response_fallback_failed "
+                logger.warning(
+                    "rag_response_repair_failed "
                     "task=%s issues=%s "
-                    "unsupported_values=%s "
-                    "invalid_citations=%s "
-                    "uncited_values=%s "
-                    "misattributed_values=%s",
+                    "unsupported_value_count=%s "
+                    "invalid_citation_count=%s "
+                    "uncited_value_count=%s "
+                    "misattributed_value_count=%s",
                     task,
-                    fallback_validation.issues,
-                    fallback_validation
-                    .unsupported_medical_values,
-                    fallback_validation
-                    .invalid_citation_numbers,
-                    fallback_validation
-                    .uncited_medical_values,
-                    fallback_validation
-                    .misattributed_medical_values,
+                    repair_validation.issues,
+                    len(
+                        repair_validation
+                        .unsupported_medical_values
+                    ),
+                    len(
+                        repair_validation
+                        .invalid_citation_numbers
+                    ),
+                    len(
+                        repair_validation
+                        .uncited_medical_values
+                    ),
+                    len(
+                        repair_validation
+                        .misattributed_medical_values
+                    ),
                 )
 
-                answer = (
-                    "I could not produce a fully source-validated "
-                    "answer from the selected document context. "
-                    "Please review the source material."
+                # -------------------------------------------------
+                # Final recovery:
+                # deterministic source-grounded fallback
+                # -------------------------------------------------
+
+                fallback_started_at = (
+                    time.perf_counter()
                 )
+
+                fallback_answer = (
+                    cls
+                    ._build_source_grounded_fallback(
+                        prompt_documents
+                    )
+                )
+
+                fallback_answer = (
+                    ResponseValidationService
+                    .sanitize_document_answer(
+                        fallback_answer
+                    )
+                )
+
+                fallback_validation = (
+                    ResponseValidationService
+                    .validate_grounded_answer(
+                        answer=fallback_answer,
+                        sources=sources,
+                    )
+                )
+
+                timings[
+                    "response_fallback_ms"
+                ] = cls._elapsed_ms(
+                    fallback_started_at
+                )
+
+                if fallback_validation.is_valid:
+                    answer = fallback_answer
+
+                else:
+                    logger.error(
+                        "rag_response_fallback_failed "
+                        "task=%s issues=%s "
+                        "unsupported_value_count=%s "
+                        "invalid_citation_count=%s "
+                        "uncited_value_count=%s "
+                        "misattributed_value_count=%s",
+                        task,
+                        fallback_validation.issues,
+                        len(
+                            fallback_validation
+                            .unsupported_medical_values
+                        ),
+                        len(
+                            fallback_validation
+                            .invalid_citation_numbers
+                        ),
+                        len(
+                            fallback_validation
+                            .uncited_medical_values
+                        ),
+                        len(
+                            fallback_validation
+                            .misattributed_medical_values
+                        ),
+                    )
+
+                    answer = (
+                        "I could not produce a fully "
+                        "source-validated answer from "
+                        "the selected document context. "
+                        "Please review the source "
+                        "material."
+                    )
 
         disclaimer_started_at = (
             time.perf_counter()

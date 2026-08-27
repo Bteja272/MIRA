@@ -29,6 +29,14 @@ class QueryRequest(BaseModel):
         list[str] | None
     ) = None
 
+    conversation_id: (
+        str | None
+    ) = Field(
+        default=None,
+        min_length=1,
+        max_length=36,
+    )
+
     @field_validator("query")
     @classmethod
     def clean_query(
@@ -41,6 +49,24 @@ class QueryRequest(BaseModel):
             raise ValueError(
                 "Query cannot be empty."
             )
+
+        return cleaned
+
+    @field_validator(
+        "conversation_id"
+    )
+    @classmethod
+    def clean_conversation_id(
+        cls,
+        value: str | None,
+    ) -> str | None:
+        if value is None:
+            return None
+
+        cleaned = value.strip()
+
+        if not cleaned:
+            return None
 
         return cleaned
 
@@ -99,6 +125,9 @@ class QueryResponse(BaseModel):
     query: str
     answer: str | None = None
     route: str
+
+    conversation_id: str
+    message_id: str
 
     document_id: str | None = None
 

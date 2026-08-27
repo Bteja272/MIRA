@@ -65,10 +65,15 @@ class LangGraphUserStateTests(
                 "Summarize the "
                 "selected documents."
             ),
+            retrieval_query=(
+                "Summarize the "
+                "selected documents."
+            ),
             document_ids=(
                 selected_ids
             ),
             user_id="user-123",
+            conversation_context=[],
         )
 
         self.assertEqual(

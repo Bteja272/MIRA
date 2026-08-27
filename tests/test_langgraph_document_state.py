@@ -51,8 +51,13 @@ class LangGraphDocumentStateTests(
                 "What are the two selected "
                 "documents?"
             ),
+            retrieval_query=(
+                "What are the two selected "
+                "documents?"
+            ),
             document_ids=selected_ids,
             user_id=None,
+            conversation_context=[],
         )
 
         self.assertEqual(
