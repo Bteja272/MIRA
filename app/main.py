@@ -428,7 +428,42 @@ def _audit_metadata(
             "document",
             document_match.group(1),
         )
+        conversation_match = (
+            re.fullmatch(
+                r"/conversations/([^/]+)",
+                path,
+            )
+        )
 
+        if (
+            path == "/conversations"
+            and method == "GET"
+        ):
+            return (
+                "conversation_list",
+                "conversation",
+                None,
+            )
+
+        if (
+            conversation_match
+            and method == "GET"
+        ):
+            return (
+                "conversation_read",
+                "conversation",
+                conversation_match.group(1),
+            )
+
+        if (
+            conversation_match
+            and method == "DELETE"
+        ):
+            return (
+                "conversation_delete",
+                "conversation",
+                conversation_match.group(1),
+            )
     return (
         None,
         None,

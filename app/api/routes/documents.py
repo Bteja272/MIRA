@@ -15,17 +15,24 @@ from app.schemas.documents import (
     DocumentDetail,
     DocumentListResponse,
 )
+from app.services.conversation_service import (
+    ConversationService,
+)
 from app.services.document_service import (
     DocumentService,
 )
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(
+    __name__
+)
+
 
 router = APIRouter(
     prefix="/documents",
     tags=["documents"],
 )
+
 
 UPLOAD_DIRECTORY = Path(
     "uploaded_files"
@@ -34,46 +41,68 @@ UPLOAD_DIRECTORY = Path(
 
 @router.get(
     "",
-    response_model=DocumentListResponse,
-    summary="List the authenticated user's documents",
+    response_model=(
+        DocumentListResponse
+    ),
+    summary=(
+        "List the authenticated "
+        "user's documents"
+    ),
 )
 def list_documents(
     current_user: CurrentUser,
 ) -> dict:
     documents = (
-        DocumentService.list_documents(
-            user_id=current_user.user_id,
+        DocumentService
+        .list_documents(
+            user_id=(
+                current_user.user_id
+            ),
         )
     )
 
     return {
         "documents": documents,
-        "count": len(documents),
+        "count": len(
+            documents
+        ),
     }
 
 
 @router.get(
     "/{document_id}",
-    response_model=DocumentDetail,
-    summary="Get one owned document",
+    response_model=(
+        DocumentDetail
+    ),
+    summary=(
+        "Get one owned document"
+    ),
 )
 def get_document(
     document_id: str,
     current_user: CurrentUser,
 ) -> dict:
     document = (
-        DocumentService.get_document(
-            document_id=document_id,
-            user_id=current_user.user_id,
+        DocumentService
+        .get_document(
+            document_id=(
+                document_id
+            ),
+            user_id=(
+                current_user.user_id
+            ),
         )
     )
 
     if document is None:
         raise HTTPException(
             status_code=(
-                status.HTTP_404_NOT_FOUND
+                status
+                .HTTP_404_NOT_FOUND
             ),
-            detail="Document not found.",
+            detail=(
+                "Document not found."
+            ),
         )
 
     return document
@@ -81,8 +110,13 @@ def get_document(
 
 @router.delete(
     "/{document_id}",
-    response_model=DocumentDeleteResponse,
-    summary="Permanently delete one owned document",
+    response_model=(
+        DocumentDeleteResponse
+    ),
+    summary=(
+        "Permanently delete one "
+        "owned document"
+    ),
 )
 def delete_document(
     document_id: str,
@@ -90,8 +124,11 @@ def delete_document(
 ) -> dict:
     try:
         result = (
-            DocumentService.delete_document(
-                document_id=document_id,
+            DocumentService
+            .delete_document(
+                document_id=(
+                    document_id
+                ),
                 upload_directory=(
                     UPLOAD_DIRECTORY
                 ),
@@ -104,8 +141,10 @@ def delete_document(
     except ValueError as exc:
         logger.exception(
             (
-                "document_delete_metadata_error "
-                "user_id=%s document_id=%s"
+                "document_delete_"
+                "metadata_error "
+                "user_id=%s "
+                "document_id=%s"
             ),
             current_user.user_id,
             document_id,
@@ -113,18 +152,22 @@ def delete_document(
 
         raise HTTPException(
             status_code=(
-                status.HTTP_500_INTERNAL_SERVER_ERROR
+                status
+                .HTTP_500_INTERNAL_SERVER_ERROR
             ),
             detail=(
-                "The document could not be deleted."
+                "The document could "
+                "not be deleted."
             ),
         ) from exc
 
     except RuntimeError as exc:
         logger.exception(
             (
-                "document_delete_file_error "
-                "user_id=%s document_id=%s"
+                "document_delete_"
+                "file_error "
+                "user_id=%s "
+                "document_id=%s"
             ),
             current_user.user_id,
             document_id,
@@ -132,11 +175,13 @@ def delete_document(
 
         raise HTTPException(
             status_code=(
-                status.HTTP_500_INTERNAL_SERVER_ERROR
+                status
+                .HTTP_500_INTERNAL_SERVER_ERROR
             ),
             detail=(
-                "The document database records were "
-                "deleted, but file cleanup failed."
+                "The document database "
+                "records were deleted, "
+                "but file cleanup failed."
             ),
         ) from exc
 
@@ -144,7 +189,8 @@ def delete_document(
         logger.exception(
             (
                 "document_delete_failed "
-                "user_id=%s document_id=%s"
+                "user_id=%s "
+                "document_id=%s"
             ),
             current_user.user_id,
             document_id,
@@ -152,19 +198,56 @@ def delete_document(
 
         raise HTTPException(
             status_code=(
-                status.HTTP_500_INTERNAL_SERVER_ERROR
+                status
+                .HTTP_500_INTERNAL_SERVER_ERROR
             ),
             detail=(
-                "The document could not be deleted."
+                "The document could "
+                "not be deleted."
             ),
         ) from exc
 
     if result is None:
         raise HTTPException(
             status_code=(
-                status.HTTP_404_NOT_FOUND
+                status
+                .HTTP_404_NOT_FOUND
             ),
-            detail="Document not found.",
+            detail=(
+                "Document not found."
+            ),
+        )
+
+    try:
+        ConversationService\
+            .remove_document_references(
+                document_id=(
+                    document_id
+                ),
+                user_id=(
+                    current_user.user_id
+                ),
+            )
+
+    except Exception:
+        # The actual document has already
+        # been permanently deleted.
+        #
+        # Conversation metadata cleanup
+        # is secondary. Reporting the
+        # entire deletion as failed here
+        # would incorrectly tell the
+        # client that the document still
+        # exists.
+        logger.exception(
+            (
+                "conversation_document_"
+                "reference_cleanup_failed "
+                "user_id=%s "
+                "document_id=%s"
+            ),
+            current_user.user_id,
+            document_id,
         )
 
     return result

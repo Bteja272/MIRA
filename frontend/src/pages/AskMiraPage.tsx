@@ -4,42 +4,78 @@ import {
   useState,
   type FormEvent,
 } from "react";
+
 import {
   useMutation,
   useQuery,
+  useQueryClient,
 } from "@tanstack/react-query";
 
-import { getDocuments } from "../api/documents";
-import { ApiError } from "../api/http";
-import { queryMira } from "../api/query";
-import { DocumentSelector } from "../components/DocumentSelector";
-import { SourceCard } from "../components/SourceCard";
-import { StatusBanner } from "../components/StatusBanner";
-import type { QueryResponse } from "../types/query";
+import {
+  deleteConversation,
+  getConversation,
+  getConversations,
+} from "../api/conversations";
+import {
+  getDocuments,
+} from "../api/documents";
+import {
+  ApiError,
+} from "../api/http";
+import {
+  queryMira,
+} from "../api/query";
+import {
+  ConversationPanel,
+} from "../components/ConversationPanel";
+import {
+  DocumentSelector,
+} from "../components/DocumentSelector";
+import {
+  SourceCard,
+} from "../components/SourceCard";
+import {
+  StatusBanner,
+} from "../components/StatusBanner";
+import type {
+  ConversationMessage,
+} from "../types/conversation";
+import type {
+  QueryResponse,
+} from "../types/query";
+
 import "../styles/query.css";
+
 
 const MAX_SELECTED_DOCUMENTS = 5;
 const MAX_QUERY_CHARACTERS = 4000;
+
 
 function elapsedLabel(
   elapsedSeconds: number,
 ): string {
   if (elapsedSeconds < 10) {
-    return "MIRA is preparing the request…";
+    return (
+      "MIRA is preparing "
+      + "the request…"
+    );
   }
 
   if (elapsedSeconds < 30) {
     return (
-      "MIRA is retrieving relevant context "
-      + "and generating a grounded answer…"
+      "MIRA is retrieving relevant "
+      + "context and generating a "
+      + "grounded answer…"
     );
   }
 
   return (
     "The local model is still working. "
-    + "Complex document questions may take a minute or longer."
+    + "Complex document questions may "
+    + "take a minute or longer."
   );
 }
+
 
 function routeLabel(
   route: string,
@@ -47,339 +83,1245 @@ function routeLabel(
   switch (route) {
     case "rag":
       return "Document-grounded";
+
     case "direct":
       return "General education";
+
     case "web":
       return "Current web context";
+
     case "safety_guard":
       return "Safety response";
+
     default:
       return route;
   }
 }
 
-export function AskMiraPage() {
-  const [question, setQuestion] = useState("");
-  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
-  const [result, setResult] = useState<QueryResponse | null>(null);
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const documentsQuery = useQuery({
-    queryKey: ["documents"],
-    queryFn: getDocuments,
-  });
+function errorMessageFrom(
+  error: unknown,
+  fallback: string,
+): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
 
-  const queryMutation = useMutation({
-    mutationFn: async () => {
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      return queryMira(
-        {
-          query: question.trim(),
-          document_ids:
-            selectedDocumentIds.length > 0
-              ? selectedDocumentIds
-              : undefined,
-          conversation_id:
-            conversationId ?? undefined,
-        },
-        controller.signal,
-      );
-    },
-    onMutate: () => {
-      setResult(null);
-      setElapsedSeconds(0);
-    },
-    onSuccess: (response) => {
-      setResult(response);
-      setConversationId(
-      response.conversation_id,
-  );
-    },
-    onSettled: () => {
-      abortControllerRef.current = null;
-    },
-  });
-
-  useEffect(() => {
-    if (!queryMutation.isPending) {
-      return;
-    }
-
-    const intervalId = window.setInterval(
-      () => {
-        setElapsedSeconds((current) => current + 1);
-      },
-      1000,
+  if (
+    error instanceof DOMException
+    && error.name === "AbortError"
+  ) {
+    return (
+      "The request was cancelled."
     );
+  }
 
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [queryMutation.isPending]);
+  return fallback;
+}
 
-  const documents = documentsQuery.data?.documents ?? [];
-  const trimmedQuestion = question.trim();
-  const charactersRemaining = MAX_QUERY_CHARACTERS - question.length;
-  const mutationError = queryMutation.error;
 
-  const errorMessage =
-    mutationError instanceof ApiError
-      ? mutationError.message
-      : mutationError instanceof DOMException
-        && mutationError.name === "AbortError"
-        ? "The request was cancelled."
-        : queryMutation.isError
-          ? "MIRA could not complete the request."
-          : null;
+function ConversationMessageCard({
+  message,
+}: {
+  message: ConversationMessage;
+}) {
+  return (
+    <article
+      className={
+        (
+          "conversation-message "
+          + `conversation-message--${
+            message.role
+          }`
+        )
+      }
+      data-testid={
+        (
+          "conversation-message-"
+          + message.role
+        )
+      }
+    >
+      <header
+        className={
+          "conversation-message__header"
+        }
+      >
+        <strong>
+          {message.role === "user"
+            ? "You"
+            : "MIRA"}
+        </strong>
+
+        {message.route ? (
+          <span
+            className="route-badge"
+          >
+            {message.route}
+          </span>
+        ) : null}
+      </header>
+
+      {(
+        message.role === "assistant"
+        && message.route
+          === "safety_guard"
+      ) ? (
+        <StatusBanner tone="info">
+          This response was produced
+          by MIRA&apos;s medical safety
+          guard.
+          {message.safety_category
+            ? (
+              " Category: "
+              + message
+                .safety_category
+              + "."
+            )
+            : ""}
+        </StatusBanner>
+      ) : null}
+
+      <div className="answer-text">
+        {message.content
+          ? (
+            message.content
+              .split(/\n{2,}/)
+              .map(
+                (
+                  paragraph,
+                  index,
+                ) => (
+                  <p
+                    key={
+                      (
+                        `${index}-`
+                        + paragraph
+                          .slice(
+                            0,
+                            20,
+                          )
+                      )
+                    }
+                  >
+                    {paragraph}
+                  </p>
+                ),
+              )
+          )
+          : (
+            <p>
+              MIRA returned no
+              answer text.
+            </p>
+          )}
+      </div>
+    </article>
+  );
+}
+
+
+export function AskMiraPage() {
+  const queryClient =
+    useQueryClient();
+
+  const [
+    question,
+    setQuestion,
+  ] = useState("");
+
+  const [
+    selectedDocumentIds,
+    setSelectedDocumentIds,
+  ] = useState<string[]>([]);
+
+  const [
+    activeConversationId,
+    setActiveConversationId,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    conversationMessages,
+    setConversationMessages,
+  ] = useState<
+    ConversationMessage[]
+  >([]);
+
+  const [
+    latestResult,
+    setLatestResult,
+  ] = useState<
+    QueryResponse | null
+  >(null);
+
+  const [
+    conversationActionError,
+    setConversationActionError,
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    deletingConversationId,
+    setDeletingConversationId,
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    elapsedSeconds,
+    setElapsedSeconds,
+  ] = useState(0);
+
+  const abortControllerRef =
+    useRef<
+      AbortController | null
+    >(null);
+
+
+  const documentsQuery =
+    useQuery({
+      queryKey: [
+        "documents",
+      ],
+      queryFn:
+        getDocuments,
+    });
+
+
+  const conversationsQuery =
+    useQuery({
+      queryKey: [
+        "conversations",
+      ],
+      queryFn:
+        getConversations,
+    });
+
+
+  const loadConversationMutation =
+    useMutation({
+      mutationFn: (
+        conversationId: string,
+      ) => (
+        getConversation(
+          conversationId,
+        )
+      ),
+
+      onSuccess: (
+        conversation,
+      ) => {
+        setActiveConversationId(
+          conversation
+            .conversation_id,
+        );
+
+        setConversationMessages(
+          conversation.messages,
+        );
+
+        setLatestResult(
+          null,
+        );
+
+        setConversationActionError(
+          null,
+        );
+      },
+
+      onError: (
+        error,
+      ) => {
+        setConversationActionError(
+          errorMessageFrom(
+            error,
+            (
+              "The conversation "
+              + "could not be loaded."
+            ),
+          ),
+        );
+      },
+    });
+
+
+  const deleteConversationMutation =
+    useMutation({
+      mutationFn: (
+        conversationId: string,
+      ) => (
+        deleteConversation(
+          conversationId,
+        )
+      ),
+
+      onSuccess: async (
+        _data,
+        conversationId,
+      ) => {
+        if (
+          activeConversationId
+          === conversationId
+        ) {
+          setActiveConversationId(
+            null,
+          );
+
+          setConversationMessages(
+            [],
+          );
+
+          setLatestResult(
+            null,
+          );
+
+          setQuestion("");
+
+          setSelectedDocumentIds(
+            [],
+          );
+        }
+
+        setConversationActionError(
+          null,
+        );
+
+        await queryClient
+          .invalidateQueries({
+            queryKey: [
+              "conversations",
+            ],
+          });
+      },
+
+      onError: (
+        error,
+      ) => {
+        setConversationActionError(
+          errorMessageFrom(
+            error,
+            (
+              "The conversation "
+              + "could not be deleted."
+            ),
+          ),
+        );
+      },
+
+      onSettled: () => {
+        setDeletingConversationId(
+          null,
+        );
+      },
+    });
+
+
+  const queryMutation =
+    useMutation({
+      mutationFn: async () => {
+        const controller =
+          new AbortController();
+
+        abortControllerRef.current =
+          controller;
+
+        return queryMira(
+          {
+            query:
+              question.trim(),
+
+            document_ids:
+              selectedDocumentIds
+                .length > 0
+                ? selectedDocumentIds
+                : undefined,
+
+            conversation_id:
+              activeConversationId
+              ?? undefined,
+          },
+          controller.signal,
+        );
+      },
+
+      onMutate: () => {
+        setLatestResult(
+          null,
+        );
+
+        setElapsedSeconds(
+          0,
+        );
+
+        setConversationActionError(
+          null,
+        );
+      },
+
+      onSuccess: async (
+        response,
+      ) => {
+        setLatestResult(
+          response,
+        );
+
+        setActiveConversationId(
+          response
+            .conversation_id,
+        );
+
+        setQuestion("");
+
+        try {
+          const conversation =
+            await getConversation(
+              response
+                .conversation_id,
+            );
+
+          setConversationMessages(
+            conversation.messages,
+          );
+        } catch (error) {
+          setConversationActionError(
+            errorMessageFrom(
+              error,
+              (
+                "The answer was "
+                + "generated, but the "
+                + "conversation history "
+                + "could not be refreshed."
+              ),
+            ),
+          );
+        }
+
+        await queryClient
+          .invalidateQueries({
+            queryKey: [
+              "conversations",
+            ],
+          });
+      },
+
+      onSettled: () => {
+        abortControllerRef
+          .current = null;
+      },
+    });
+
+
+  useEffect(
+    () => {
+      if (
+        !queryMutation.isPending
+      ) {
+        return;
+      }
+
+      const intervalId =
+        window.setInterval(
+          () => {
+            setElapsedSeconds(
+              (current) => (
+                current + 1
+              ),
+            );
+          },
+          1000,
+        );
+
+      return () => {
+        window.clearInterval(
+          intervalId,
+        );
+      };
+    },
+    [
+      queryMutation.isPending,
+    ],
+  );
+
+
+  const documents =
+    documentsQuery
+      .data?.documents
+    ?? [];
+
+  const conversations =
+    conversationsQuery
+      .data?.conversations
+    ?? [];
+
+  const trimmedQuestion =
+    question.trim();
+
+  const charactersRemaining =
+    MAX_QUERY_CHARACTERS
+    - question.length;
+
+  const mutationError =
+    queryMutation.error;
+
+  const queryErrorMessage = (
+    queryMutation.isError
+      ? errorMessageFrom(
+        mutationError,
+        (
+          "MIRA could not "
+          + "complete the request."
+        ),
+      )
+      : null
+  );
+
+  const interfaceBusy = (
+    queryMutation.isPending
+    || loadConversationMutation
+      .isPending
+    || deleteConversationMutation
+      .isPending
+  );
+
 
   function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
+    event:
+      FormEvent<HTMLFormElement>,
   ): void {
     event.preventDefault();
 
-    if (!trimmedQuestion) {
+    if (
+      !trimmedQuestion
+      || interfaceBusy
+    ) {
       return;
     }
 
     queryMutation.mutate();
   }
 
-  function cancelRequest(): void {
-    abortControllerRef.current?.abort();
+
+  function cancelRequest():
+    void {
+    abortControllerRef
+      .current
+      ?.abort();
   }
+
+
+  function handleNewConversation():
+    void {
+    if (interfaceBusy) {
+      return;
+    }
+
+    setActiveConversationId(
+      null,
+    );
+
+    setConversationMessages(
+      [],
+    );
+
+    setLatestResult(
+      null,
+    );
+
+    setQuestion("");
+
+    setSelectedDocumentIds(
+      [],
+    );
+
+    setConversationActionError(
+      null,
+    );
+  }
+
+
+  function handleSelectConversation(
+    conversationId: string,
+  ): void {
+    if (
+      interfaceBusy
+      || conversationId
+        === activeConversationId
+    ) {
+      return;
+    }
+
+    /*
+     * Historical document IDs are
+     * display metadata only.
+     *
+     * Resuming a conversation must not
+     * silently reactivate documents from
+     * a previous turn.
+     */
+    setSelectedDocumentIds(
+      [],
+    );
+
+    setLatestResult(
+      null,
+    );
+
+    setConversationActionError(
+      null,
+    );
+
+    loadConversationMutation
+      .mutate(
+        conversationId,
+      );
+  }
+
+
+  function handleDeleteConversation(
+    conversationId: string,
+  ): void {
+    if (interfaceBusy) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        (
+          "Permanently delete this "
+          + "conversation and all of "
+          + "its stored messages?"
+        ),
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingConversationId(
+      conversationId,
+    );
+
+    setConversationActionError(
+      null,
+    );
+
+    deleteConversationMutation
+      .mutate(
+        conversationId,
+      );
+  }
+
 
   return (
     <section className="page-stack">
       <header className="page-header">
         <div>
-          <p className="eyebrow">Grounded question answering</p>
-          <h2>Ask MIRA</h2>
+          <p className="eyebrow">
+            Grounded question answering
+          </p>
+
+          <h2>
+            Ask MIRA
+          </h2>
+
           <p>
-            Select up to five owned documents for a source-grounded answer,
-            or leave the selection empty for a general educational question.
+            Select up to five owned
+            documents for a
+            source-grounded answer, or
+            leave the selection empty
+            for a general educational
+            question.
           </p>
         </div>
 
-        <span className="connection-badge">
-          {selectedDocumentIds.length} / {MAX_SELECTED_DOCUMENTS} selected
+        <span
+          className="connection-badge"
+        >
+          {selectedDocumentIds.length}
+          {" / "}
+          {MAX_SELECTED_DOCUMENTS}
+          {" selected"}
         </span>
       </header>
 
+
       <div className="query-layout">
         <aside className="query-sidebar">
-          <div className="section-heading">
+          <ConversationPanel
+            conversations={
+              conversations
+            }
+            activeConversationId={
+              activeConversationId
+            }
+            loading={
+              conversationsQuery
+                .isLoading
+            }
+            disabled={
+              interfaceBusy
+            }
+            deletingConversationId={
+              deletingConversationId
+            }
+            onNewConversation={
+              handleNewConversation
+            }
+            onSelectConversation={
+              handleSelectConversation
+            }
+            onDeleteConversation={
+              handleDeleteConversation
+            }
+          />
+
+
+          {conversationsQuery
+            .isError ? (
+              <StatusBanner tone="error">
+                {errorMessageFrom(
+                  conversationsQuery
+                    .error,
+                  (
+                    "The conversation "
+                    + "list could not "
+                    + "be loaded."
+                  ),
+                )}
+              </StatusBanner>
+            ) : null}
+
+
+          <div
+            className="section-heading"
+          >
             <div>
-              <p className="eyebrow">Context</p>
-              <h3>Select documents</h3>
+              <p className="eyebrow">
+                Context
+              </p>
+
+              <h3>
+                Select documents
+              </h3>
             </div>
 
-            {selectedDocumentIds.length > 0 && (
-              <button
-                className="text-button"
-                type="button"
-                disabled={queryMutation.isPending}
-                onClick={() => setSelectedDocumentIds([])}
-              >
-                Clear
-              </button>
-            )}
+            {selectedDocumentIds
+              .length > 0 ? (
+                <button
+                  className="text-button"
+                  type="button"
+                  disabled={
+                    interfaceBusy
+                  }
+                  onClick={() => {
+                    setSelectedDocumentIds(
+                      [],
+                    );
+                  }}
+                >
+                  Clear
+                </button>
+              ) : null}
           </div>
 
-          {documentsQuery.isLoading && (
-            <div className="selector-empty" role="status">
-              Loading documents…
-            </div>
-          )}
 
-          {documentsQuery.isError && (
-            <StatusBanner tone="error">
-              {documentsQuery.error instanceof ApiError
-                ? documentsQuery.error.message
-                : "The document list could not be loaded."}
-            </StatusBanner>
-          )}
+          {documentsQuery
+            .isLoading ? (
+              <div
+                className="selector-empty"
+                role="status"
+              >
+                Loading documents…
+              </div>
+            ) : null}
 
-          {!documentsQuery.isLoading && !documentsQuery.isError && (
-            <DocumentSelector
-              documents={documents}
-              selectedIds={selectedDocumentIds}
-              maximumSelected={MAX_SELECTED_DOCUMENTS}
-              disabled={queryMutation.isPending}
-              onChange={setSelectedDocumentIds}
-            />
-          )}
 
-          <div className="query-context-note">
-            {selectedDocumentIds.length > 0
+          {documentsQuery
+            .isError ? (
+              <StatusBanner tone="error">
+                {documentsQuery.error
+                  instanceof ApiError
+                  ? documentsQuery
+                    .error.message
+                  : (
+                    "The document list "
+                    + "could not be loaded."
+                  )}
+              </StatusBanner>
+            ) : null}
+
+
+          {(
+            !documentsQuery
+              .isLoading
+            && !documentsQuery
+              .isError
+          ) ? (
+              <DocumentSelector
+                documents={
+                  documents
+                }
+                selectedIds={
+                  selectedDocumentIds
+                }
+                maximumSelected={
+                  MAX_SELECTED_DOCUMENTS
+                }
+                disabled={
+                  interfaceBusy
+                }
+                onChange={
+                  setSelectedDocumentIds
+                }
+              />
+            ) : null}
+
+
+          <div
+            className={
+              "query-context-note"
+            }
+          >
+            {selectedDocumentIds
+              .length > 0
               ? (
-                "MIRA will answer from the selected document context "
-                + "and return supporting sources."
+                "MIRA will answer from "
+                + "the currently selected "
+                + "document context and "
+                + "return supporting "
+                + "sources."
               )
               : (
-                "No document is selected. MIRA will route the question "
-                + "to general education or current web context when configured."
+                "No document is selected. "
+                + "Conversation history "
+                + "may provide continuity, "
+                + "but previous documents "
+                + "are not automatically "
+                + "reused."
               )}
           </div>
         </aside>
 
-        <main className="query-workspace">
-          <form className="question-form" onSubmit={handleSubmit}>
-            <label className="field" htmlFor="mira-question">
-              <span>Your question</span>
+
+        <main
+          className="query-workspace"
+        >
+          {activeConversationId ? (
+            <section
+              className={
+                "active-conversation-banner"
+              }
+            >
+              <div>
+                <p className="eyebrow">
+                  Active conversation
+                </p>
+
+                <strong>
+                  Conversation memory
+                  enabled
+                </strong>
+              </div>
+
+              <button
+                className="text-button"
+                type="button"
+                disabled={
+                  interfaceBusy
+                }
+                onClick={
+                  handleNewConversation
+                }
+              >
+                Start new
+              </button>
+            </section>
+          ) : null}
+
+
+          {loadConversationMutation
+            .isPending ? (
+              <section
+                className="query-progress"
+                role="status"
+              >
+                <div
+                  className="query-spinner"
+                />
+
+                <div>
+                  <strong>
+                    Loading conversation…
+                  </strong>
+
+                  <p>
+                    Restoring stored
+                    messages.
+                  </p>
+                </div>
+              </section>
+            ) : null}
+
+
+          {conversationActionError ? (
+            <StatusBanner tone="error">
+              {
+                conversationActionError
+              }
+            </StatusBanner>
+          ) : null}
+
+
+          {conversationMessages
+            .length > 0 ? (
+              <section
+                className={
+                  "conversation-history"
+                }
+                aria-label={
+                  "Conversation history"
+                }
+                aria-live="polite"
+              >
+                {conversationMessages
+                  .map(
+                    (message) => (
+                      <ConversationMessageCard
+                        key={
+                          message
+                            .message_id
+                        }
+                        message={
+                          message
+                        }
+                      />
+                    ),
+                  )}
+              </section>
+            ) : (
+              <section
+                className={
+                  "answer-empty "
+                  + "conversation-start"
+                }
+              >
+                <h3>
+                  Start a conversation
+                </h3>
+
+                <p>
+                  Ask a general question
+                  or select documents for
+                  a grounded answer.
+                  Follow-up questions can
+                  use bounded conversation
+                  context.
+                </p>
+              </section>
+            )}
+
+
+          <form
+            className="question-form"
+            onSubmit={
+              handleSubmit
+            }
+          >
+            <label
+              className="field"
+              htmlFor="mira-question"
+            >
+              <span>
+                Your question
+              </span>
+
               <textarea
                 id="mira-question"
                 rows={7}
-                maxLength={MAX_QUERY_CHARACTERS}
+                maxLength={
+                  MAX_QUERY_CHARACTERS
+                }
                 value={question}
-                disabled={queryMutation.isPending}
+                disabled={
+                  interfaceBusy
+                }
                 placeholder={
-                  selectedDocumentIds.length > 0
+                  selectedDocumentIds
+                    .length > 0
                     ? (
-                      "Example: What medications and follow-up "
-                      + "instructions are listed?"
+                      "Example: What "
+                      + "medications and "
+                      + "follow-up "
+                      + "instructions "
+                      + "are listed?"
                     )
                     : (
-                      "Example: What is the difference between systolic "
-                      + "and diastolic blood pressure?"
+                      "Example: What is "
+                      + "the difference "
+                      + "between systolic "
+                      + "and diastolic "
+                      + "blood pressure?"
                     )
                 }
-                onChange={(event) => setQuestion(event.target.value)}
+                onChange={(
+                  event,
+                ) => {
+                  setQuestion(
+                    event.target
+                      .value,
+                  );
+                }}
               />
             </label>
 
-            <div className="question-form__footer">
+
+            <div
+              className={
+                "question-form__footer"
+              }
+            >
               <span
                 className={
-                  charactersRemaining < 200
-                    ? "character-count character-count--warning"
+                  charactersRemaining
+                    < 200
+                    ? (
+                      "character-count "
+                      + "character-count--warning"
+                    )
                     : "character-count"
                 }
               >
-                {charactersRemaining} characters remaining
+                {charactersRemaining}
+                {" characters remaining"}
               </span>
 
-              <div className="question-actions">
-                {queryMutation.isPending && (
-                  <button
-                    className="button button--secondary"
-                    type="button"
-                    onClick={cancelRequest}
-                  >
-                    Cancel
-                  </button>
-                )}
+
+              <div
+                className={
+                  "question-actions"
+                }
+              >
+                {queryMutation
+                  .isPending ? (
+                    <button
+                      className={
+                        "button "
+                        + "button--secondary"
+                      }
+                      type="button"
+                      onClick={
+                        cancelRequest
+                      }
+                    >
+                      Cancel
+                    </button>
+                  ) : null}
+
 
                 <button
-                  className="button button--primary"
+                  className={
+                    "button "
+                    + "button--primary"
+                  }
                   type="submit"
-                  disabled={!trimmedQuestion || queryMutation.isPending}
+                  disabled={
+                    !trimmedQuestion
+                    || interfaceBusy
+                  }
                 >
-                  {queryMutation.isPending ? "Asking MIRA…" : "Ask MIRA"}
+                  {queryMutation
+                    .isPending
+                    ? "Asking MIRA…"
+                    : "Ask MIRA"}
                 </button>
               </div>
             </div>
           </form>
 
-          {queryMutation.isPending && (
-            <section className="query-progress" role="status" aria-live="polite">
-              <div className="query-spinner" />
-              <div>
-                <strong>{elapsedLabel(elapsedSeconds)}</strong>
-                <p>Elapsed time: {elapsedSeconds} seconds</p>
-              </div>
-            </section>
-          )}
 
-          {errorMessage && (
-            <StatusBanner tone="error">{errorMessage}</StatusBanner>
-          )}
+          {queryMutation
+            .isPending ? (
+              <section
+                className="query-progress"
+                role="status"
+                aria-live="polite"
+              >
+                <div
+                  className="query-spinner"
+                />
 
-          {!queryMutation.isPending && !result && !errorMessage && (
-            <section className="answer-empty">
-              <h3>No answer generated yet</h3>
-              <p>
-                Enter a question and optionally select documents. The answer
-                and supporting sources will appear here.
-              </p>
-            </section>
-          )}
-
-          {result && (
-            <section className="answer-panel">
-              <header className="answer-panel__header">
                 <div>
-                  <p className="eyebrow">MIRA response</p>
-                  <h3>{routeLabel(result.route)}</h3>
+                  <strong>
+                    {elapsedLabel(
+                      elapsedSeconds,
+                    )}
+                  </strong>
+
+                  <p>
+                    Elapsed time:
+                    {" "}
+                    {elapsedSeconds}
+                    {" seconds"}
+                  </p>
                 </div>
-                <span className="route-badge">{result.route}</span>
+              </section>
+            ) : null}
+
+
+          {queryErrorMessage ? (
+            <StatusBanner tone="error">
+              {queryErrorMessage}
+            </StatusBanner>
+          ) : null}
+
+
+          {latestResult ? (
+            <section
+              className={
+                "latest-response-meta"
+              }
+            >
+              <header
+                className={
+                  "answer-panel__header"
+                }
+              >
+                <div>
+                  <p className="eyebrow">
+                    Latest response
+                  </p>
+
+                  <h3>
+                    {routeLabel(
+                      latestResult
+                        .route,
+                    )}
+                  </h3>
+                </div>
+
+                <span
+                  className="route-badge"
+                >
+                  {
+                    latestResult
+                      .route
+                  }
+                </span>
               </header>
 
-              {result.route === "safety_guard" && (
-                <StatusBanner tone="info">
-                  This response was produced by MIRA&apos;s medical safety guard.
-                  {result.safety_category
-                    ? ` Category: ${result.safety_category}.`
-                    : ""}
-                </StatusBanner>
-              )}
 
-              <div className="answer-text">
-                {result.answer
-                  ? result.answer.split(/\n{2,}/).map((paragraph, index) => (
-                    <p key={`${index}-${paragraph.slice(0, 20)}`}>
-                      {paragraph}
-                    </p>
-                  ))
-                  : <p>MIRA returned no answer text.</p>}
+              <div
+                className={
+                  "answer-summary"
+                }
+              >
+                <span>
+                  {
+                    latestResult
+                      .selected_document_count
+                  }
+                  {" document"}
+                  {latestResult
+                    .selected_document_count
+                    === 1
+                    ? ""
+                    : "s"}
+                  {" used"}
+                </span>
+
+                <span>
+                  {
+                    latestResult
+                      .sources.length
+                  }
+                  {" source"}
+                  {latestResult
+                    .sources.length
+                    === 1
+                    ? ""
+                    : "s"}
+                </span>
               </div>
 
-              <div className="answer-summary">
-                <span>
-                  {result.selected_document_count} document
-                  {result.selected_document_count === 1 ? "" : "s"} used
-                </span>
-                <span>
-                  {result.sources.length} source
-                  {result.sources.length === 1 ? "" : "s"}
-                </span>
-              </div>
 
-              {result.sources.length > 0 && (
-                <section className="sources-section">
-                  <div>
-                    <p className="eyebrow">Supporting context</p>
-                    <h4>Sources</h4>
-                  </div>
+              {latestResult
+                .sources.length > 0 ? (
+                  <section
+                    className={
+                      "sources-section"
+                    }
+                  >
+                    <div>
+                      <p
+                        className="eyebrow"
+                      >
+                        Supporting context
+                      </p>
 
-                  <div className="source-list">
-                    {result.sources.map((source, index) => (
-                      <SourceCard
-                        key={String(source.chunk_id ?? index)}
-                        source={source}
-                        index={index}
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
+                      <h4>
+                        Sources
+                      </h4>
+                    </div>
+
+                    <div
+                      className="source-list"
+                    >
+                      {latestResult
+                        .sources
+                        .map(
+                          (
+                            source,
+                            index,
+                          ) => (
+                            <SourceCard
+                              key={
+                                String(
+                                  source
+                                    .chunk_id
+                                  ?? index,
+                                )
+                              }
+                              source={
+                                source
+                              }
+                              index={
+                                index
+                              }
+                            />
+                          ),
+                        )}
+                    </div>
+                  </section>
+                ) : null}
             </section>
-          )}
+          ) : null}
         </main>
       </div>
 
+
       <section className="safety-panel">
         <div>
-          <p className="eyebrow">Medical safety</p>
-          <h3>Educational support only</h3>
+          <p className="eyebrow">
+            Medical safety
+          </p>
+
+          <h3>
+            Educational support only
+          </h3>
         </div>
+
         <p>
-          MIRA does not diagnose, prescribe, or replace professional medical
-          judgment. Document-grounded answers are limited to the uploaded text
-          and should be reviewed with a licensed healthcare professional.
+          MIRA does not diagnose,
+          prescribe, or replace
+          professional medical judgment.
+          Document-grounded answers are
+          limited to the uploaded text
+          and should be reviewed with a
+          licensed healthcare
+          professional.
         </p>
       </section>
     </section>

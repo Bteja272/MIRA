@@ -95,6 +95,81 @@ class RAGService:
         "list the uploaded documents",
     }
 
+    ORDINAL_INDEXES = {
+        "first": 0,
+        "1st": 0,
+        "second": 1,
+        "2nd": 1,
+        "third": 2,
+        "3rd": 2,
+        "fourth": 3,
+        "4th": 3,
+        "fifth": 4,
+        "5th": 4,
+        "sixth": 5,
+        "6th": 5,
+        "seventh": 6,
+        "7th": 6,
+        "eighth": 7,
+        "8th": 7,
+        "ninth": 8,
+        "9th": 8,
+        "tenth": 9,
+        "10th": 9,
+    }
+
+    RESULT_LOOKUP_TERMS = {
+        "result",
+        "results",
+        "value",
+        "values",
+        "measurement",
+        "measurements",
+    }
+
+    MEDICATION_LOOKUP_TERMS = (
+        "dose",
+        "dosage",
+        "how much",
+        "how often",
+        "frequency",
+        "take",
+        "taking",
+        "medication",
+        "medicine",
+        "prescribed",
+        "listed",
+    )
+
+    MEDICATION_QUERY_STOPWORDS = {
+        "a",
+        "an",
+        "and",
+        "are",
+        "do",
+        "does",
+        "for",
+        "how",
+        "i",
+        "is",
+        "it",
+        "listed",
+        "medication",
+        "medicine",
+        "much",
+        "my",
+        "of",
+        "often",
+        "prescribed",
+        "should",
+        "take",
+        "taking",
+        "the",
+        "this",
+        "to",
+        "what",
+    }
+
     @staticmethod
     def _elapsed_ms(
         started_at: float,
@@ -542,19 +617,343 @@ class RAGService:
 
 
     @classmethod
+    def _requested_ordinal_index(
+        cls,
+        query: str,
+    ) -> int | None:
+        normalized = cls._normalize_query_text(query)
+        tokens = set(normalized.split())
+
+        for ordinal, index in cls.ORDINAL_INDEXES.items():
+            if ordinal in tokens:
+                return index
+
+        return None
+
+    @classmethod
+    def _is_result_lookup_query(
+        cls,
+        query: str,
+    ) -> bool:
+        normalized = cls._normalize_query_text(query)
+        tokens = set(normalized.split())
+
+        return bool(tokens & cls.RESULT_LOOKUP_TERMS)
+
+    @staticmethod
+    def _source_citation(
+        text: str,
+        source_number: int,
+    ) -> str:
+        cleaned = text.strip()
+
+        if not cleaned:
+            return ""
+
+        terminal = ""
+
+        if cleaned[-1:] in {
+            ".",
+            "!",
+            "?",
+        }:
+            terminal = cleaned[-1]
+            cleaned = cleaned[:-1].rstrip()
+
+        return (
+            f"{cleaned} "
+            f"[Source {source_number}]"
+            f"{terminal}"
+        )
+
+    @classmethod
+    def _build_ordinal_result_fallback(
+        cls,
+        *,
+        query: str,
+        documents: list,
+    ) -> str | None:
+        """
+        Resolve deterministic ordinal-result questions such as:
+
+        - What is the first result?
+        - What is the value of the second result?
+
+        Only exact source lines are used. No medical interpretation or
+        calculation is performed.
+        """
+        if not cls._is_result_lookup_query(query):
+            return None
+
+        requested_index = cls._requested_ordinal_index(query)
+
+        if requested_index is None:
+            return None
+
+        results: list[tuple[str | None, str, int]] = []
+
+        for source_number, document in enumerate(
+            documents,
+            start=1,
+        ):
+            raw_lines = [
+                line.strip()
+                for line in str(
+                    document.page_content or ""
+                ).splitlines()
+                if line.strip()
+            ]
+
+            for line_index, line in enumerate(raw_lines):
+                normalized_line = line.lower()
+
+                if not normalized_line.startswith("result:"):
+                    continue
+
+                label: str | None = None
+
+                if line_index > 0:
+                    previous_line = raw_lines[line_index - 1]
+                    previous_lower = previous_line.lower()
+
+                    metadata_prefixes = (
+                        "reference range:",
+                        "flag:",
+                        "result:",
+                        "facility:",
+                        "patient:",
+                        "collection date:",
+                        "ordering physician:",
+                    )
+
+                    if not previous_lower.startswith(
+                        metadata_prefixes
+                    ):
+                        label = previous_line
+
+                results.append(
+                    (
+                        label,
+                        line,
+                        source_number,
+                    )
+                )
+
+        if requested_index >= len(results):
+            return None
+
+        label, result_line, source_number = results[
+            requested_index
+        ]
+
+        answer_lines: list[str] = []
+
+        if label:
+            cited_label = cls._source_citation(
+                label,
+                source_number,
+            )
+
+            if cited_label:
+                answer_lines.append(cited_label)
+
+        cited_result = cls._source_citation(
+            result_line,
+            source_number,
+        )
+
+        if cited_result:
+            answer_lines.append(cited_result)
+
+        if not answer_lines:
+            return None
+
+        return "\n".join(answer_lines)
+
+    @classmethod
+    def _is_medication_lookup_query(
+        cls,
+        query: str,
+    ) -> bool:
+        normalized = cls._normalize_query_text(query)
+
+        return any(
+            term in normalized
+            for term in cls.MEDICATION_LOOKUP_TERMS
+        )
+
+    @staticmethod
+    def _looks_like_medication_instruction(
+        line: str,
+    ) -> bool:
+        """
+        Identify source lines that look like medication instructions.
+
+        This is intentionally conservative. A candidate must contain a
+        medication-style dose unit or dosage form. The fallback never
+        calculates or changes a dose; it can only return an exact source line.
+        """
+        normalized = line.lower()
+
+        dose_patterns = (
+            r"\b\d+(?:\.\d+)?\s*(?:mg|mcg|g|ml|units?)\b",
+            r"\b\d+(?:\.\d+)?\s*(?:tablet|tablets|capsule|capsules)\b",
+        )
+
+        return any(
+            re.search(pattern, normalized)
+            for pattern in dose_patterns
+        )
+
+    @classmethod
+    def _build_medication_lookup_fallback(
+        cls,
+        *,
+        query: str,
+        documents: list,
+    ) -> str | None:
+        """
+        Resolve medication dose/frequency lookups using only exact source text.
+
+        Examples:
+        - How much metformin should I take?
+        - What dose of lisinopril is listed?
+        - How often is metformin taken?
+
+        The response is framed as a documented instruction rather than a new
+        prescription. No dose calculation, substitution, or recommendation is
+        performed.
+        """
+        if not cls._is_medication_lookup_query(query):
+            return None
+
+        normalized_query = cls._normalize_query_text(query)
+
+        query_terms = {
+            token
+            for token in normalized_query.split()
+            if token not in cls.MEDICATION_QUERY_STOPWORDS
+            and len(token) > 2
+        }
+
+        if not query_terms:
+            return None
+
+        candidates: list[
+            tuple[int, int, str]
+        ] = []
+
+        for source_number, document in enumerate(
+            documents,
+            start=1,
+        ):
+            for raw_line in str(
+                document.page_content or ""
+            ).splitlines():
+                line = raw_line.strip()
+
+                if not line:
+                    continue
+
+                if not cls._looks_like_medication_instruction(
+                    line
+                ):
+                    continue
+
+                normalized_line = cls._normalize_query_text(
+                    line
+                )
+                line_terms = set(
+                    normalized_line.split()
+                )
+
+                overlap = query_terms & line_terms
+
+                if not overlap:
+                    continue
+
+                candidates.append(
+                    (
+                        len(overlap),
+                        source_number,
+                        line,
+                    )
+                )
+
+        if not candidates:
+            return None
+
+        candidates.sort(
+            key=lambda item: item[0],
+            reverse=True,
+        )
+
+        best_score = candidates[0][0]
+        best_candidates = [
+            candidate
+            for candidate in candidates
+            if candidate[0] == best_score
+        ]
+
+        # If multiple instructions tie for the same query, do not guess.
+        if len(best_candidates) != 1:
+            return None
+
+        _, source_number, medication_line = (
+            best_candidates[0]
+        )
+
+        cited_line = cls._source_citation(
+            medication_line,
+            source_number,
+        )
+
+        if not cited_line:
+            return None
+
+        return (
+            "Documented medication instruction:\n"
+            f"{cited_line}"
+        )
+
+    @classmethod
     def _build_source_grounded_fallback(
         cls,
+        *,
+        query: str,
         documents: list,
+        task: str,
     ) -> str:
         """
-        Build a deterministic extractive fallback from the exact
+        Build a deterministic source-grounded fallback from the exact
         optimized source context supplied to the LLM.
 
-        Every retained source sentence is copied verbatim and receives
-        the source label for the document it came from. No new medical
-        facts, calculations, interpretations, or source labels are
-        generated.
+        Focused QA first attempts an exact extractive answer. Summaries,
+        comparisons, and unresolved QA retain the broader source-text
+        fallback. No new medical facts, calculations, interpretations,
+        or source labels are generated.
         """
+        if task == "qa":
+            medication_answer = (
+                cls._build_medication_lookup_fallback(
+                    query=query,
+                    documents=documents,
+                )
+            )
+
+            if medication_answer:
+                return medication_answer
+
+            ordinal_answer = (
+                cls._build_ordinal_result_fallback(
+                    query=query,
+                    documents=documents,
+                )
+            )
+
+            if ordinal_answer:
+                return ordinal_answer
+
         sections: list[str] = []
 
         for source_number, document in enumerate(
@@ -584,8 +983,6 @@ class RAGService:
                 if not line:
                     continue
 
-                # Keep sentence boundaries so each factual sentence has
-                # its own deterministic citation.
                 sentence_parts = re.split(
                     r"(?<=[.!?])\s+",
                     line,
@@ -597,25 +994,13 @@ class RAGService:
                     if not cleaned:
                         continue
 
-                    terminal = ""
-                    sentence_body = cleaned
-
-                    if cleaned[-1:] in {
-                        ".",
-                        "!",
-                        "?",
-                    }:
-                        terminal = cleaned[-1]
-                        sentence_body = (
-                            cleaned[:-1]
-                            .rstrip()
-                        )
-
-                    cited_sentences.append(
-                        f"{sentence_body} "
-                        f"[Source {source_number}]"
-                        f"{terminal}"
+                    cited = cls._source_citation(
+                        cleaned,
+                        source_number,
                     )
+
+                    if cited:
+                        cited_sentences.append(cited)
 
             if not cited_sentences:
                 continue
@@ -638,9 +1023,7 @@ class RAGService:
         return (
             "I could not safely preserve the generated answer, so the "
             "relevant source-grounded document text is shown below.\n\n"
-            + "\n\n".join(
-                sections
-            )
+            + "\n\n".join(sections)
         )
 
     @classmethod
@@ -1212,7 +1595,9 @@ class RAGService:
                 fallback_answer = (
                     cls
                     ._build_source_grounded_fallback(
-                        prompt_documents
+                        query=query,
+                        documents=prompt_documents,
+                        task=task,
                     )
                 )
 

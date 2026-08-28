@@ -203,15 +203,27 @@ def safety_block_node(
     }
 
 
-def fallback_classify(
+def _normalize_query(
     query: str,
 ) -> str:
-    normalized_query = (
-        " ".join(
-            query.lower().split()
-        )
+    return " ".join(
+        query.lower().split()
     )
 
+
+def _contains_any(
+    query: str,
+    phrases: tuple[str, ...],
+) -> bool:
+    return any(
+        phrase in query
+        for phrase in phrases
+    )
+
+
+def _is_web_freshness_query(
+    normalized_query: str,
+) -> bool:
     web_keywords = (
         "latest",
         "current",
@@ -233,10 +245,168 @@ def fallback_classify(
         "latest guidelines",
     )
 
-    if any(
-        keyword in normalized_query
-        for keyword
-        in web_keywords
+    return _contains_any(
+        normalized_query,
+        web_keywords,
+    )
+
+
+def _is_explicit_web_query(
+    normalized_query: str,
+) -> bool:
+    explicit_web_phrases = (
+        "search the web",
+        "search online",
+        "look this up online",
+        "look it up online",
+        "check the web",
+        "check online",
+        "find online",
+        "from the web",
+        "on the web",
+    )
+
+    return _contains_any(
+        normalized_query,
+        explicit_web_phrases,
+    )
+
+
+def _is_document_specific_query(
+    normalized_query: str,
+) -> bool:
+    """
+    Return True when the wording asks for facts,
+    values, comparisons, or interpretation tied to
+    the selected report/document.
+
+    These requests should stay document-grounded
+    because patient-specific facts must come from
+    the owned source material, not the web.
+    """
+
+    document_phrases = (
+        "this document",
+        "the document",
+        "this report",
+        "the report",
+        "my report",
+        "my document",
+        "selected document",
+        "selected documents",
+        "uploaded document",
+        "uploaded documents",
+        "according to",
+        "from the document",
+        "from the report",
+        "in the document",
+        "in the report",
+        "summarize",
+        "summarise",
+        "summary",
+        "what is my",
+        "what are my",
+        "what was my",
+        "what were my",
+        "my result",
+        "my results",
+        "my level",
+        "my levels",
+        "my value",
+        "my values",
+        "my medication",
+        "my medications",
+        "my diagnosis",
+        "my diagnoses",
+        "reference range",
+        "normal range",
+        "within range",
+        "within the range",
+        "outside the range",
+        "above range",
+        "below range",
+        "high or low",
+        "is it high",
+        "is it low",
+        "is this high",
+        "is this low",
+        "safe level",
+        "safe levels",
+        "is my",
+        "compare my",
+        "compare this",
+        "compare these",
+        "first result",
+        "second result",
+        "third result",
+        "fourth result",
+        "fifth result",
+    )
+
+    return _contains_any(
+        normalized_query,
+        document_phrases,
+    )
+
+
+def _is_educational_expansion_query(
+    normalized_query: str,
+) -> bool:
+    """
+    Detect general educational questions that should
+    not be trapped inside RAG merely because the user
+    currently has a document selected.
+
+    Examples:
+      - What is hemoglobin?
+      - What does LDL mean?
+      - Explain hemoglobin A1c.
+      - What is A1c used for?
+
+    Patient-specific wording is handled separately by
+    _is_document_specific_query().
+    """
+
+    definition_prefixes = (
+        "what is ",
+        "what are ",
+        "what does ",
+        "what do ",
+        "define ",
+        "explain ",
+        "explain what ",
+        "tell me about ",
+        "what is the meaning of ",
+        "what does it mean",
+        "what is it used for",
+        "what is this used for",
+        "why is ",
+        "why are ",
+        "how does ",
+        "how do ",
+    )
+
+    return normalized_query.startswith(
+        definition_prefixes
+    )
+
+
+def fallback_classify(
+    query: str,
+) -> str:
+    normalized_query = (
+        _normalize_query(
+            query
+        )
+    )
+
+    if (
+        _is_web_freshness_query(
+            normalized_query
+        )
+        or _is_explicit_web_query(
+            normalized_query
+        )
     ):
         return "web"
 
@@ -253,7 +423,52 @@ def classify_node(
         or []
     )
 
+    normalized_query = (
+        _normalize_query(
+            state["query"]
+        )
+    )
+
+    # Explicit web/freshness intent always wins after
+    # the deterministic SafetyGuard has allowed the
+    # current request.
+    if (
+        _is_web_freshness_query(
+            normalized_query
+        )
+        or _is_explicit_web_query(
+            normalized_query
+        )
+    ):
+        return {
+            "route": "web",
+        }
+
     if selected_ids:
+        # Patient/report-specific values, ranges,
+        # comparisons and summaries remain grounded
+        # in the selected owned documents.
+        if _is_document_specific_query(
+            normalized_query
+        ):
+            return {
+                "route": "rag",
+            }
+
+        # A selected document is context, not a hard
+        # "RAG mode". General definitions and medical
+        # concept explanations may use web-backed
+        # educational information without requiring
+        # the user to deselect their report.
+        if _is_educational_expansion_query(
+            normalized_query
+        ):
+            return {
+                "route": "web",
+            }
+
+        # Unknown intent with selected documents stays
+        # conservative and grounded.
         return {
             "route": "rag",
         }

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import (
+    datetime,
+    timezone,
+)
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -12,7 +15,9 @@ from app.db.conversation_models import (
     Conversation,
     ConversationMessage,
 )
-from app.db.session import SessionLocal
+from app.db.session import (
+    SessionLocal,
+)
 from app.services.medical_prompt_service import (
     MedicalPromptService,
 )
@@ -150,13 +155,15 @@ class ConversationService:
                 ConversationMessage
                 .conversation_id
                 == conversation_id,
-                ConversationMessage.user_id
+                ConversationMessage
+                .user_id
                 == user_id,
             )
             .order_by(
                 ConversationMessage
                 .created_at.desc(),
-                ConversationMessage.id.desc(),
+                ConversationMessage
+                .id.desc(),
             )
             .limit(
                 cls.MAX_CONTEXT_MESSAGES
@@ -188,9 +195,11 @@ class ConversationService:
         for message in reversed(
             messages
         ):
-            cleaned = cls._context_content(
-                message.content,
-                message.role,
+            cleaned = (
+                cls._context_content(
+                    message.content,
+                    message.role,
+                )
             )
 
             if not cleaned:
@@ -211,13 +220,15 @@ class ConversationService:
 
             context.append(
                 {
-                    "role": message.role,
+                    "role": (
+                        message.role
+                    ),
                     "content": cleaned,
                 }
             )
 
-            remaining_characters -= len(
-                cleaned
+            remaining_characters -= (
+                len(cleaned)
             )
 
         context.reverse()
@@ -240,8 +251,8 @@ class ConversationService:
             or str(uuid4())
         )
 
-        assistant_message_id = (
-            str(uuid4())
+        assistant_message_id = str(
+            uuid4()
         )
 
         user_message_id = str(
@@ -257,7 +268,9 @@ class ConversationService:
                 ).where(
                     Conversation
                     .conversation_id
-                    == resolved_conversation_id,
+                    == (
+                        resolved_conversation_id
+                    ),
                     Conversation.user_id
                     == user_id,
                 )
@@ -267,7 +280,10 @@ class ConversationService:
                 if conversation_id:
                     raise (
                         ConversationNotFoundError(
-                            "Conversation not found."
+                            (
+                                "Conversation "
+                                "not found."
+                            )
                         )
                     )
 
@@ -289,6 +305,14 @@ class ConversationService:
                     conversation
                 )
 
+            document_ids = list(
+                result.get(
+                    "document_ids",
+                    [],
+                )
+                or []
+            )
+
             user_message = (
                 ConversationMessage(
                     message_id=(
@@ -301,12 +325,8 @@ class ConversationService:
                     role="user",
                     content=query,
                     route=None,
-                    document_ids=list(
-                        result.get(
-                            "document_ids",
-                            [],
-                        )
-                        or []
+                    document_ids=(
+                        document_ids
                     ),
                     sources=[],
                     safety_category=None,
@@ -336,12 +356,8 @@ class ConversationService:
                             "direct",
                         )
                     ),
-                    document_ids=list(
-                        result.get(
-                            "document_ids",
-                            [],
-                        )
-                        or []
+                    document_ids=(
+                        document_ids
                     ),
                     sources=list(
                         result.get(
@@ -361,12 +377,15 @@ class ConversationService:
             db.add(
                 user_message
             )
+
             db.add(
                 assistant_message
             )
 
             conversation.updated_at = (
-                datetime.utcnow()
+                datetime.now(
+                    timezone.utc
+                )
             )
 
             db.commit()
@@ -516,7 +535,9 @@ class ConversationService:
                     conversation
                     .conversation_id
                 ),
-                "title": conversation.title,
+                "title": (
+                    conversation.title
+                ),
                 "created_at": (
                     conversation.created_at
                 ),
@@ -537,12 +558,9 @@ class ConversationService:
                         "route": (
                             message.route
                         ),
-                        "document_ids": (
-                            list(
-                                message
-                                .document_ids
-                                or []
-                            )
+                        "document_ids": list(
+                            message.document_ids
+                            or []
                         ),
                         "sources": list(
                             message.sources
@@ -560,6 +578,126 @@ class ConversationService:
                     in messages
                 ],
             }
+
+        finally:
+            db.close()
+
+    @classmethod
+    def delete_for_user(
+        cls,
+        *,
+        conversation_id: str,
+        user_id: str,
+    ) -> bool:
+        """
+        Permanently delete an owned
+        conversation.
+
+        ConversationMessage rows are
+        deleted through the configured
+        relationship/database cascade.
+        """
+
+        db = SessionLocal()
+
+        try:
+            conversation = db.scalar(
+                select(
+                    Conversation
+                ).where(
+                    Conversation
+                    .conversation_id
+                    == conversation_id,
+                    Conversation.user_id
+                    == user_id,
+                )
+            )
+
+            if conversation is None:
+                return False
+
+            db.delete(
+                conversation
+            )
+
+            db.commit()
+
+            return True
+
+        except Exception:
+            db.rollback()
+            raise
+
+        finally:
+            db.close()
+
+    @classmethod
+    def remove_document_references(
+        cls,
+        *,
+        document_id: str,
+        user_id: str,
+    ) -> int:
+        """
+        Remove a deleted document ID
+        from historical conversation
+        metadata owned by the same user.
+
+        Conversation text and generated
+        answers are intentionally left
+        intact. Historical document IDs
+        are metadata only and are never
+        reused automatically for a new
+        query.
+        """
+
+        db = SessionLocal()
+
+        changed = 0
+
+        try:
+            messages = list(
+                db.scalars(
+                    select(
+                        ConversationMessage
+                    ).where(
+                        ConversationMessage
+                        .user_id
+                        == user_id
+                    )
+                ).all()
+            )
+
+            for message in messages:
+                existing_ids = list(
+                    message.document_ids
+                    or []
+                )
+
+                if (
+                    document_id
+                    not in existing_ids
+                ):
+                    continue
+
+                message.document_ids = [
+                    existing_id
+                    for existing_id
+                    in existing_ids
+                    if existing_id
+                    != document_id
+                ]
+
+                changed += 1
+
+            if changed > 0:
+                db.commit()
+
+            return changed
+
+        except Exception:
+            db.rollback()
+            raise
 
         finally:
             db.close()
