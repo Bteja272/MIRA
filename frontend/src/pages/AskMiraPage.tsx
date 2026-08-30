@@ -46,6 +46,9 @@ import type {
 
 import "../styles/query.css";
 
+import {
+  VoiceInputButton,
+} from "../components/VoiceInputButton";
 
 const MAX_SELECTED_DOCUMENTS = 5;
 const MAX_QUERY_CHARACTERS = 4000;
@@ -130,8 +133,7 @@ function ConversationMessageCard({
       className={
         (
           "conversation-message "
-          + `conversation-message--${
-            message.role
+          + `conversation-message--${message.role
           }`
         )
       }
@@ -165,7 +167,7 @@ function ConversationMessageCard({
       {(
         message.role === "assistant"
         && message.route
-          === "safety_guard"
+        === "safety_guard"
       ) ? (
         <StatusBanner tone="info">
           This response was produced
@@ -274,6 +276,11 @@ export function AskMiraPage() {
     elapsedSeconds,
     setElapsedSeconds,
   ] = useState(0);
+
+    const [
+    voiceListening,
+    setVoiceListening,
+  ] = useState(false);
 
   const abortControllerRef =
     useRef<
@@ -587,6 +594,38 @@ export function AskMiraPage() {
   );
 
 
+  function handleVoiceTranscript(
+      transcript: string,
+    ): void {
+      const cleanedTranscript =
+        transcript.trim();
+
+      if (!cleanedTranscript) {
+        return;
+      }
+
+      setQuestion(
+        (currentQuestion) => {
+          const separator =
+            currentQuestion.trim()
+              ? " "
+              : "";
+
+          const combined =
+            (
+              currentQuestion
+              + separator
+              + cleanedTranscript
+            );
+
+          return combined.slice(
+            0,
+            MAX_QUERY_CHARACTERS,
+          );
+        },
+      );
+    }
+
   function handleSubmit(
     event:
       FormEvent<HTMLFormElement>,
@@ -596,6 +635,7 @@ export function AskMiraPage() {
     if (
       !trimmedQuestion
       || interfaceBusy
+      || voiceListening
     ) {
       return;
     }
@@ -648,7 +688,7 @@ export function AskMiraPage() {
     if (
       interfaceBusy
       || conversationId
-        === activeConversationId
+      === activeConversationId
     ) {
       return;
     }
@@ -781,18 +821,18 @@ export function AskMiraPage() {
 
           {conversationsQuery
             .isError ? (
-              <StatusBanner tone="error">
-                {errorMessageFrom(
-                  conversationsQuery
-                    .error,
-                  (
-                    "The conversation "
-                    + "list could not "
-                    + "be loaded."
-                  ),
-                )}
-              </StatusBanner>
-            ) : null}
+            <StatusBanner tone="error">
+              {errorMessageFrom(
+                conversationsQuery
+                  .error,
+                (
+                  "The conversation "
+                  + "list could not "
+                  + "be loaded."
+                ),
+              )}
+            </StatusBanner>
+          ) : null}
 
 
           <div
@@ -810,48 +850,48 @@ export function AskMiraPage() {
 
             {selectedDocumentIds
               .length > 0 ? (
-                <button
-                  className="text-button"
-                  type="button"
-                  disabled={
-                    interfaceBusy
-                  }
-                  onClick={() => {
-                    setSelectedDocumentIds(
-                      [],
-                    );
-                  }}
-                >
-                  Clear
-                </button>
-              ) : null}
+              <button
+                className="text-button"
+                type="button"
+                disabled={
+                  interfaceBusy
+                }
+                onClick={() => {
+                  setSelectedDocumentIds(
+                    [],
+                  );
+                }}
+              >
+                Clear
+              </button>
+            ) : null}
           </div>
 
 
           {documentsQuery
             .isLoading ? (
-              <div
-                className="selector-empty"
-                role="status"
-              >
-                Loading documents…
-              </div>
-            ) : null}
+            <div
+              className="selector-empty"
+              role="status"
+            >
+              Loading documents…
+            </div>
+          ) : null}
 
 
           {documentsQuery
             .isError ? (
-              <StatusBanner tone="error">
-                {documentsQuery.error
-                  instanceof ApiError
-                  ? documentsQuery
-                    .error.message
-                  : (
-                    "The document list "
-                    + "could not be loaded."
-                  )}
-              </StatusBanner>
-            ) : null}
+            <StatusBanner tone="error">
+              {documentsQuery.error
+                instanceof ApiError
+                ? documentsQuery
+                  .error.message
+                : (
+                  "The document list "
+                  + "could not be loaded."
+                )}
+            </StatusBanner>
+          ) : null}
 
 
           {(
@@ -860,24 +900,24 @@ export function AskMiraPage() {
             && !documentsQuery
               .isError
           ) ? (
-              <DocumentSelector
-                documents={
-                  documents
-                }
-                selectedIds={
-                  selectedDocumentIds
-                }
-                maximumSelected={
-                  MAX_SELECTED_DOCUMENTS
-                }
-                disabled={
-                  interfaceBusy
-                }
-                onChange={
-                  setSelectedDocumentIds
-                }
-              />
-            ) : null}
+            <DocumentSelector
+              documents={
+                documents
+              }
+              selectedIds={
+                selectedDocumentIds
+              }
+              maximumSelected={
+                MAX_SELECTED_DOCUMENTS
+              }
+              disabled={
+                interfaceBusy
+              }
+              onChange={
+                setSelectedDocumentIds
+              }
+            />
+          ) : null}
 
 
           <div
@@ -944,26 +984,26 @@ export function AskMiraPage() {
 
           {loadConversationMutation
             .isPending ? (
-              <section
-                className="query-progress"
-                role="status"
-              >
-                <div
-                  className="query-spinner"
-                />
+            <section
+              className="query-progress"
+              role="status"
+            >
+              <div
+                className="query-spinner"
+              />
 
-                <div>
-                  <strong>
-                    Loading conversation…
-                  </strong>
+              <div>
+                <strong>
+                  Loading conversation…
+                </strong>
 
-                  <p>
-                    Restoring stored
-                    messages.
-                  </p>
-                </div>
-              </section>
-            ) : null}
+                <p>
+                  Restoring stored
+                  messages.
+                </p>
+              </div>
+            </section>
+          ) : null}
 
 
           {conversationActionError ? (
@@ -977,51 +1017,51 @@ export function AskMiraPage() {
 
           {conversationMessages
             .length > 0 ? (
-              <section
-                className={
-                  "conversation-history"
-                }
-                aria-label={
-                  "Conversation history"
-                }
-                aria-live="polite"
-              >
-                {conversationMessages
-                  .map(
-                    (message) => (
-                      <ConversationMessageCard
-                        key={
-                          message
-                            .message_id
-                        }
-                        message={
-                          message
-                        }
-                      />
-                    ),
-                  )}
-              </section>
-            ) : (
-              <section
-                className={
-                  "answer-empty "
-                  + "conversation-start"
-                }
-              >
-                <h3>
-                  Start a conversation
-                </h3>
+            <section
+              className={
+                "conversation-history"
+              }
+              aria-label={
+                "Conversation history"
+              }
+              aria-live="polite"
+            >
+              {conversationMessages
+                .map(
+                  (message) => (
+                    <ConversationMessageCard
+                      key={
+                        message
+                          .message_id
+                      }
+                      message={
+                        message
+                      }
+                    />
+                  ),
+                )}
+            </section>
+          ) : (
+            <section
+              className={
+                "answer-empty "
+                + "conversation-start"
+              }
+            >
+              <h3>
+                Start a conversation
+              </h3>
 
-                <p>
-                  Ask a general question
-                  or select documents for
-                  a grounded answer.
-                  Follow-up questions can
-                  use bounded conversation
-                  context.
-                </p>
-              </section>
-            )}
+              <p>
+                Ask a general question
+                or select documents for
+                a grounded answer.
+                Follow-up questions can
+                use bounded conversation
+                context.
+              </p>
+            </section>
+          )}
 
 
           <form
@@ -1104,21 +1144,32 @@ export function AskMiraPage() {
                   "question-actions"
                 }
               >
+                <VoiceInputButton
+                  disabled={
+                    interfaceBusy
+                  }
+                  onTranscript={
+                    handleVoiceTranscript
+                  }
+                  onListeningChange={
+                    setVoiceListening
+                  }
+                />
                 {queryMutation
                   .isPending ? (
-                    <button
-                      className={
-                        "button "
-                        + "button--secondary"
-                      }
-                      type="button"
-                      onClick={
-                        cancelRequest
-                      }
-                    >
-                      Cancel
-                    </button>
-                  ) : null}
+                  <button
+                    className={
+                      "button "
+                      + "button--secondary"
+                    }
+                    type="button"
+                    onClick={
+                      cancelRequest
+                    }
+                  >
+                    Cancel
+                  </button>
+                ) : null}
 
 
                 <button
@@ -1130,6 +1181,7 @@ export function AskMiraPage() {
                   disabled={
                     !trimmedQuestion
                     || interfaceBusy
+                    || voiceListening
                   }
                 >
                   {queryMutation
@@ -1144,31 +1196,31 @@ export function AskMiraPage() {
 
           {queryMutation
             .isPending ? (
-              <section
-                className="query-progress"
-                role="status"
-                aria-live="polite"
-              >
-                <div
-                  className="query-spinner"
-                />
+            <section
+              className="query-progress"
+              role="status"
+              aria-live="polite"
+            >
+              <div
+                className="query-spinner"
+              />
 
-                <div>
-                  <strong>
-                    {elapsedLabel(
-                      elapsedSeconds,
-                    )}
-                  </strong>
+              <div>
+                <strong>
+                  {elapsedLabel(
+                    elapsedSeconds,
+                  )}
+                </strong>
 
-                  <p>
-                    Elapsed time:
-                    {" "}
-                    {elapsedSeconds}
-                    {" seconds"}
-                  </p>
-                </div>
-              </section>
-            ) : null}
+                <p>
+                  Elapsed time:
+                  {" "}
+                  {elapsedSeconds}
+                  {" seconds"}
+                </p>
+              </div>
+            </section>
+          ) : null}
 
 
           {queryErrorMessage ? (
@@ -1249,53 +1301,53 @@ export function AskMiraPage() {
 
               {latestResult
                 .sources.length > 0 ? (
-                  <section
-                    className={
-                      "sources-section"
-                    }
-                  >
-                    <div>
-                      <p
-                        className="eyebrow"
-                      >
-                        Supporting context
-                      </p>
-
-                      <h4>
-                        Sources
-                      </h4>
-                    </div>
-
-                    <div
-                      className="source-list"
+                <section
+                  className={
+                    "sources-section"
+                  }
+                >
+                  <div>
+                    <p
+                      className="eyebrow"
                     >
-                      {latestResult
-                        .sources
-                        .map(
-                          (
-                            source,
-                            index,
-                          ) => (
-                            <SourceCard
-                              key={
-                                String(
-                                  source
-                                    .chunk_id
-                                  ?? index,
-                                )
-                              }
-                              source={
+                      Supporting context
+                    </p>
+
+                    <h4>
+                      Sources
+                    </h4>
+                  </div>
+
+                  <div
+                    className="source-list"
+                  >
+                    {latestResult
+                      .sources
+                      .map(
+                        (
+                          source,
+                          index,
+                        ) => (
+                          <SourceCard
+                            key={
+                              String(
                                 source
-                              }
-                              index={
-                                index
-                              }
-                            />
-                          ),
-                        )}
-                    </div>
-                  </section>
-                ) : null}
+                                  .chunk_id
+                                ?? index,
+                              )
+                            }
+                            source={
+                              source
+                            }
+                            index={
+                              index
+                            }
+                          />
+                        ),
+                      )}
+                  </div>
+                </section>
+              ) : null}
             </section>
           ) : null}
         </main>
