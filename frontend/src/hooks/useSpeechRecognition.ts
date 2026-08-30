@@ -70,6 +70,10 @@ useSpeechRecognition({
     >(null);
 
 
+  const recognitionErroredRef =
+    useRef(false);
+
+
   const finalTranscriptCallbackRef =
     useRef(
       onFinalTranscript,
@@ -139,8 +143,15 @@ useSpeechRecognition({
         controllerRef.current =
           null;
 
+        recognitionErroredRef.current =
+          false;
+
         setInterimTranscript(
           "",
+        );
+
+        setError(
+          null,
         );
 
         setState(
@@ -171,11 +182,20 @@ useSpeechRecognition({
           return;
         }
 
+        /*
+         * Prevent duplicate recognition
+         * sessions while one is already
+         * active or starting.
+         */
         if (
           controllerRef.current
         ) {
           return;
         }
+
+
+        recognitionErroredRef.current =
+          false;
 
         setError(
           null,
@@ -206,9 +226,22 @@ useSpeechRecognition({
                 "",
               );
 
-              setState(
-                "idle",
-              );
+              /*
+               * Browsers often emit
+               * onerror followed by onend.
+               *
+               * Preserve the error state
+               * instead of immediately
+               * replacing it with idle.
+               */
+              if (
+                !recognitionErroredRef
+                  .current
+              ) {
+                setState(
+                  "idle",
+                );
+              }
 
               setListening(
                 false,
@@ -235,6 +268,9 @@ useSpeechRecognition({
             onError: (
               recognitionError,
             ) => {
+              recognitionErroredRef.current =
+                true;
+
               setError(
                 recognitionError,
               );
@@ -262,11 +298,15 @@ useSpeechRecognition({
         controllerRef.current =
           controller;
 
+
         try {
           controller.start();
         } catch {
           controllerRef.current =
             null;
+
+          recognitionErroredRef.current =
+            true;
 
           setState(
             "error",

@@ -1,4 +1,5 @@
 import {
+  fireEvent,
   screen,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -9,6 +10,8 @@ import {
   it,
   vi,
 } from "vitest";
+
+
 
 import {
   deleteConversation,
@@ -51,6 +54,64 @@ vi.mock(
     getConversations: vi.fn(),
     getConversation: vi.fn(),
     deleteConversation: vi.fn(),
+  }),
+);
+
+
+vi.mock(
+  "../components/VoiceInputButton",
+  () => ({
+    VoiceInputButton: ({
+      disabled,
+      onTranscript,
+      onListeningChange,
+    }: {
+      disabled?: boolean;
+
+      onTranscript: (
+        transcript: string,
+      ) => void;
+
+      onListeningChange?: (
+        listening: boolean,
+      ) => void;
+    }) => (
+      <div>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => {
+            onTranscript(
+              "What is hemoglobin A1c?",
+            );
+          }}
+        >
+          Mock voice transcript
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            onListeningChange?.(
+              true,
+            );
+          }}
+        >
+          Mock voice start
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            onListeningChange?.(
+              false,
+            );
+          }}
+        >
+          Mock voice stop
+        </button>
+      </div>
+    ),
   }),
 );
 
@@ -126,6 +187,290 @@ describe(
     });
 
 
+    it(
+      (
+        "places a voice transcript in "
+        + "the question field without "
+        + "submitting automatically"
+      ),
+      async () => {
+        const user =
+          userEvent.setup();
+
+
+        renderWithQueryClient(
+          <AskMiraPage />,
+        );
+
+
+        await screen.findByText(
+          "synthetic.txt",
+        );
+
+
+        await user.click(
+          screen.getByRole(
+            "button",
+            {
+              name:
+                "Mock voice transcript",
+            },
+          ),
+        );
+
+
+        expect(
+          screen.getByLabelText(
+            "Your question",
+          ),
+        ).toHaveValue(
+          "What is hemoglobin A1c?",
+        );
+
+
+        expect(
+          mockedQueryMira,
+        ).not.toHaveBeenCalled();
+      },
+    );
+
+
+    it(
+      (
+        "appends recognized speech to "
+        + "existing typed text"
+      ),
+      async () => {
+        const user =
+          userEvent.setup();
+
+
+        renderWithQueryClient(
+          <AskMiraPage />,
+        );
+
+
+        await screen.findByText(
+          "synthetic.txt",
+        );
+
+
+        const textarea =
+          screen.getByLabelText(
+            "Your question",
+          );
+
+
+        await user.type(
+          textarea,
+          "Please explain",
+        );
+
+
+        await user.click(
+          screen.getByRole(
+            "button",
+            {
+              name:
+                "Mock voice transcript",
+            },
+          ),
+        );
+
+
+        expect(
+          textarea,
+        ).toHaveValue(
+          (
+            "Please explain "
+            + "What is hemoglobin A1c?"
+          ),
+        );
+      },
+    );
+
+
+    it(
+      (
+        "prevents query submission while "
+        + "voice recognition is active"
+      ),
+      async () => {
+        const user =
+          userEvent.setup();
+
+
+        renderWithQueryClient(
+          <AskMiraPage />,
+        );
+
+
+        await screen.findByText(
+          "synthetic.txt",
+        );
+
+
+        await user.type(
+          screen.getByLabelText(
+            "Your question",
+          ),
+          "What is hemoglobin?",
+        );
+
+
+        await user.click(
+          screen.getByRole(
+            "button",
+            {
+              name:
+                "Mock voice start",
+            },
+          ),
+        );
+
+
+        expect(
+          screen.getByRole(
+            "button",
+            {
+              name:
+                "Ask MIRA",
+            },
+          ),
+        ).toBeDisabled();
+
+
+        expect(
+          mockedQueryMira,
+        ).not.toHaveBeenCalled();
+
+
+        await user.click(
+          screen.getByRole(
+            "button",
+            {
+              name:
+                "Mock voice stop",
+            },
+          ),
+        );
+
+
+        expect(
+          screen.getByRole(
+            "button",
+            {
+              name:
+                "Ask MIRA",
+            },
+          ),
+        ).toBeEnabled();
+      },
+    );
+
+
+    it(
+      (
+        "keeps voice input within the "
+        + "question character limit"
+      ),
+      async () => {
+        const user =
+          userEvent.setup();
+
+
+        renderWithQueryClient(
+          <AskMiraPage />,
+        );
+
+
+        await screen.findByText(
+          "synthetic.txt",
+        );
+
+
+        const textarea =
+          screen.getByLabelText(
+            "Your question",
+          );
+
+
+        const existingText =
+          "a".repeat(
+            3990,
+          );
+
+
+        /*
+        * Use a change event instead of
+        * user.type() here.
+        *
+        * Simulating 3,990 individual
+        * keystrokes is unnecessarily slow
+        * and can exceed Vitest's timeout.
+        */
+        fireEvent.change(
+          textarea,
+          {
+            target: {
+              value:
+                existingText,
+            },
+          },
+        );
+
+
+        expect(
+          textarea,
+        ).toHaveValue(
+          existingText,
+        );
+
+
+        await user.click(
+          screen.getByRole(
+            "button",
+            {
+              name:
+                "Mock voice transcript",
+            },
+          ),
+        );
+
+
+        const expectedValue =
+        (
+          existingText
+          + " "
+          + "What is hemoglobin A1c?"
+        ).slice(
+          0,
+          4000,
+        );
+
+        expect(
+          textarea,
+        ).toHaveValue(
+          expectedValue,
+        );
+
+
+        const textareaElement =
+          textarea as HTMLTextAreaElement;
+
+        expect(
+          textareaElement.value,
+        ).toHaveLength(
+          4000,
+        );
+
+
+        expect(
+          mockedQueryMira,
+        ).not.toHaveBeenCalled();
+      },
+    );
+    
     it(
       (
         "submits a direct question "

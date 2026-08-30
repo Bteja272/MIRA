@@ -591,6 +591,7 @@ export function AskMiraPage() {
       .isPending
     || deleteConversationMutation
       .isPending
+    || voiceListening
   );
 
 
