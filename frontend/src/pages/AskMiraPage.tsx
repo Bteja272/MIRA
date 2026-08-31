@@ -26,6 +26,9 @@ import {
   queryMira,
 } from "../api/query";
 import {
+  AssistantSpeechControls,
+} from "../components/AssistantSpeechControls";
+import {
   ConversationPanel,
 } from "../components/ConversationPanel";
 import {
@@ -49,6 +52,10 @@ import "../styles/query.css";
 import {
   VoiceInputButton,
 } from "../components/VoiceInputButton";
+import {
+  useSpeechSynthesis,
+  type UseSpeechSynthesisResult,
+} from "../hooks/useSpeechSynthesis";
 
 const MAX_SELECTED_DOCUMENTS = 5;
 const MAX_QUERY_CHARACTERS = 4000;
@@ -125,8 +132,10 @@ function errorMessageFrom(
 
 function ConversationMessageCard({
   message,
+  speech,
 }: {
   message: ConversationMessage;
+  speech: UseSpeechSynthesisResult;
 }) {
   return (
     <article
@@ -218,6 +227,50 @@ function ConversationMessageCard({
             </p>
           )}
       </div>
+
+      {(
+        message.role === "assistant"
+        && message.content
+      ) ? (
+        <AssistantSpeechControls
+          messageId={
+            message.message_id
+          }
+          text={
+            message.content
+          }
+          supported={
+            speech.supported
+          }
+          state={
+            speech.state
+          }
+          activeMessageId={
+            speech.activeMessageId
+          }
+          lastSpokenMessageId={
+            speech.lastSpokenMessageId
+          }
+          error={
+            speech.error
+          }
+          onListen={
+            speech.speak
+          }
+          onPause={
+            speech.pause
+          }
+          onResume={
+            speech.resume
+          }
+          onStop={
+            speech.stop
+          }
+          onReplay={
+            speech.replay
+          }
+        />
+      ) : null}
     </article>
   );
 }
@@ -226,6 +279,27 @@ function ConversationMessageCard({
 export function AskMiraPage() {
   const queryClient =
     useQueryClient();
+
+  const speech =
+    useSpeechSynthesis();
+  function stopSpeechPlayback():
+    void {
+      speech.stop();
+
+      /*
+      * speechSynthesis owns a browser-global
+      * playback queue. Cancel it directly at
+      * conversation boundaries as a defensive
+      * fallback in addition to hook state.
+      */
+      if (
+        typeof window !== "undefined"
+        && window.speechSynthesis
+      ) {
+        window.speechSynthesis
+          .cancel();
+      }
+    }
 
   const [
     question,
@@ -455,6 +529,8 @@ export function AskMiraPage() {
       },
 
       onMutate: () => {
+        stopSpeechPlayback();
+
         setLatestResult(
           null,
         );
@@ -659,6 +735,8 @@ export function AskMiraPage() {
       return;
     }
 
+    stopSpeechPlayback();
+
     setActiveConversationId(
       null,
     );
@@ -693,6 +771,8 @@ export function AskMiraPage() {
     ) {
       return;
     }
+
+    stopSpeechPlayback();
 
     /*
      * Historical document IDs are
@@ -740,6 +820,8 @@ export function AskMiraPage() {
     if (!confirmed) {
       return;
     }
+
+    stopSpeechPlayback();
 
     setDeletingConversationId(
       conversationId,
@@ -1037,6 +1119,9 @@ export function AskMiraPage() {
                       }
                       message={
                         message
+                      }
+                      speech={
+                        speech
                       }
                     />
                   ),

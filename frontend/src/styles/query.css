@@ -840,3 +840,67 @@
     max-width: none;
   }
 }
+
+/* ----------------------------------
+   Assistant text-to-speech
+   ---------------------------------- */
+
+.assistant-speech-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-top: 1px solid #e3eae6;
+  padding-top: 10px;
+}
+
+
+.assistant-speech-button {
+  border: 1px solid #c9d9d1;
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: #245543;
+  background: #f7fbf9;
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+
+.assistant-speech-button:hover:not(:disabled) {
+  border-color: #77a691;
+  background: #edf7f2;
+}
+
+
+.assistant-speech-button:focus-visible {
+  outline: 2px solid #34745f;
+  outline-offset: 2px;
+}
+
+
+.assistant-speech-button:disabled {
+  color: #8a9690;
+  background: #f3f5f4;
+  cursor: not-allowed;
+}
+
+
+.assistant-speech-error {
+  color: #843d30;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+
+@media (
+  max-width: 620px
+) {
+  .assistant-speech-controls {
+    align-items: stretch;
+  }
+
+  .assistant-speech-button {
+    min-height: 36px;
+  }
+}

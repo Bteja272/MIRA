@@ -1,6 +1,7 @@
 import {
   fireEvent,
   screen,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -30,6 +31,36 @@ import {
 import {
   AskMiraPage,
 } from "./AskMiraPage";
+
+
+const speechMocks = vi.hoisted(
+  () => ({
+    speak: vi.fn(),
+    pause: vi.fn(),
+    resume: vi.fn(),
+    stop: vi.fn(),
+    replay: vi.fn(),
+  }),
+);
+
+
+vi.mock(
+  "../hooks/useSpeechSynthesis",
+  () => ({
+    useSpeechSynthesis: () => ({
+      supported: true,
+      state: "idle",
+      activeMessageId: null,
+      lastSpokenMessageId: null,
+      error: null,
+      speak: speechMocks.speak,
+      pause: speechMocks.pause,
+      resume: speechMocks.resume,
+      stop: speechMocks.stop,
+      replay: speechMocks.replay,
+    }),
+  }),
+);
 
 
 vi.mock(
@@ -1033,6 +1064,30 @@ describe(
             "Lisinopril is listed.",
           ),
         ).toBeInTheDocument();
+
+
+        const assistantMessage =
+          screen.getByTestId(
+            "conversation-message-assistant",
+          );
+
+        await user.click(
+          within(
+            assistantMessage,
+          ).getByRole(
+            "button",
+            {
+              name: "Listen",
+            },
+          ),
+        );
+
+        expect(
+          speechMocks.speak,
+        ).toHaveBeenCalledWith(
+          "message-6",
+          "Lisinopril is listed.",
+        );
 
 
         expect(
