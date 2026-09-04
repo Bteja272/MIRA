@@ -707,6 +707,7 @@ export function AskMiraPage() {
 
               <div className={"question-actions"}>
                 <VoiceInputButton
+                  ref={voiceInputRef}
                   disabled={interfaceBusy}
                   onBeforeStart={stopSpeechPlayback}
                   onTranscript={handleVoiceTranscript}
