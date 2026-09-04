@@ -15,7 +15,14 @@ from app.services.llm_providers.factory import (
 from app.services.llm_providers.retry_policy import (
     LLMRetryPolicy,
 )
-
+from app.core.metrics import (
+    MIRA_LLM_DURATION,
+    MIRA_LLM_FAILURES,
+    MIRA_LLM_FALLBACKS,
+    MIRA_LLM_REQUESTS,
+    MIRA_LLM_RETRIES,
+    normalize_provider,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +113,12 @@ class LLMService:
             )
         )
 
+        metric_provider = (
+            normalize_provider(
+                provider_name
+            )
+        )
+
         model_name = (
             cls._provider_model_name(
                 provider
@@ -116,96 +129,156 @@ class LLMService:
             retry_policy.max_retries + 1
         )
 
-        for attempt in range(
-            1,
-            total_attempts + 1,
-        ):
-            attempt_started_at = (
-                perf_counter()
-            )
+        MIRA_LLM_REQUESTS.labels(
+            provider=metric_provider
+        ).inc()
 
-            try:
-                answer = provider.generate(
-                    request
-                )
+        provider_started_at = (
+            perf_counter()
+        )
 
-            except LLMProviderError as exc:
-                attempt_ms = (
+        try:
+            for attempt in range(
+                1,
+                total_attempts + 1,
+            ):
+                attempt_started_at = (
                     perf_counter()
-                    - attempt_started_at
-                ) * 1000
-
-                logger.warning(
-                    "llm_provider_attempt_failed "
-                    "provider=%s model=%s "
-                    "attempt=%s latency_ms=%.3f "
-                    "kind=%s status_code=%s "
-                    "error_code=%s retryable=%s "
-                    "fallback_allowed=%s",
-                    provider_name,
-                    model_name or "unknown",
-                    attempt,
-                    attempt_ms,
-                    exc.kind,
-                    exc.status_code,
-                    exc.error_code,
-                    exc.retryable,
-                    exc.fallback_allowed,
                 )
 
-                can_retry = (
-                    exc.retryable
-                    and attempt
-                    < total_attempts
-                )
-
-                if can_retry:
-                    retry_number = attempt
-                    delay_seconds = (
-                        retry_policy
-                        .delay_seconds(
-                            retry_number=(
-                                retry_number
-                            ),
-                            error=exc,
-                        )
+                try:
+                    answer = provider.generate(
+                        request
                     )
 
-                    logger.info(
-                        "llm_provider_retry "
+                except LLMProviderError as exc:
+                    attempt_ms = (
+                        perf_counter()
+                        - attempt_started_at
+                    ) * 1000
+
+                    logger.warning(
+                        "llm_provider_attempt_failed "
                         "provider=%s model=%s "
-                        "retry_number=%s "
-                        "delay_seconds=%.3f "
-                        "kind=%s",
+                        "attempt=%s latency_ms=%.3f "
+                        "kind=%s status_code=%s "
+                        "error_code=%s retryable=%s "
+                        "fallback_allowed=%s",
                         provider_name,
                         model_name or "unknown",
-                        retry_number,
-                        delay_seconds,
+                        attempt,
+                        attempt_ms,
                         exc.kind,
+                        exc.status_code,
+                        exc.error_code,
+                        exc.retryable,
+                        exc.fallback_allowed,
                     )
 
-                    if delay_seconds > 0:
-                        time.sleep(
-                            delay_seconds
+                    can_retry = (
+                        exc.retryable
+                        and attempt
+                        < total_attempts
+                    )
+
+                    if can_retry:
+                        MIRA_LLM_RETRIES.labels(
+                            provider=(
+                                metric_provider
+                            )
+                        ).inc()
+
+                        retry_number = attempt
+
+                        delay_seconds = (
+                            retry_policy
+                            .delay_seconds(
+                                retry_number=(
+                                    retry_number
+                                ),
+                                error=exc,
+                            )
                         )
 
-                    continue
+                        logger.info(
+                            "llm_provider_retry "
+                            "provider=%s model=%s "
+                            "retry_number=%s "
+                            "delay_seconds=%.3f "
+                            "kind=%s",
+                            provider_name,
+                            model_name
+                            or "unknown",
+                            retry_number,
+                            delay_seconds,
+                            exc.kind,
+                        )
 
-                raise _ProviderRunFailure(
-                    provider=provider_name,
-                    model=model_name,
-                    attempts=attempt,
-                    error=exc,
-                ) from exc
+                        if delay_seconds > 0:
+                            time.sleep(
+                                delay_seconds
+                            )
 
-            except Exception as exc:
+                        continue
+
+                    MIRA_LLM_FAILURES.labels(
+                        provider=metric_provider
+                    ).inc()
+
+                    raise _ProviderRunFailure(
+                        provider=provider_name,
+                        model=model_name,
+                        attempts=attempt,
+                        error=exc,
+                    ) from exc
+
+                except Exception as exc:
+                    attempt_ms = (
+                        perf_counter()
+                        - attempt_started_at
+                    ) * 1000
+
+                    logger.error(
+                        "llm_provider_unexpected_failure "
+                        "provider=%s model=%s "
+                        "attempt=%s latency_ms=%.3f",
+                        provider_name,
+                        model_name or "unknown",
+                        attempt,
+                        attempt_ms,
+                    )
+
+                    normalized_error = (
+                        LLMProviderError(
+                            provider_name,
+                            (
+                                "unexpected provider "
+                                "failure."
+                            ),
+                            retryable=False,
+                            kind="unexpected",
+                            fallback_allowed=True,
+                        )
+                    )
+
+                    MIRA_LLM_FAILURES.labels(
+                        provider=metric_provider
+                    ).inc()
+
+                    raise _ProviderRunFailure(
+                        provider=provider_name,
+                        model=model_name,
+                        attempts=attempt,
+                        error=normalized_error,
+                    ) from exc
+
                 attempt_ms = (
                     perf_counter()
                     - attempt_started_at
                 ) * 1000
 
-                logger.error(
-                    "llm_provider_unexpected_failure "
+                logger.info(
+                    "llm_provider_attempt_completed "
                     "provider=%s model=%s "
                     "attempt=%s latency_ms=%.3f",
                     provider_name,
@@ -214,49 +287,29 @@ class LLMService:
                     attempt_ms,
                 )
 
-                normalized_error = (
-                    LLMProviderError(
-                        provider_name,
-                        "unexpected provider failure.",
-                        retryable=False,
-                        kind="unexpected",
-                        fallback_allowed=True,
-                    )
-                )
-
-                raise _ProviderRunFailure(
+                return _ProviderRunResult(
+                    text=answer,
                     provider=provider_name,
                     model=model_name,
                     attempts=attempt,
-                    error=normalized_error,
-                ) from exc
+                )
 
-            attempt_ms = (
+            MIRA_LLM_FAILURES.labels(
+                provider=metric_provider
+            ).inc()
+
+            raise RuntimeError(
+                "Provider retry loop terminated "
+                "unexpectedly."
+            )
+
+        finally:
+            MIRA_LLM_DURATION.labels(
+                provider=metric_provider
+            ).observe(
                 perf_counter()
-                - attempt_started_at
-            ) * 1000
-
-            logger.info(
-                "llm_provider_attempt_completed "
-                "provider=%s model=%s "
-                "attempt=%s latency_ms=%.3f",
-                provider_name,
-                model_name or "unknown",
-                attempt,
-                attempt_ms,
+                - provider_started_at
             )
-
-            return _ProviderRunResult(
-                text=answer,
-                provider=provider_name,
-                model=model_name,
-                attempts=attempt,
-            )
-
-        raise RuntimeError(
-            "Provider retry loop terminated "
-            "unexpectedly."
-        )
 
     @classmethod
     def _generate(
@@ -345,6 +398,18 @@ class LLMService:
                 exc.error.error_code,
                 exc.attempts,
             )
+            MIRA_LLM_FALLBACKS.labels(
+                primary_provider=(
+                    normalize_provider(
+                        primary_provider
+                    )
+                ),
+                fallback_provider=(
+                    normalize_provider(
+                        fallback_provider
+                    )
+                ),
+            ).inc()
 
             try:
                 fallback_result = (

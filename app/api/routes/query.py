@@ -1,4 +1,5 @@
 import logging
+from time import perf_counter
 
 from fastapi import (
     APIRouter,
@@ -8,6 +9,13 @@ from fastapi import (
 
 from app.api.dependencies.auth import (
     CurrentUser,
+)
+from app.core.metrics import (
+    MIRA_QUERY_DURATION,
+    MIRA_QUERY_FAILURES,
+    MIRA_QUERY_REQUESTS,
+    normalize_agent_route,
+    normalize_query_failure_stage,
 )
 from app.schemas.query import (
     MAX_SELECTED_DOCUMENTS,
@@ -37,6 +45,18 @@ router = APIRouter(
 )
 
 
+def _record_query_failure(
+    stage: str,
+) -> None:
+    MIRA_QUERY_FAILURES.labels(
+        stage=(
+            normalize_query_failure_stage(
+                stage
+            )
+        )
+    ).inc()
+
+
 @router.post(
     "",
     response_model=QueryResponse,
@@ -46,6 +66,10 @@ def query_agent(
     request: QueryRequest,
     current_user: CurrentUser,
 ) -> dict:
+    request_started_at = (
+        perf_counter()
+    )
+
     selected_ids = (
         request.document_ids
         or []
@@ -69,6 +93,10 @@ def query_agent(
         if len(existing_ids) != len(
             selected_ids
         ):
+            _record_query_failure(
+                "validation"
+            )
+
             # Do not reveal whether a document
             # exists under another account.
             raise HTTPException(
@@ -122,6 +150,10 @@ def query_agent(
         except (
             ConversationNotFoundError
         ) as exc:
+            _record_query_failure(
+                "conversation_load"
+            )
+
             raise HTTPException(
                 status_code=(
                     status.HTTP_404_NOT_FOUND
@@ -146,11 +178,11 @@ def query_agent(
         )
     )
 
-    try:
-        # -------------------------------------------------
-        # Run MIRA
-        # -------------------------------------------------
+    # -------------------------------------------------
+    # Run MIRA
+    # -------------------------------------------------
 
+    try:
         result = (
             LangGraphAgentService
             .query(
@@ -168,10 +200,58 @@ def query_agent(
             )
         )
 
-        # -------------------------------------------------
-        # Persist the user + assistant exchange
-        # -------------------------------------------------
+    except (
+        ConversationNotFoundError
+    ) as exc:
+        _record_query_failure(
+            "agent"
+        )
 
+        raise HTTPException(
+            status_code=(
+                status.HTTP_404_NOT_FOUND
+            ),
+            detail=(
+                "Conversation was "
+                "not found."
+            ),
+        ) from exc
+
+    except Exception as exc:
+        _record_query_failure(
+            "agent"
+        )
+
+        logger.exception(
+            (
+                "query_service_failed "
+                "user_id=%s "
+                "selected_count=%s "
+                "has_conversation=%s "
+                "stage=agent"
+            ),
+            current_user.user_id,
+            len(selected_ids),
+            bool(
+                request.conversation_id
+            ),
+        )
+
+        raise HTTPException(
+            status_code=(
+                status.HTTP_503_SERVICE_UNAVAILABLE
+            ),
+            detail=(
+                "The MIRA query service is "
+                "currently unavailable."
+            ),
+        ) from exc
+
+    # -------------------------------------------------
+    # Persist the user + assistant exchange
+    # -------------------------------------------------
+
+    try:
         (
             conversation_id,
             message_id,
@@ -191,23 +271,13 @@ def query_agent(
             )
         )
 
-        # -------------------------------------------------
-        # Attach required Batch 9 response metadata
-        # -------------------------------------------------
-
-        result["conversation_id"] = (
-            conversation_id
-        )
-
-        result["message_id"] = (
-            message_id
-        )
-
-        return result
-
     except (
         ConversationNotFoundError
     ) as exc:
+        _record_query_failure(
+            "persistence"
+        )
+
         raise HTTPException(
             status_code=(
                 status.HTTP_404_NOT_FOUND
@@ -219,12 +289,17 @@ def query_agent(
         ) from exc
 
     except Exception as exc:
+        _record_query_failure(
+            "persistence"
+        )
+
         logger.exception(
             (
                 "query_service_failed "
                 "user_id=%s "
                 "selected_count=%s "
-                "has_conversation=%s"
+                "has_conversation=%s "
+                "stage=persistence"
             ),
             current_user.user_id,
             len(selected_ids),
@@ -242,6 +317,39 @@ def query_agent(
                 "currently unavailable."
             ),
         ) from exc
+
+    # -------------------------------------------------
+    # Attach required Batch 9 response metadata
+    # -------------------------------------------------
+
+    result["conversation_id"] = (
+        conversation_id
+    )
+
+    result["message_id"] = (
+        message_id
+    )
+
+    metric_route = (
+        normalize_agent_route(
+            result.get(
+                "route"
+            )
+        )
+    )
+
+    MIRA_QUERY_REQUESTS.labels(
+        route=metric_route
+    ).inc()
+
+    MIRA_QUERY_DURATION.labels(
+        route=metric_route
+    ).observe(
+        perf_counter()
+        - request_started_at
+    )
+
+    return result
 
 
 __all__ = [

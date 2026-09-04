@@ -8,6 +8,8 @@ from langgraph.graph import (
     StateGraph,
 )
 
+from time import perf_counter
+
 from app.services.direct_llm_service import (
     DirectLLMService,
 )
@@ -21,6 +23,17 @@ from app.services.web_search_service import (
     WebSearchService,
 )
 
+from app.core.metrics import (
+    MIRA_AGENT_DURATION,
+    MIRA_AGENT_NODE_DURATION,
+    MIRA_AGENT_REQUESTS,
+    MIRA_SAFETY_GUARD,
+    MIRA_SELECTED_DOCUMENTS,
+    normalize_agent_node,
+    normalize_agent_route,
+    normalize_safety_category,
+    normalize_safety_outcome,
+)
 
 class AgentState(
     TypedDict,
@@ -99,11 +112,23 @@ def safety_node(
     # user request. Conversation history is
     # not permitted to alter pre-routing
     # safety behavior.
-    decision = (
-        _run_safety_guard(
-            state["query"]
+    started_at = perf_counter()
+
+    try:
+        decision = (
+            _run_safety_guard(
+                state["query"]
+            )
         )
-    )
+    finally:
+        MIRA_AGENT_NODE_DURATION.labels(
+            node=normalize_agent_node(
+                "safety"
+            )
+        ).observe(
+            perf_counter()
+            - started_at
+        )
 
     allowed = _decision_value(
         decision,
@@ -135,12 +160,23 @@ def safety_node(
         "",
     )
 
-    return {
-        "safety_status": (
-            "allowed"
-            if bool(allowed)
-            else "blocked"
+    outcome = (
+        "allowed"
+        if bool(allowed)
+        else "blocked"
+    )
+
+    MIRA_SAFETY_GUARD.labels(
+        outcome=normalize_safety_outcome(
+            outcome
         ),
+        category=normalize_safety_category(
+            str(category)
+        ),
+    ).inc()
+
+    return {
+        "safety_status": outcome,
         "safety_category": str(
             category
         ),
@@ -499,24 +535,36 @@ def rag_node(
         or []
     )
 
-    result = RAGService.query(
-        query=state["query"],
-        retrieval_query=(
-            state.get(
-                "retrieval_query"
+    started_at = perf_counter()
+
+    try:
+        result = RAGService.query(
+            query=state["query"],
+            retrieval_query=(
+                state.get(
+                    "retrieval_query"
+                )
+            ),
+            document_ids=selected_ids,
+            user_id=state.get(
+                "user_id"
+            ),
+            conversation_context=(
+                state.get(
+                    "conversation_context"
+                )
+                or []
+            ),
+        )
+    finally:
+        MIRA_AGENT_NODE_DURATION.labels(
+            node=normalize_agent_node(
+                "rag"
             )
-        ),
-        document_ids=selected_ids,
-        user_id=state.get(
-            "user_id"
-        ),
-        conversation_context=(
-            state.get(
-                "conversation_context"
-            )
-            or []
-        ),
-    )
+        ).observe(
+            perf_counter()
+            - started_at
+        )
 
     return {
         "result": result,
@@ -526,17 +574,29 @@ def rag_node(
 def direct_node(
     state: AgentState,
 ) -> dict:
-    result = (
-        DirectLLMService.query(
-            query=state["query"],
-            conversation_context=(
-                state.get(
-                    "conversation_context"
-                )
-                or []
-            ),
+    started_at = perf_counter()
+
+    try:
+        result = (
+            DirectLLMService.query(
+                query=state["query"],
+                conversation_context=(
+                    state.get(
+                        "conversation_context"
+                    )
+                    or []
+                ),
+            )
         )
-    )
+    finally:
+        MIRA_AGENT_NODE_DURATION.labels(
+            node=normalize_agent_node(
+                "direct"
+            )
+        ).observe(
+            perf_counter()
+            - started_at
+        )
 
     return {
         "result": result,
@@ -546,14 +606,26 @@ def direct_node(
 def web_node(
     state: AgentState,
 ) -> dict:
-    result = (
-        WebSearchService.query(
-            state.get(
-                "retrieval_query"
+    started_at = perf_counter()
+
+    try:
+        result = (
+            WebSearchService.query(
+                state.get(
+                    "retrieval_query"
+                )
+                or state["query"]
             )
-            or state["query"]
         )
-    )
+    finally:
+        MIRA_AGENT_NODE_DURATION.labels(
+            node=normalize_agent_node(
+                "web"
+            )
+        ).observe(
+            perf_counter()
+            - started_at
+        )
 
     return {
         "result": result,
@@ -707,6 +779,13 @@ class LangGraphAgentService:
                 ),
             )
         )
+        MIRA_SELECTED_DOCUMENTS.observe(
+            len(selected_ids)
+        )
+
+        agent_started_at = (
+            perf_counter()
+        )
 
         final_state = (
             agent_graph.invoke(
@@ -726,6 +805,10 @@ class LangGraphAgentService:
                     ),
                 }
             )
+        )
+        agent_duration_seconds = (
+            perf_counter()
+            - agent_started_at
         )
 
         result = final_state.get(
@@ -779,5 +862,22 @@ class LangGraphAgentService:
             ] = final_state.get(
                 "safety_category"
             )
+        metric_route = (
+            normalize_agent_route(
+                result.get(
+                    "route"
+                )
+            )
+        )
+
+        MIRA_AGENT_REQUESTS.labels(
+            route=metric_route
+        ).inc()
+
+        MIRA_AGENT_DURATION.labels(
+            route=metric_route
+        ).observe(
+            agent_duration_seconds
+        )
 
         return result

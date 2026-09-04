@@ -1,5 +1,5 @@
 import re
-
+from time import perf_counter
 from fastapi import (
     FastAPI,
     Request,
@@ -9,6 +9,7 @@ from fastapi.middleware.cors import (
 )
 from fastapi.responses import (
     JSONResponse,
+    Response,
 )
 from starlette.middleware.trustedhost import (
     TrustedHostMiddleware,
@@ -54,6 +55,12 @@ from app.api.routes.intelligence import (
 )
 from app.api.routes.conversations import (
     router as conversations_router,
+)
+from app.core.metrics import (
+    MIRA_EXTRACTION_DURATION,
+    MIRA_INGESTION_DURATION,
+    metrics_content_type,
+    render_metrics,
 )
 
 OPENAPI_TAGS = [
@@ -476,11 +483,19 @@ async def security_middleware(
     request: Request,
     call_next,
 ):
+    method = request.method.upper()
+    path = request.url.path
+
+    is_metrics_request = (
+        method == "GET"
+        and path == "/metrics"
+    )
+
     if (
         security_settings
         .rate_limit_enabled
-        and request.method.upper()
-        != "OPTIONS"
+        and method != "OPTIONS"
+        and not is_metrics_request
     ):
         (
             key,
@@ -516,8 +531,11 @@ async def security_middleware(
                 },
             )
 
-    if not csrf_is_valid(
-        request
+    if (
+        not is_metrics_request
+        and not csrf_is_valid(
+            request
+        )
     ):
         return JSONResponse(
             status_code=403,
@@ -528,9 +546,49 @@ async def security_middleware(
             },
         )
 
-    response = await call_next(
-        request
+    is_ingestion_request = (
+        method == "POST"
+        and path == "/ingest"
     )
+
+    is_extraction_request = (
+        method == "POST"
+        and re.fullmatch(
+            r"/documents/[^/]+/extract",
+            path,
+        )
+        is not None
+    )
+
+    operation_started_at = (
+        perf_counter()
+        if (
+            is_ingestion_request
+            or is_extraction_request
+        )
+        else None
+    )
+
+    try:
+        response = await call_next(
+            request
+        )
+    finally:
+        if operation_started_at is not None:
+            operation_duration = (
+                perf_counter()
+                - operation_started_at
+            )
+
+            if is_ingestion_request:
+                MIRA_INGESTION_DURATION.observe(
+                    operation_duration
+                )
+
+            if is_extraction_request:
+                MIRA_EXTRACTION_DURATION.observe(
+                    operation_duration
+                )
 
     response.headers.setdefault(
         "Cache-Control",
@@ -563,7 +621,7 @@ async def security_middleware(
 
     if (
         docs_enabled
-        and request.url.path
+        and path
         in {
             "/docs",
             "/redoc",
@@ -574,8 +632,10 @@ async def security_middleware(
             "Content-Security-Policy",
             (
                 "default-src 'self' https:; "
-                "script-src 'self' https: 'unsafe-inline'; "
-                "style-src 'self' https: 'unsafe-inline'; "
+                "script-src 'self' https: "
+                "'unsafe-inline'; "
+                "style-src 'self' https: "
+                "'unsafe-inline'; "
                 "img-src 'self' data: https:; "
                 "font-src 'self' https: data:; "
                 "frame-ancestors 'none'"
@@ -679,6 +739,16 @@ app.include_router(
 app.include_router(
     conversations_router
 )
+
+@app.get(
+    "/metrics",
+    include_in_schema=False,
+)
+def metrics():
+    return Response(
+        content=render_metrics(),
+        media_type=metrics_content_type(),
+    )
 
 @app.get("/")
 def root():

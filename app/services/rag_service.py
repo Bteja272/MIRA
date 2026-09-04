@@ -31,6 +31,11 @@ from app.services.conversation_memory_service import (
     ConversationMemoryService,
 )
 
+from app.core.metrics import (
+    MIRA_RETRIEVAL_DURATION,
+    MIRA_RETRIEVED_CHUNKS,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -438,7 +443,6 @@ class RAGService:
                     ),
                 }
             )
-
         timings["retrieval_ms"] = (
             cls._elapsed_ms(
                 retrieval_started_at
@@ -1181,10 +1185,23 @@ class RAGService:
 
             task = "qa"
 
-        timings["retrieval_ms"] = (
-            cls._elapsed_ms(
-                retrieval_started_at
-            )
+        retrieval_duration_seconds = (
+            time.perf_counter()
+            - retrieval_started_at
+        )
+
+        timings["retrieval_ms"] = round(
+            retrieval_duration_seconds
+            * 1000,
+            3,
+        )
+
+        MIRA_RETRIEVAL_DURATION.observe(
+            retrieval_duration_seconds
+        )
+
+        MIRA_RETRIEVED_CHUNKS.observe(
+            len(retrieved_documents)
         )
 
         selected_document_id = (
