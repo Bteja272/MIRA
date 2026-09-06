@@ -1,0 +1,54 @@
+SYNTHETIC MEDICAL RECORD
+FOR SOFTWARE EVALUATION ONLY
+NOT A REAL PATIENT RECORD
+
+Document Type: Follow-Up Laboratory Report
+Patient: Synthetic Patient A
+Collection Date: 2026-02-16
+Ordering Physician: Dr. Test Provider
+
+COMPLETE BLOOD COUNT
+
+Hemoglobin
+Result: 12.6 g/dL
+Reference Range: 12.0-16.0 g/dL
+Flag: Normal
+
+Hematocrit
+Result: 38.2 %
+Reference Range: 36.0-46.0 %
+Flag: Normal
+
+White Blood Cell Count
+Result: 6.9 x10^3/uL
+Reference Range: 4.0-11.0 x10^3/uL
+Flag: Normal
+
+Platelet Count
+Result: 274 x10^3/uL
+Reference Range: 150-450 x10^3/uL
+Flag: Normal
+
+METABOLIC PANEL
+
+Glucose
+Result: 96 mg/dL
+Reference Range: 70-99 mg/dL
+Flag: Normal
+
+Creatinine
+Result: 0.84 mg/dL
+Reference Range: 0.60-1.10 mg/dL
+Flag: Normal
+
+Sodium
+Result: 140 mmol/L
+Reference Range: 135-145 mmol/L
+Flag: Normal
+
+Potassium
+Result: 4.2 mmol/L
+Reference Range: 3.5-5.1 mmol/L
+Flag: Normal
+
+End of synthetic follow-up laboratory report.

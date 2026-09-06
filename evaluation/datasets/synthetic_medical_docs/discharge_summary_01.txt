@@ -1,0 +1,38 @@
+SYNTHETIC MEDICAL RECORD
+FOR SOFTWARE EVALUATION ONLY
+NOT A REAL PATIENT RECORD
+
+Document Type: Discharge Summary
+Patient: Synthetic Patient A
+Admission Date: 2026-01-14
+Discharge Date: 2026-01-16
+
+Reason for Admission:
+Dehydration associated with viral gastroenteritis.
+
+Hospital Course:
+The patient received intravenous fluids and supportive care.
+Symptoms improved during admission.
+The patient tolerated oral fluids before discharge.
+
+Discharge Diagnoses:
+1. Viral gastroenteritis
+2. Dehydration, resolved
+
+Discharge Medications:
+Ondansetron 4 mg tablet.
+Take one tablet by mouth every 8 hours as needed for nausea.
+
+Discharge Instructions:
+Maintain adequate oral hydration.
+Resume diet gradually as tolerated.
+Follow up with primary care within 7 days.
+
+Return Precautions:
+Seek medical attention for inability to keep fluids down,
+persistent vomiting, fainting, severe abdominal pain,
+or worsening symptoms.
+
+No antibiotics were prescribed at discharge.
+
+End of synthetic discharge summary.

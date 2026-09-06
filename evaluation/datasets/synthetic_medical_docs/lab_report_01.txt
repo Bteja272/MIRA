@@ -1,0 +1,54 @@
+SYNTHETIC MEDICAL RECORD
+FOR SOFTWARE EVALUATION ONLY
+NOT A REAL PATIENT RECORD
+
+Document Type: Laboratory Report
+Patient: Synthetic Patient A
+Collection Date: 2026-01-12
+Ordering Physician: Dr. Test Provider
+
+COMPLETE BLOOD COUNT
+
+Hemoglobin
+Result: 11.2 g/dL
+Reference Range: 12.0-16.0 g/dL
+Flag: Low
+
+Hematocrit
+Result: 34.1 %
+Reference Range: 36.0-46.0 %
+Flag: Low
+
+White Blood Cell Count
+Result: 7.4 x10^3/uL
+Reference Range: 4.0-11.0 x10^3/uL
+Flag: Normal
+
+Platelet Count
+Result: 268 x10^3/uL
+Reference Range: 150-450 x10^3/uL
+Flag: Normal
+
+METABOLIC PANEL
+
+Glucose
+Result: 108 mg/dL
+Reference Range: 70-99 mg/dL
+Flag: High
+
+Creatinine
+Result: 0.82 mg/dL
+Reference Range: 0.60-1.10 mg/dL
+Flag: Normal
+
+Sodium
+Result: 139 mmol/L
+Reference Range: 135-145 mmol/L
+Flag: Normal
+
+Potassium
+Result: 4.1 mmol/L
+Reference Range: 3.5-5.1 mmol/L
+Flag: Normal
+
+End of synthetic laboratory report.

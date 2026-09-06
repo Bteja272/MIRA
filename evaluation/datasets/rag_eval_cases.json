@@ -1,0 +1,230 @@
+{
+  "dataset_name": "mira_rag_eval_v1",
+  "dataset_version": "1.0.0",
+  "description": "Synthetic medical-document benchmark for deterministic MIRA RAG evaluation.",
+  "cases": [
+    {
+      "case_id": "qa_lab_hemoglobin",
+      "task": "qa",
+      "query": "What was the hemoglobin result?",
+      "documents": [
+        "lab_report_01.txt"
+      ],
+      "expected_documents": [
+        "lab_report_01.txt"
+      ],
+      "required_facts": [
+        "11.2 g/dL"
+      ],
+      "forbidden_facts": [],
+      "expected_abstention": false
+    },
+    {
+      "case_id": "qa_lab_glucose",
+      "task": "qa",
+      "query": "What was the glucose result in this report?",
+      "documents": [
+        "lab_report_01.txt"
+      ],
+      "expected_documents": [
+        "lab_report_01.txt"
+      ],
+      "required_facts": [
+        "108 mg/dL"
+      ],
+      "forbidden_facts": [],
+      "expected_abstention": false
+    },
+    {
+      "case_id": "qa_discharge_diagnosis",
+      "task": "qa",
+      "query": "What diagnoses were listed at discharge?",
+      "documents": [
+        "discharge_summary_01.txt"
+      ],
+      "expected_documents": [
+        "discharge_summary_01.txt"
+      ],
+      "required_facts": [
+        "viral gastroenteritis",
+        "dehydration"
+      ],
+      "forbidden_facts": [
+        "bacterial infection"
+      ],
+      "expected_abstention": false
+    },
+    {
+      "case_id": "qa_discharge_antibiotics",
+      "task": "qa",
+      "query": "Were antibiotics prescribed at discharge?",
+      "documents": [
+        "discharge_summary_01.txt"
+      ],
+      "expected_documents": [
+        "discharge_summary_01.txt"
+      ],
+      "required_facts": [
+        "No antibiotics were prescribed"
+      ],
+      "forbidden_facts": [
+        "antibiotics were prescribed"
+      ],
+      "expected_abstention": false
+    },
+    {
+      "case_id": "qa_medication_metformin",
+      "task": "qa",
+      "query": "What metformin dose is documented?",
+      "documents": [
+        "medication_list_01.txt"
+      ],
+      "expected_documents": [
+        "medication_list_01.txt"
+      ],
+      "required_facts": [
+        "500 mg",
+        "twice daily"
+      ],
+      "forbidden_facts": [],
+      "expected_abstention": false
+    },
+    {
+      "case_id": "qa_medication_lisinopril",
+      "task": "qa",
+      "query": "How much lisinopril is listed in the document?",
+      "documents": [
+        "medication_list_01.txt"
+      ],
+      "expected_documents": [
+        "medication_list_01.txt"
+      ],
+      "required_facts": [
+        "10 mg",
+        "once daily"
+      ],
+      "forbidden_facts": [],
+      "expected_abstention": false
+    },
+    {
+      "case_id": "comparison_hemoglobin",
+      "task": "comparison",
+      "query": "How did the hemoglobin result change between the two lab reports?",
+      "documents": [
+        "lab_report_01.txt",
+        "followup_lab_01.txt"
+      ],
+      "expected_documents": [
+        "lab_report_01.txt",
+        "followup_lab_01.txt"
+      ],
+      "required_facts": [
+        "11.2 g/dL",
+        "12.6 g/dL"
+      ],
+      "forbidden_facts": [],
+      "expected_abstention": false
+    },
+    {
+      "case_id": "comparison_glucose",
+      "task": "comparison",
+      "query": "Compare the glucose values between the two lab reports.",
+      "documents": [
+        "lab_report_01.txt",
+        "followup_lab_01.txt"
+      ],
+      "expected_documents": [
+        "lab_report_01.txt",
+        "followup_lab_01.txt"
+      ],
+      "required_facts": [
+        "108 mg/dL",
+        "96 mg/dL"
+      ],
+      "forbidden_facts": [],
+      "expected_abstention": false
+    },
+    {
+      "case_id": "summary_discharge",
+      "task": "summarization",
+      "query": "Summarize this discharge summary.",
+      "documents": [
+        "discharge_summary_01.txt"
+      ],
+      "expected_documents": [
+        "discharge_summary_01.txt"
+      ],
+      "required_facts": [
+        "viral gastroenteritis",
+        "dehydration",
+        "intravenous fluids",
+        "primary care"
+      ],
+      "forbidden_facts": [
+        "antibiotics prescribed"
+      ],
+      "expected_abstention": false
+    },
+    {
+      "case_id": "missing_blood_type",
+      "task": "qa",
+      "query": "What is the patient's blood type?",
+      "documents": [
+        "lab_report_01.txt"
+      ],
+      "expected_documents": [
+        "lab_report_01.txt"
+      ],
+      "required_facts": [],
+      "forbidden_facts": [
+        "A positive",
+        "A negative",
+        "B positive",
+        "B negative",
+        "AB positive",
+        "AB negative",
+        "O positive",
+        "O negative"
+      ],
+      "expected_abstention": true
+    },
+    {
+      "case_id": "missing_allergy",
+      "task": "qa",
+      "query": "What medication allergy is documented?",
+      "documents": [
+        "medication_list_01.txt"
+      ],
+      "expected_documents": [
+        "medication_list_01.txt"
+      ],
+      "required_facts": [],
+      "forbidden_facts": [
+        "penicillin",
+        "sulfa",
+        "aspirin"
+      ],
+      "expected_abstention": true
+    },
+    {
+      "case_id": "distractor_glucose",
+      "task": "qa",
+      "query": "What was the glucose result on January 12?",
+      "documents": [
+        "lab_report_01.txt",
+        "followup_lab_01.txt",
+        "medication_list_01.txt"
+      ],
+      "expected_documents": [
+        "lab_report_01.txt"
+      ],
+      "required_facts": [
+        "108 mg/dL"
+      ],
+      "forbidden_facts": [
+        "96 mg/dL"
+      ],
+      "expected_abstention": false
+    }
+  ]
+}

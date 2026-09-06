@@ -1,0 +1,35 @@
+SYNTHETIC MEDICAL RECORD
+FOR SOFTWARE EVALUATION ONLY
+NOT A REAL PATIENT RECORD
+
+Document Type: Medication List
+Patient: Synthetic Patient A
+Medication Review Date: 2026-01-20
+
+Active Medications:
+
+Lisinopril
+Dose: 10 mg
+Route: Oral
+Frequency: Once daily
+
+Metformin
+Dose: 500 mg
+Route: Oral
+Frequency: Twice daily with meals
+
+Atorvastatin
+Dose: 20 mg
+Route: Oral
+Frequency: Once nightly
+
+Ondansetron
+Dose: 4 mg
+Route: Oral
+Frequency: Every 8 hours as needed for nausea
+
+This synthetic medication list records documented medications only.
+It does not provide recommendations for starting, stopping,
+or changing medication.
+
+End of synthetic medication list.

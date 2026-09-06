@@ -1,1 +1,1 @@
-"""MIRA synthetic evaluation framework."""
+"""MIRA RAG evaluation package."""
