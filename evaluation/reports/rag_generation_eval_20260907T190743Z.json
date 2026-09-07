@@ -1,0 +1,649 @@
+{
+  "cases": [
+    {
+      "answer": "The hemoglobin result was 11.2\u202fg/dL.\u00a0[1]",
+      "case_id": "qa_lab_hemoglobin",
+      "evaluation": {
+        "abstention_correct": true,
+        "case_id": "qa_lab_hemoglobin",
+        "case_passed": false,
+        "forbidden_fact_violation": false,
+        "forbidden_facts_found": [],
+        "missing_required_facts": [],
+        "required_fact_recall": 1.0,
+        "task": "qa"
+      },
+      "generation": {
+        "attempts": 1,
+        "fallback_used": false,
+        "model": "openai/gpt-oss-20b",
+        "primary_provider": "groq",
+        "provider": "groq",
+        "total_latency_ms": 530.5116509998697
+      },
+      "grounding": {
+        "invalid_citation_numbers": [],
+        "is_valid": false,
+        "issues": [
+          "missing_source_citation"
+        ],
+        "misattributed_medical_values": [],
+        "uncited_medical_values": [],
+        "unsupported_medical_values": []
+      },
+      "query": "What was the hemoglobin result?",
+      "sources": [
+        {
+          "chunk_id": null,
+          "chunk_index": null,
+          "document_id": "c9ac5e17-37a3-449f-bf23-7f7534de99b4",
+          "document_position": 1,
+          "document_type": "lab_report",
+          "page_number": null,
+          "similarity_score": null,
+          "source": "lab_report_01.txt",
+          "source_number": 1,
+          "text": "SYNTHETIC MEDICAL RECORD\nFOR SOFTWARE EVALUATION ONLY\nNOT A REAL PATIENT RECORD\nDocument Type: Laboratory Report\nPatient: Synthetic Patient A\nCollection Date: 2026-01-12\nOrdering Physician: Dr. Test Provider\nCOMPLETE BLOOD COUNT\nHemoglobin\nResult: 11.2 g/dL\nReference Range: 12.0-16.0 g/dL\nFlag: Low\nHematocrit\nResult: 34.1 %\nReference Range: 36.0-46.0 %\nFlag: Low\nWhite Blood Cell Count\nResult: 7.4 x10^3/uL\nReference Range: 4.0-11.0 x10^3/uL\nFlag: Normal\nPlatelet Count\nResult: 268 x10^3/uL\nReference Range: 150-450 x10^3/uL\nFlag: Normal\nMETABOLIC PANEL\nGlucose\nResult: 108 mg/dL\nReference Range: 70-99 mg/dL\nFlag: High\nCreatinine\nResult: 0.82 mg/dL\nReference Range: 0.60-1.10 mg/dL\nFlag: Normal\nSodium\nResult: 139 mmol/L\nReference Range: 135-145 mmol/L\nFlag: Normal\nPotassium\nResult: 4.1 mmol/L\nReference Range: 3.5-5.1 mmol/L\nFlag: Normal\nEnd of synthetic laboratory report."
+        }
+      ],
+      "task": "qa"
+    },
+    {
+      "answer": "The glucose result was 108\u202fmg/dL.\u202f[1]",
+      "case_id": "qa_lab_glucose",
+      "evaluation": {
+        "abstention_correct": true,
+        "case_id": "qa_lab_glucose",
+        "case_passed": false,
+        "forbidden_fact_violation": false,
+        "forbidden_facts_found": [],
+        "missing_required_facts": [],
+        "required_fact_recall": 1.0,
+        "task": "qa"
+      },
+      "generation": {
+        "attempts": 1,
+        "fallback_used": false,
+        "model": "openai/gpt-oss-20b",
+        "primary_provider": "groq",
+        "provider": "groq",
+        "total_latency_ms": 642.734759999712
+      },
+      "grounding": {
+        "invalid_citation_numbers": [],
+        "is_valid": false,
+        "issues": [
+          "missing_source_citation",
+          "uncited_medical_value"
+        ],
+        "misattributed_medical_values": [],
+        "uncited_medical_values": [
+          "108\u202fmg/dL"
+        ],
+        "unsupported_medical_values": []
+      },
+      "query": "What was the glucose result in this report?",
+      "sources": [
+        {
+          "chunk_id": null,
+          "chunk_index": null,
+          "document_id": "c9ac5e17-37a3-449f-bf23-7f7534de99b4",
+          "document_position": 1,
+          "document_type": "lab_report",
+          "page_number": null,
+          "similarity_score": null,
+          "source": "lab_report_01.txt",
+          "source_number": 1,
+          "text": "SYNTHETIC MEDICAL RECORD\nFOR SOFTWARE EVALUATION ONLY\nNOT A REAL PATIENT RECORD\nDocument Type: Laboratory Report\nPatient: Synthetic Patient A\nCollection Date: 2026-01-12\nOrdering Physician: Dr. Test Provider\nCOMPLETE BLOOD COUNT\nHemoglobin\nResult: 11.2 g/dL\nReference Range: 12.0-16.0 g/dL\nFlag: Low\nHematocrit\nResult: 34.1 %\nReference Range: 36.0-46.0 %\nFlag: Low\nWhite Blood Cell Count\nResult: 7.4 x10^3/uL\nReference Range: 4.0-11.0 x10^3/uL\nFlag: Normal\nPlatelet Count\nResult: 268 x10^3/uL\nReference Range: 150-450 x10^3/uL\nFlag: Normal\nMETABOLIC PANEL\nGlucose\nResult: 108 mg/dL\nReference Range: 70-99 mg/dL\nFlag: High\nCreatinine\nResult: 0.82 mg/dL\nReference Range: 0.60-1.10 mg/dL\nFlag: Normal\nSodium\nResult: 139 mmol/L\nReference Range: 135-145 mmol/L\nFlag: Normal\nPotassium\nResult: 4.1 mmol/L\nReference Range: 3.5-5.1 mmol/L\nFlag: Normal\nEnd of synthetic laboratory report."
+        }
+      ],
+      "task": "qa"
+    },
+    {
+      "answer": "Discharge diagnoses listed were:\n\n- Viral gastroenteritis  \n- Dehydration, resolved\u202f[1]",
+      "case_id": "qa_discharge_diagnosis",
+      "evaluation": {
+        "abstention_correct": true,
+        "case_id": "qa_discharge_diagnosis",
+        "case_passed": false,
+        "forbidden_fact_violation": false,
+        "forbidden_facts_found": [],
+        "missing_required_facts": [],
+        "required_fact_recall": 1.0,
+        "task": "qa"
+      },
+      "generation": {
+        "attempts": 1,
+        "fallback_used": false,
+        "model": "openai/gpt-oss-20b",
+        "primary_provider": "groq",
+        "provider": "groq",
+        "total_latency_ms": 739.0657239998291
+      },
+      "grounding": {
+        "invalid_citation_numbers": [],
+        "is_valid": false,
+        "issues": [
+          "missing_source_citation"
+        ],
+        "misattributed_medical_values": [],
+        "uncited_medical_values": [],
+        "unsupported_medical_values": []
+      },
+      "query": "What diagnoses were listed at discharge?",
+      "sources": [
+        {
+          "chunk_id": null,
+          "chunk_index": null,
+          "document_id": "00211430-9e9f-4e9d-b639-67e1c2ca4630",
+          "document_position": 1,
+          "document_type": "discharge_summary",
+          "page_number": null,
+          "similarity_score": null,
+          "source": "discharge_summary_01.txt",
+          "source_number": 1,
+          "text": "SYNTHETIC MEDICAL RECORD\nFOR SOFTWARE EVALUATION ONLY\nNOT A REAL PATIENT RECORD\nDocument Type: Discharge Summary\nPatient: Synthetic Patient A\nAdmission Date: 2026-01-14\nDischarge Date: 2026-01-16\nReason for Admission:\nDehydration associated with viral gastroenteritis.\nHospital Course:\nThe patient received intravenous fluids and supportive care.\nSymptoms improved during admission.\nThe patient tolerated oral fluids before discharge.\nDischarge Diagnoses:\n1. Viral gastroenteritis\n2. Dehydration, resolved\nDischarge Medications:\nOndansetron 4 mg tablet.\nTake one tablet by mouth every 8 hours as needed for nausea.\nDischarge Instructions:\nMaintain adequate oral hydration.\nResume diet gradually as tolerated.\nFollow up with primary care within 7 days.\nReturn Precautions:\nSeek medical attention for inability to keep fluids down,\npersistent vomiting, fainting, severe abdominal pain,\nor worsening symptoms.\nNo antibiotics were prescribed at discharge.\nEnd of synthetic discharge summary."
+        }
+      ],
+      "task": "qa"
+    },
+    {
+      "answer": "No, antibiotics were not prescribed at discharge. [1]",
+      "case_id": "qa_discharge_antibiotics",
+      "evaluation": {
+        "abstention_correct": true,
+        "case_id": "qa_discharge_antibiotics",
+        "case_passed": false,
+        "forbidden_fact_violation": false,
+        "forbidden_facts_found": [],
+        "missing_required_facts": [
+          "No antibiotics were prescribed"
+        ],
+        "required_fact_recall": 0.0,
+        "task": "qa"
+      },
+      "generation": {
+        "attempts": 1,
+        "fallback_used": false,
+        "model": "openai/gpt-oss-20b",
+        "primary_provider": "groq",
+        "provider": "groq",
+        "total_latency_ms": 514.8137070000303
+      },
+      "grounding": {
+        "invalid_citation_numbers": [],
+        "is_valid": false,
+        "issues": [
+          "missing_source_citation"
+        ],
+        "misattributed_medical_values": [],
+        "uncited_medical_values": [],
+        "unsupported_medical_values": []
+      },
+      "query": "Were antibiotics prescribed at discharge?",
+      "sources": [
+        {
+          "chunk_id": null,
+          "chunk_index": null,
+          "document_id": "00211430-9e9f-4e9d-b639-67e1c2ca4630",
+          "document_position": 1,
+          "document_type": "discharge_summary",
+          "page_number": null,
+          "similarity_score": null,
+          "source": "discharge_summary_01.txt",
+          "source_number": 1,
+          "text": "SYNTHETIC MEDICAL RECORD\nFOR SOFTWARE EVALUATION ONLY\nNOT A REAL PATIENT RECORD\nDocument Type: Discharge Summary\nPatient: Synthetic Patient A\nAdmission Date: 2026-01-14\nDischarge Date: 2026-01-16\nReason for Admission:\nDehydration associated with viral gastroenteritis.\nHospital Course:\nThe patient received intravenous fluids and supportive care.\nSymptoms improved during admission.\nThe patient tolerated oral fluids before discharge.\nDischarge Diagnoses:\n1. Viral gastroenteritis\n2. Dehydration, resolved\nDischarge Medications:\nOndansetron 4 mg tablet.\nTake one tablet by mouth every 8 hours as needed for nausea.\nDischarge Instructions:\nMaintain adequate oral hydration.\nResume diet gradually as tolerated.\nFollow up with primary care within 7 days.\nReturn Precautions:\nSeek medical attention for inability to keep fluids down,\npersistent vomiting, fainting, severe abdominal pain,\nor worsening symptoms.\nNo antibiotics were prescribed at discharge.\nEnd of synthetic discharge summary."
+        }
+      ],
+      "task": "qa"
+    },
+    {
+      "answer": "The metformin dose documented is **500\u202fmg** per dose. [1]",
+      "case_id": "qa_medication_metformin",
+      "evaluation": {
+        "abstention_correct": true,
+        "case_id": "qa_medication_metformin",
+        "case_passed": false,
+        "forbidden_fact_violation": false,
+        "forbidden_facts_found": [],
+        "missing_required_facts": [
+          "twice daily"
+        ],
+        "required_fact_recall": 0.5,
+        "task": "qa"
+      },
+      "generation": {
+        "attempts": 1,
+        "fallback_used": false,
+        "model": "openai/gpt-oss-20b",
+        "primary_provider": "groq",
+        "provider": "groq",
+        "total_latency_ms": 767.3396250002043
+      },
+      "grounding": {
+        "invalid_citation_numbers": [],
+        "is_valid": false,
+        "issues": [
+          "missing_source_citation"
+        ],
+        "misattributed_medical_values": [],
+        "uncited_medical_values": [],
+        "unsupported_medical_values": []
+      },
+      "query": "What metformin dose is documented?",
+      "sources": [
+        {
+          "chunk_id": null,
+          "chunk_index": null,
+          "document_id": "20da88f1-5b19-4f97-81b6-2b2f257de328",
+          "document_position": 1,
+          "document_type": "unknown",
+          "page_number": null,
+          "similarity_score": null,
+          "source": "medication_list_01.txt",
+          "source_number": 1,
+          "text": "SYNTHETIC MEDICAL RECORD\nFOR SOFTWARE EVALUATION ONLY\nNOT A REAL PATIENT RECORD\nDocument Type: Medication List\nPatient: Synthetic Patient A\nMedication Review Date: 2026-01-20\nActive Medications:\nLisinopril\nDose: 10 mg\nRoute: Oral\nFrequency: Once daily\nMetformin\nDose: 500 mg\nRoute: Oral\nFrequency: Twice daily with meals\nAtorvastatin\nDose: 20 mg\nRoute: Oral\nFrequency: Once nightly\nOndansetron\nDose: 4 mg\nRoute: Oral\nFrequency: Every 8 hours as needed for nausea\nThis synthetic medication list records documented medications only.\nIt does not provide recommendations for starting, stopping,\nor changing medication.\nEnd of synthetic medication list."
+        }
+      ],
+      "task": "qa"
+    },
+    {
+      "answer": "The document lists Lisinopril at a dose of\u202f10\u202fmg\u30101\u3011.",
+      "case_id": "qa_medication_lisinopril",
+      "evaluation": {
+        "abstention_correct": true,
+        "case_id": "qa_medication_lisinopril",
+        "case_passed": false,
+        "forbidden_fact_violation": false,
+        "forbidden_facts_found": [],
+        "missing_required_facts": [
+          "once daily"
+        ],
+        "required_fact_recall": 0.5,
+        "task": "qa"
+      },
+      "generation": {
+        "attempts": 1,
+        "fallback_used": false,
+        "model": "openai/gpt-oss-20b",
+        "primary_provider": "groq",
+        "provider": "groq",
+        "total_latency_ms": 497.69212599994717
+      },
+      "grounding": {
+        "invalid_citation_numbers": [],
+        "is_valid": false,
+        "issues": [
+          "missing_source_citation"
+        ],
+        "misattributed_medical_values": [],
+        "uncited_medical_values": [],
+        "unsupported_medical_values": []
+      },
+      "query": "How much lisinopril is listed in the document?",
+      "sources": [
+        {
+          "chunk_id": null,
+          "chunk_index": null,
+          "document_id": "20da88f1-5b19-4f97-81b6-2b2f257de328",
+          "document_position": 1,
+          "document_type": "unknown",
+          "page_number": null,
+          "similarity_score": null,
+          "source": "medication_list_01.txt",
+          "source_number": 1,
+          "text": "SYNTHETIC MEDICAL RECORD\nFOR SOFTWARE EVALUATION ONLY\nNOT A REAL PATIENT RECORD\nDocument Type: Medication List\nPatient: Synthetic Patient A\nMedication Review Date: 2026-01-20\nActive Medications:\nLisinopril\nDose: 10 mg\nRoute: Oral\nFrequency: Once daily\nMetformin\nDose: 500 mg\nRoute: Oral\nFrequency: Twice daily with meals\nAtorvastatin\nDose: 20 mg\nRoute: Oral\nFrequency: Once nightly\nOndansetron\nDose: 4 mg\nRoute: Oral\nFrequency: Every 8 hours as needed for nausea\nThis synthetic medication list records documented medications only.\nIt does not provide recommendations for starting, stopping,\nor changing medication.\nEnd of synthetic medication list."
+        }
+      ],
+      "task": "qa"
+    },
+    {
+      "answer": "Hemoglobin increased from **11.2\u202fg/dL** on 2026\u201101\u201112 to **12.6\u202fg/dL** on 2026\u201102\u201116. [Source\u00a01] [Source\u00a02]",
+      "case_id": "comparison_hemoglobin",
+      "evaluation": {
+        "abstention_correct": true,
+        "case_id": "comparison_hemoglobin",
+        "case_passed": true,
+        "forbidden_fact_violation": false,
+        "forbidden_facts_found": [],
+        "missing_required_facts": [],
+        "required_fact_recall": 1.0,
+        "task": "comparison"
+      },
+      "generation": {
+        "attempts": 1,
+        "fallback_used": false,
+        "model": "openai/gpt-oss-20b",
+        "primary_provider": "groq",
+        "provider": "groq",
+        "total_latency_ms": 714.1865220000909
+      },
+      "grounding": {
+        "invalid_citation_numbers": [],
+        "is_valid": true,
+        "issues": [],
+        "misattributed_medical_values": [],
+        "uncited_medical_values": [],
+        "unsupported_medical_values": []
+      },
+      "query": "How did the hemoglobin result change between the two lab reports?",
+      "sources": [
+        {
+          "chunk_id": null,
+          "chunk_index": null,
+          "document_id": "c9ac5e17-37a3-449f-bf23-7f7534de99b4",
+          "document_position": 1,
+          "document_type": "lab_report",
+          "page_number": null,
+          "similarity_score": null,
+          "source": "lab_report_01.txt",
+          "source_number": 1,
+          "text": "SYNTHETIC MEDICAL RECORD\nFOR SOFTWARE EVALUATION ONLY\nNOT A REAL PATIENT RECORD\nDocument Type: Laboratory Report\nPatient: Synthetic Patient A\nCollection Date: 2026-01-12\nOrdering Physician: Dr. Test Provider\nCOMPLETE BLOOD COUNT\nHemoglobin\nResult: 11.2 g/dL\nReference Range: 12.0-16.0 g/dL\nFlag: Low\nHematocrit\nResult: 34.1 %\nReference Range: 36.0-46.0 %\nFlag: Low\nWhite Blood Cell Count\nResult: 7.4 x10^3/uL\nReference Range: 4.0-11.0 x10^3/uL\nFlag: Normal\nPlatelet Count\nResult: 268 x10^3/uL\nReference Range: 150-450 x10^3/uL\nFlag: Normal\nMETABOLIC PANEL\nGlucose\nResult: 108 mg/dL\nReference Range: 70-99 mg/dL\nFlag: High\nCreatinine\nResult: 0.82 mg/dL\nReference Range: 0.60-1.10 mg/dL\nFlag: Normal\nSodium\nResult: 139 mmol/L\nReference Range: 135-145 mmol/L\nFlag: Normal\nPotassium\nResult: 4.1 mmol/L\nReference Range: 3.5-5.1 mmol/L\nFlag: Normal\nEnd of synthetic laboratory report."
+        },
+        {
+          "chunk_id": null,
+          "chunk_index": null,
+          "document_id": "d081fca6-fbdd-4026-a782-00f8c1b640d7",
+          "document_position": 2,
+          "document_type": "lab_report",
+          "page_number": null,
+          "similarity_score": null,
+          "source": "followup_lab_01.txt",
+          "source_number": 2,
+          "text": "SYNTHETIC MEDICAL RECORD\nFOR SOFTWARE EVALUATION ONLY\nNOT A REAL PATIENT RECORD\nDocument Type: Follow-Up Laboratory Report\nPatient: Synthetic Patient A\nCollection Date: 2026-02-16\nOrdering Physician: Dr. Test Provider\nCOMPLETE BLOOD COUNT\nHemoglobin\nResult: 12.6 g/dL\nReference Range: 12.0-16.0 g/dL\nFlag: Normal\nHematocrit\nResult: 38.2 %\nReference Range: 36.0-46.0 %\nFlag: Normal\nWhite Blood Cell Count\nResult: 6.9 x10^3/uL\nReference Range: 4.0-11.0 x10^3/uL\nFlag: Normal\nPlatelet Count\nResult: 274 x10^3/uL\nReference Range: 150-450 x10^3/uL\nFlag: Normal\nMETABOLIC PANEL\nGlucose\nResult: 96 mg/dL\nReference Range: 70-99 mg/dL\nFlag: Normal\nCreatinine\nResult: 0.84 mg/dL\nReference Range: 0.60-1.10 mg/dL\nFlag: Normal\nSodium\nResult: 140 mmol/L\nReference Range: 135-145 mmol/L\nFlag: Normal\nPotassium\nResult: 4.2 mmol/L\nReference Range: 3.5-5.1 mmol/L\nFlag: Normal\nEnd of synthetic follow-up laboratory report."
+        }
+      ],
+      "task": "comparison"
+    },
+    {
+      "answer": "### lab_report_01.txt  \n- **Glucose**: Result 108\u202fmg/dL [1].  \n- **Reference Range**: 70\u201199\u202fmg/dL [1].  \n- **Flag**: High [1].  \n\n### followup_lab_01.txt  \n- **Glucose**: Result 96\u202fmg/dL [2].  \n- **Reference Range**: 70\u201199\u202fmg/dL [2].  \n- **Flag**: Normal [2].  \n\n### Cross\u2011document comparison  \n- The glucose result in **lab_report_01.txt** (108\u202fmg/dL) is higher than the result in **followup_lab_01.txt** (96\u202fmg/dL) [1][2].  \n- The flag for the glucose value is **High** in the first report and **Normal** in the second report [1][2].  \n- Both reports list the same reference range for glucose, 70\u201199\u202fmg/dL, and the result in the second report falls within this range whereas the first does not [1][2].",
+      "case_id": "comparison_glucose",
+      "evaluation": {
+        "abstention_correct": true,
+        "case_id": "comparison_glucose",
+        "case_passed": false,
+        "forbidden_fact_violation": false,
+        "forbidden_facts_found": [],
+        "missing_required_facts": [],
+        "required_fact_recall": 1.0,
+        "task": "comparison"
+      },
+      "generation": {
+        "attempts": 1,
+        "fallback_used": false,
+        "model": "openai/gpt-oss-20b",
+        "primary_provider": "groq",
+        "provider": "groq",
+        "total_latency_ms": 1094.1426519998458
+      },
+      "grounding": {
+        "invalid_citation_numbers": [],
+        "is_valid": false,
+        "issues": [
+          "missing_source_citation",
+          "uncited_medical_value"
+        ],
+        "misattributed_medical_values": [],
+        "uncited_medical_values": [
+          "108\u202fmg/dL",
+          "99\u202fmg/dL",
+          "96\u202fmg/dL"
+        ],
+        "unsupported_medical_values": []
+      },
+      "query": "Compare the glucose values between the two lab reports.",
+      "sources": [
+        {
+          "chunk_id": null,
+          "chunk_index": null,
+          "document_id": "c9ac5e17-37a3-449f-bf23-7f7534de99b4",
+          "document_position": 1,
+          "document_type": "lab_report",
+          "page_number": null,
+          "similarity_score": null,
+          "source": "lab_report_01.txt",
+          "source_number": 1,
+          "text": "SYNTHETIC MEDICAL RECORD\nFOR SOFTWARE EVALUATION ONLY\nNOT A REAL PATIENT RECORD\nDocument Type: Laboratory Report\nPatient: Synthetic Patient A\nCollection Date: 2026-01-12\nOrdering Physician: Dr. Test Provider\nCOMPLETE BLOOD COUNT\nHemoglobin\nResult: 11.2 g/dL\nReference Range: 12.0-16.0 g/dL\nFlag: Low\nHematocrit\nResult: 34.1 %\nReference Range: 36.0-46.0 %\nFlag: Low\nWhite Blood Cell Count\nResult: 7.4 x10^3/uL\nReference Range: 4.0-11.0 x10^3/uL\nFlag: Normal\nPlatelet Count\nResult: 268 x10^3/uL\nReference Range: 150-450 x10^3/uL\nFlag: Normal\nMETABOLIC PANEL\nGlucose\nResult: 108 mg/dL\nReference Range: 70-99 mg/dL\nFlag: High\nCreatinine\nResult: 0.82 mg/dL\nReference Range: 0.60-1.10 mg/dL\nFlag: Normal\nSodium\nResult: 139 mmol/L\nReference Range: 135-145 mmol/L\nFlag: Normal\nPotassium\nResult: 4.1 mmol/L\nReference Range: 3.5-5.1 mmol/L\nFlag: Normal\nEnd of synthetic laboratory report."
+        },
+        {
+          "chunk_id": null,
+          "chunk_index": null,
+          "document_id": "d081fca6-fbdd-4026-a782-00f8c1b640d7",
+          "document_position": 2,
+          "document_type": "lab_report",
+          "page_number": null,
+          "similarity_score": null,
+          "source": "followup_lab_01.txt",
+          "source_number": 2,
+          "text": "SYNTHETIC MEDICAL RECORD\nFOR SOFTWARE EVALUATION ONLY\nNOT A REAL PATIENT RECORD\nDocument Type: Follow-Up Laboratory Report\nPatient: Synthetic Patient A\nCollection Date: 2026-02-16\nOrdering Physician: Dr. Test Provider\nCOMPLETE BLOOD COUNT\nHemoglobin\nResult: 12.6 g/dL\nReference Range: 12.0-16.0 g/dL\nFlag: Normal\nHematocrit\nResult: 38.2 %\nReference Range: 36.0-46.0 %\nFlag: Normal\nWhite Blood Cell Count\nResult: 6.9 x10^3/uL\nReference Range: 4.0-11.0 x10^3/uL\nFlag: Normal\nPlatelet Count\nResult: 274 x10^3/uL\nReference Range: 150-450 x10^3/uL\nFlag: Normal\nMETABOLIC PANEL\nGlucose\nResult: 96 mg/dL\nReference Range: 70-99 mg/dL\nFlag: Normal\nCreatinine\nResult: 0.84 mg/dL\nReference Range: 0.60-1.10 mg/dL\nFlag: Normal\nSodium\nResult: 140 mmol/L\nReference Range: 135-145 mmol/L\nFlag: Normal\nPotassium\nResult: 4.2 mmol/L\nReference Range: 3.5-5.1 mmol/L\nFlag: Normal\nEnd of synthetic follow-up laboratory report."
+        }
+      ],
+      "task": "comparison"
+    },
+    {
+      "answer": "- The patient was admitted on\u202f2026\u201101\u201114 and discharged on\u202f2026\u201101\u201116\u202f[1].  \n- Reason for admission was dehydration associated with viral gastroenteritis\u202f[1].  \n- Hospital course involved intravenous fluids and supportive care; symptoms improved, and the patient tolerated oral fluids before discharge\u202f[1].  \n- Discharge diagnoses are viral gastroenteritis and dehydration, resolved\u202f[1].  \n- Discharge medication: Ondansetron 4\u202fmg tablet, taken by mouth one tablet every\u202f8\u202fhours as needed for nausea\u202f[1].  \n- Discharge instructions include maintaining adequate oral hydration, gradually resuming diet as tolerated, and following up with primary care within\u202f7\u202fdays\u202f[1].  \n- Return precautions advise seeking medical attention for inability to keep fluids down, persistent vomiting, fainting, severe abdominal pain, or worsening symptoms\u202f[1].  \n- No antibiotics were prescribed at discharge\u202f[1].",
+      "case_id": "summary_discharge",
+      "evaluation": {
+        "abstention_correct": true,
+        "case_id": "summary_discharge",
+        "case_passed": false,
+        "forbidden_fact_violation": false,
+        "forbidden_facts_found": [],
+        "missing_required_facts": [],
+        "required_fact_recall": 1.0,
+        "task": "summarization"
+      },
+      "generation": {
+        "attempts": 1,
+        "fallback_used": false,
+        "model": "openai/gpt-oss-20b",
+        "primary_provider": "groq",
+        "provider": "groq",
+        "total_latency_ms": 1260.0173380001252
+      },
+      "grounding": {
+        "invalid_citation_numbers": [],
+        "is_valid": false,
+        "issues": [
+          "missing_source_citation",
+          "uncited_medical_value"
+        ],
+        "misattributed_medical_values": [],
+        "uncited_medical_values": [
+          "4\u202fmg",
+          "7\u202fdays"
+        ],
+        "unsupported_medical_values": []
+      },
+      "query": "Summarize this discharge summary.",
+      "sources": [
+        {
+          "chunk_id": null,
+          "chunk_index": null,
+          "document_id": "00211430-9e9f-4e9d-b639-67e1c2ca4630",
+          "document_position": 1,
+          "document_type": "discharge_summary",
+          "page_number": null,
+          "similarity_score": null,
+          "source": "discharge_summary_01.txt",
+          "source_number": 1,
+          "text": "SYNTHETIC MEDICAL RECORD\nFOR SOFTWARE EVALUATION ONLY\nNOT A REAL PATIENT RECORD\nDocument Type: Discharge Summary\nPatient: Synthetic Patient A\nAdmission Date: 2026-01-14\nDischarge Date: 2026-01-16\nReason for Admission:\nDehydration associated with viral gastroenteritis.\nHospital Course:\nThe patient received intravenous fluids and supportive care.\nSymptoms improved during admission.\nThe patient tolerated oral fluids before discharge.\nDischarge Diagnoses:\n1. Viral gastroenteritis\n2. Dehydration, resolved\nDischarge Medications:\nOndansetron 4 mg tablet.\nTake one tablet by mouth every 8 hours as needed for nausea.\nDischarge Instructions:\nMaintain adequate oral hydration.\nResume diet gradually as tolerated.\nFollow up with primary care within 7 days.\nReturn Precautions:\nSeek medical attention for inability to keep fluids down,\npersistent vomiting, fainting, severe abdominal pain,\nor worsening symptoms.\nNo antibiotics were prescribed at discharge.\nEnd of synthetic discharge summary."
+        }
+      ],
+      "task": "summarization"
+    },
+    {
+      "answer": "The patient\u2019s blood type is not documented in the supplied context.",
+      "case_id": "missing_blood_type",
+      "evaluation": {
+        "abstention_correct": true,
+        "case_id": "missing_blood_type",
+        "case_passed": false,
+        "forbidden_fact_violation": false,
+        "forbidden_facts_found": [],
+        "missing_required_facts": [],
+        "required_fact_recall": 1.0,
+        "task": "qa"
+      },
+      "generation": {
+        "attempts": 1,
+        "fallback_used": false,
+        "model": "openai/gpt-oss-20b",
+        "primary_provider": "groq",
+        "provider": "groq",
+        "total_latency_ms": 642.1745359998567
+      },
+      "grounding": {
+        "invalid_citation_numbers": [],
+        "is_valid": false,
+        "issues": [
+          "missing_source_citation"
+        ],
+        "misattributed_medical_values": [],
+        "uncited_medical_values": [],
+        "unsupported_medical_values": []
+      },
+      "query": "What is the patient's blood type?",
+      "sources": [
+        {
+          "chunk_id": null,
+          "chunk_index": null,
+          "document_id": "c9ac5e17-37a3-449f-bf23-7f7534de99b4",
+          "document_position": 1,
+          "document_type": "lab_report",
+          "page_number": null,
+          "similarity_score": null,
+          "source": "lab_report_01.txt",
+          "source_number": 1,
+          "text": "SYNTHETIC MEDICAL RECORD\nFOR SOFTWARE EVALUATION ONLY\nNOT A REAL PATIENT RECORD\nDocument Type: Laboratory Report\nPatient: Synthetic Patient A\nCollection Date: 2026-01-12\nOrdering Physician: Dr. Test Provider\nCOMPLETE BLOOD COUNT\nHemoglobin\nResult: 11.2 g/dL\nReference Range: 12.0-16.0 g/dL\nFlag: Low\nHematocrit\nResult: 34.1 %\nReference Range: 36.0-46.0 %\nFlag: Low\nWhite Blood Cell Count\nResult: 7.4 x10^3/uL\nReference Range: 4.0-11.0 x10^3/uL\nFlag: Normal\nPlatelet Count\nResult: 268 x10^3/uL\nReference Range: 150-450 x10^3/uL\nFlag: Normal\nMETABOLIC PANEL\nGlucose\nResult: 108 mg/dL\nReference Range: 70-99 mg/dL\nFlag: High\nCreatinine\nResult: 0.82 mg/dL\nReference Range: 0.60-1.10 mg/dL\nFlag: Normal\nSodium\nResult: 139 mmol/L\nReference Range: 135-145 mmol/L\nFlag: Normal\nPotassium\nResult: 4.1 mmol/L\nReference Range: 3.5-5.1 mmol/L\nFlag: Normal\nEnd of synthetic laboratory report."
+        }
+      ],
+      "task": "qa"
+    },
+    {
+      "answer": "There is no information documented about medication allergy in the provided context.",
+      "case_id": "missing_allergy",
+      "evaluation": {
+        "abstention_correct": false,
+        "case_id": "missing_allergy",
+        "case_passed": false,
+        "forbidden_fact_violation": false,
+        "forbidden_facts_found": [],
+        "missing_required_facts": [],
+        "required_fact_recall": 1.0,
+        "task": "qa"
+      },
+      "generation": {
+        "attempts": 3,
+        "fallback_used": true,
+        "model": "llama3.2:latest",
+        "primary_provider": "groq",
+        "provider": "ollama",
+        "total_latency_ms": 47401.18385000005
+      },
+      "grounding": {
+        "invalid_citation_numbers": [],
+        "is_valid": false,
+        "issues": [
+          "missing_source_citation"
+        ],
+        "misattributed_medical_values": [],
+        "uncited_medical_values": [],
+        "unsupported_medical_values": []
+      },
+      "query": "What medication allergy is documented?",
+      "sources": [
+        {
+          "chunk_id": null,
+          "chunk_index": null,
+          "document_id": "20da88f1-5b19-4f97-81b6-2b2f257de328",
+          "document_position": 1,
+          "document_type": "unknown",
+          "page_number": null,
+          "similarity_score": null,
+          "source": "medication_list_01.txt",
+          "source_number": 1,
+          "text": "SYNTHETIC MEDICAL RECORD\nFOR SOFTWARE EVALUATION ONLY\nNOT A REAL PATIENT RECORD\nDocument Type: Medication List\nPatient: Synthetic Patient A\nMedication Review Date: 2026-01-20\nActive Medications:\nLisinopril\nDose: 10 mg\nRoute: Oral\nFrequency: Once daily\nMetformin\nDose: 500 mg\nRoute: Oral\nFrequency: Twice daily with meals\nAtorvastatin\nDose: 20 mg\nRoute: Oral\nFrequency: Once nightly\nOndansetron\nDose: 4 mg\nRoute: Oral\nFrequency: Every 8 hours as needed for nausea\nThis synthetic medication list records documented medications only.\nIt does not provide recommendations for starting, stopping,\nor changing medication.\nEnd of synthetic medication list."
+        }
+      ],
+      "task": "qa"
+    },
+    {
+      "answer": "The glucose result on January\u202f12 was **108\u202fmg/dL**.[1]",
+      "case_id": "distractor_glucose",
+      "evaluation": {
+        "abstention_correct": true,
+        "case_id": "distractor_glucose",
+        "case_passed": false,
+        "forbidden_fact_violation": false,
+        "forbidden_facts_found": [],
+        "missing_required_facts": [],
+        "required_fact_recall": 1.0,
+        "task": "qa"
+      },
+      "generation": {
+        "attempts": 1,
+        "fallback_used": false,
+        "model": "openai/gpt-oss-20b",
+        "primary_provider": "groq",
+        "provider": "groq",
+        "total_latency_ms": 677.1185030002016
+      },
+      "grounding": {
+        "invalid_citation_numbers": [],
+        "is_valid": false,
+        "issues": [
+          "missing_source_citation"
+        ],
+        "misattributed_medical_values": [],
+        "uncited_medical_values": [],
+        "unsupported_medical_values": []
+      },
+      "query": "What was the glucose result on January 12?",
+      "sources": [
+        {
+          "chunk_id": null,
+          "chunk_index": null,
+          "document_id": "c9ac5e17-37a3-449f-bf23-7f7534de99b4",
+          "document_position": 1,
+          "document_type": "lab_report",
+          "page_number": null,
+          "similarity_score": null,
+          "source": "lab_report_01.txt",
+          "source_number": 1,
+          "text": "SYNTHETIC MEDICAL RECORD\nFOR SOFTWARE EVALUATION ONLY\nNOT A REAL PATIENT RECORD\nDocument Type: Laboratory Report\nPatient: Synthetic Patient A\nCollection Date: 2026-01-12\nOrdering Physician: Dr. Test Provider\nCOMPLETE BLOOD COUNT\nHemoglobin\nResult: 11.2 g/dL\nReference Range: 12.0-16.0 g/dL\nFlag: Low\nHematocrit\nResult: 34.1 %\nReference Range: 36.0-46.0 %\nFlag: Low\nWhite Blood Cell Count\nResult: 7.4 x10^3/uL\nReference Range: 4.0-11.0 x10^3/uL\nFlag: Normal\nPlatelet Count\nResult: 268 x10^3/uL\nReference Range: 150-450 x10^3/uL\nFlag: Normal\nMETABOLIC PANEL\nGlucose\nResult: 108 mg/dL\nReference Range: 70-99 mg/dL\nFlag: High\nCreatinine\nResult: 0.82 mg/dL\nReference Range: 0.60-1.10 mg/dL\nFlag: Normal\nSodium\nResult: 139 mmol/L\nReference Range: 135-145 mmol/L\nFlag: Normal\nPotassium\nResult: 4.1 mmol/L\nReference Range: 3.5-5.1 mmol/L\nFlag: Normal\nEnd of synthetic laboratory report."
+        },
+        {
+          "chunk_id": null,
+          "chunk_index": null,
+          "document_id": "d081fca6-fbdd-4026-a782-00f8c1b640d7",
+          "document_position": 2,
+          "document_type": "lab_report",
+          "page_number": null,
+          "similarity_score": null,
+          "source": "followup_lab_01.txt",
+          "source_number": 2,
+          "text": "Result: 6.9 x10^3/uL\nReference Range: 4.0-11.0 x10^3/uL\nFlag: Normal\nPlatelet Count\nResult: 274 x10^3/uL\nReference Range: 150-450 x10^3/uL\nFlag: Normal\nMETABOLIC PANEL\nGlucose\nResult: 96 mg/dL\nReference Range: 70-99 mg/dL\nFlag: Normal\nCreatinine\nResult: 0.84 mg/dL\nReference Range: 0.60-1.10 mg/dL\nFlag: Normal\nSodium\nResult: 140 mmol/L\nReference Range: 135-145 mmol/L\nFlag: Normal\nPotassium\nResult: 4.2 mmol/L\nReference Range: 3.5-5.1 mmol/L\nFlag: Normal"
+        }
+      ],
+      "task": "qa"
+    }
+  ],
+  "context_token_budget": 12000,
+  "dataset_name": "mira_rag_eval_v1",
+  "dataset_version": "1.0.0",
+  "generation_summary": {
+    "abstention_accuracy": 0.9166666666666666,
+    "case_count": 12,
+    "case_pass_rate": 0.08333333333333333,
+    "forbidden_fact_violation_rate": 0.0,
+    "grounded_answer_pass_rate": 0.08333333333333333,
+    "invalid_citation_rate": 0.0,
+    "misattributed_medical_value_rate": 0.0,
+    "required_fact_recall": 0.8333333333333334,
+    "uncited_medical_value_rate": 0.25,
+    "unsupported_medical_value_rate": 0.0
+  },
+  "top_k": 3,
+  "user_id": "9652ab58-dd97-4111-be79-4c438154c929"
+}

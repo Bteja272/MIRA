@@ -1,0 +1,657 @@
+{
+  "cases": [
+    {
+      "case_id": "qa_lab_hemoglobin",
+      "context_metrics": {
+        "input_document_count": 1,
+        "input_estimated_tokens": 238,
+        "output_document_count": 1,
+        "output_estimated_tokens": 238,
+        "token_budget": 12000,
+        "truncated_document_count": 0
+      },
+      "context_result": {
+        "document_recall": 1.0,
+        "expected_evidence_retained": true,
+        "required_fact_survival_rate": 1.0
+      },
+      "document_ids": [
+        "c9ac5e17-37a3-449f-bf23-7f7534de99b4"
+      ],
+      "query": "What was the hemoglobin result?",
+      "retrieved_count": 2,
+      "retrieved_sources": [
+        "lab_report_01.txt",
+        "lab_report_01.txt"
+      ],
+      "task": "qa"
+    },
+    {
+      "case_id": "qa_lab_glucose",
+      "context_metrics": {
+        "input_document_count": 1,
+        "input_estimated_tokens": 238,
+        "output_document_count": 1,
+        "output_estimated_tokens": 238,
+        "token_budget": 12000,
+        "truncated_document_count": 0
+      },
+      "context_result": {
+        "document_recall": 1.0,
+        "expected_evidence_retained": true,
+        "required_fact_survival_rate": 1.0
+      },
+      "document_ids": [
+        "c9ac5e17-37a3-449f-bf23-7f7534de99b4"
+      ],
+      "query": "What was the glucose result in this report?",
+      "retrieved_count": 2,
+      "retrieved_sources": [
+        "lab_report_01.txt",
+        "lab_report_01.txt"
+      ],
+      "task": "qa"
+    },
+    {
+      "case_id": "qa_discharge_diagnosis",
+      "context_metrics": {
+        "input_document_count": 1,
+        "input_estimated_tokens": 247,
+        "output_document_count": 1,
+        "output_estimated_tokens": 247,
+        "token_budget": 12000,
+        "truncated_document_count": 0
+      },
+      "context_result": {
+        "document_recall": 1.0,
+        "expected_evidence_retained": true,
+        "required_fact_survival_rate": 1.0
+      },
+      "document_ids": [
+        "00211430-9e9f-4e9d-b639-67e1c2ca4630"
+      ],
+      "query": "What diagnoses were listed at discharge?",
+      "retrieved_count": 3,
+      "retrieved_sources": [
+        "discharge_summary_01.txt",
+        "discharge_summary_01.txt",
+        "discharge_summary_01.txt"
+      ],
+      "task": "qa"
+    },
+    {
+      "case_id": "qa_discharge_antibiotics",
+      "context_metrics": {
+        "input_document_count": 1,
+        "input_estimated_tokens": 247,
+        "output_document_count": 1,
+        "output_estimated_tokens": 247,
+        "token_budget": 12000,
+        "truncated_document_count": 0
+      },
+      "context_result": {
+        "document_recall": 1.0,
+        "expected_evidence_retained": true,
+        "required_fact_survival_rate": 1.0
+      },
+      "document_ids": [
+        "00211430-9e9f-4e9d-b639-67e1c2ca4630"
+      ],
+      "query": "Were antibiotics prescribed at discharge?",
+      "retrieved_count": 3,
+      "retrieved_sources": [
+        "discharge_summary_01.txt",
+        "discharge_summary_01.txt",
+        "discharge_summary_01.txt"
+      ],
+      "task": "qa"
+    },
+    {
+      "case_id": "qa_medication_metformin",
+      "context_metrics": {
+        "input_document_count": 1,
+        "input_estimated_tokens": 162,
+        "output_document_count": 1,
+        "output_estimated_tokens": 162,
+        "token_budget": 12000,
+        "truncated_document_count": 0
+      },
+      "context_result": {
+        "document_recall": 1.0,
+        "expected_evidence_retained": true,
+        "required_fact_survival_rate": 1.0
+      },
+      "document_ids": [
+        "20da88f1-5b19-4f97-81b6-2b2f257de328"
+      ],
+      "query": "What metformin dose is documented?",
+      "retrieved_count": 2,
+      "retrieved_sources": [
+        "medication_list_01.txt",
+        "medication_list_01.txt"
+      ],
+      "task": "qa"
+    },
+    {
+      "case_id": "qa_medication_lisinopril",
+      "context_metrics": {
+        "input_document_count": 1,
+        "input_estimated_tokens": 162,
+        "output_document_count": 1,
+        "output_estimated_tokens": 162,
+        "token_budget": 12000,
+        "truncated_document_count": 0
+      },
+      "context_result": {
+        "document_recall": 1.0,
+        "expected_evidence_retained": true,
+        "required_fact_survival_rate": 1.0
+      },
+      "document_ids": [
+        "20da88f1-5b19-4f97-81b6-2b2f257de328"
+      ],
+      "query": "How much lisinopril is listed in the document?",
+      "retrieved_count": 2,
+      "retrieved_sources": [
+        "medication_list_01.txt",
+        "medication_list_01.txt"
+      ],
+      "task": "qa"
+    },
+    {
+      "case_id": "comparison_hemoglobin",
+      "context_metrics": {
+        "input_document_count": 2,
+        "input_estimated_tokens": 482,
+        "output_document_count": 2,
+        "output_estimated_tokens": 482,
+        "token_budget": 12000,
+        "truncated_document_count": 0
+      },
+      "context_result": {
+        "document_recall": 1.0,
+        "expected_evidence_retained": true,
+        "required_fact_survival_rate": 1.0
+      },
+      "document_ids": [
+        "c9ac5e17-37a3-449f-bf23-7f7534de99b4",
+        "d081fca6-fbdd-4026-a782-00f8c1b640d7"
+      ],
+      "query": "How did the hemoglobin result change between the two lab reports?",
+      "retrieved_count": 5,
+      "retrieved_sources": [
+        "lab_report_01.txt",
+        "lab_report_01.txt",
+        "followup_lab_01.txt",
+        "followup_lab_01.txt",
+        "followup_lab_01.txt"
+      ],
+      "task": "comparison"
+    },
+    {
+      "case_id": "comparison_glucose",
+      "context_metrics": {
+        "input_document_count": 2,
+        "input_estimated_tokens": 482,
+        "output_document_count": 2,
+        "output_estimated_tokens": 482,
+        "token_budget": 12000,
+        "truncated_document_count": 0
+      },
+      "context_result": {
+        "document_recall": 1.0,
+        "expected_evidence_retained": true,
+        "required_fact_survival_rate": 1.0
+      },
+      "document_ids": [
+        "c9ac5e17-37a3-449f-bf23-7f7534de99b4",
+        "d081fca6-fbdd-4026-a782-00f8c1b640d7"
+      ],
+      "query": "Compare the glucose values between the two lab reports.",
+      "retrieved_count": 5,
+      "retrieved_sources": [
+        "lab_report_01.txt",
+        "lab_report_01.txt",
+        "followup_lab_01.txt",
+        "followup_lab_01.txt",
+        "followup_lab_01.txt"
+      ],
+      "task": "comparison"
+    },
+    {
+      "case_id": "summary_discharge",
+      "context_metrics": {
+        "input_document_count": 1,
+        "input_estimated_tokens": 247,
+        "output_document_count": 1,
+        "output_estimated_tokens": 247,
+        "token_budget": 12000,
+        "truncated_document_count": 0
+      },
+      "context_result": {
+        "document_recall": 1.0,
+        "expected_evidence_retained": true,
+        "required_fact_survival_rate": 1.0
+      },
+      "document_ids": [
+        "00211430-9e9f-4e9d-b639-67e1c2ca4630"
+      ],
+      "query": "Summarize this discharge summary.",
+      "retrieved_count": 3,
+      "retrieved_sources": [
+        "discharge_summary_01.txt",
+        "discharge_summary_01.txt",
+        "discharge_summary_01.txt"
+      ],
+      "task": "summarization"
+    },
+    {
+      "case_id": "missing_blood_type",
+      "context_metrics": {
+        "input_document_count": 1,
+        "input_estimated_tokens": 238,
+        "output_document_count": 1,
+        "output_estimated_tokens": 238,
+        "token_budget": 12000,
+        "truncated_document_count": 0
+      },
+      "context_result": {
+        "document_recall": 1.0,
+        "expected_evidence_retained": true,
+        "required_fact_survival_rate": 1.0
+      },
+      "document_ids": [
+        "c9ac5e17-37a3-449f-bf23-7f7534de99b4"
+      ],
+      "query": "What is the patient's blood type?",
+      "retrieved_count": 2,
+      "retrieved_sources": [
+        "lab_report_01.txt",
+        "lab_report_01.txt"
+      ],
+      "task": "qa"
+    },
+    {
+      "case_id": "missing_allergy",
+      "context_metrics": {
+        "input_document_count": 1,
+        "input_estimated_tokens": 162,
+        "output_document_count": 1,
+        "output_estimated_tokens": 162,
+        "token_budget": 12000,
+        "truncated_document_count": 0
+      },
+      "context_result": {
+        "document_recall": 1.0,
+        "expected_evidence_retained": true,
+        "required_fact_survival_rate": 1.0
+      },
+      "document_ids": [
+        "20da88f1-5b19-4f97-81b6-2b2f257de328"
+      ],
+      "query": "What medication allergy is documented?",
+      "retrieved_count": 2,
+      "retrieved_sources": [
+        "medication_list_01.txt",
+        "medication_list_01.txt"
+      ],
+      "task": "qa"
+    },
+    {
+      "case_id": "distractor_glucose",
+      "context_metrics": {
+        "input_document_count": 2,
+        "input_estimated_tokens": 380,
+        "output_document_count": 2,
+        "output_estimated_tokens": 380,
+        "token_budget": 12000,
+        "truncated_document_count": 0
+      },
+      "context_result": {
+        "document_recall": 1.0,
+        "expected_evidence_retained": true,
+        "required_fact_survival_rate": 1.0
+      },
+      "document_ids": [
+        "c9ac5e17-37a3-449f-bf23-7f7534de99b4",
+        "d081fca6-fbdd-4026-a782-00f8c1b640d7",
+        "20da88f1-5b19-4f97-81b6-2b2f257de328"
+      ],
+      "query": "What was the glucose result on January 12?",
+      "retrieved_count": 3,
+      "retrieved_sources": [
+        "followup_lab_01.txt",
+        "lab_report_01.txt",
+        "lab_report_01.txt"
+      ],
+      "task": "qa"
+    }
+  ],
+  "context": {
+    "case_count": 12,
+    "document_recall": 1.0,
+    "evidence_retention_rate": 1.0,
+    "required_fact_survival_rate": 1.0
+  },
+  "context_cases": [
+    {
+      "case_id": "qa_lab_hemoglobin",
+      "context_sources": [
+        "lab_report_01.txt"
+      ],
+      "document_recall": 1.0,
+      "expected_evidence_retained": true,
+      "expected_sources": [
+        "lab_report_01.txt"
+      ],
+      "required_fact_survival_rate": 1.0
+    },
+    {
+      "case_id": "qa_lab_glucose",
+      "context_sources": [
+        "lab_report_01.txt"
+      ],
+      "document_recall": 1.0,
+      "expected_evidence_retained": true,
+      "expected_sources": [
+        "lab_report_01.txt"
+      ],
+      "required_fact_survival_rate": 1.0
+    },
+    {
+      "case_id": "qa_discharge_diagnosis",
+      "context_sources": [
+        "discharge_summary_01.txt"
+      ],
+      "document_recall": 1.0,
+      "expected_evidence_retained": true,
+      "expected_sources": [
+        "discharge_summary_01.txt"
+      ],
+      "required_fact_survival_rate": 1.0
+    },
+    {
+      "case_id": "qa_discharge_antibiotics",
+      "context_sources": [
+        "discharge_summary_01.txt"
+      ],
+      "document_recall": 1.0,
+      "expected_evidence_retained": true,
+      "expected_sources": [
+        "discharge_summary_01.txt"
+      ],
+      "required_fact_survival_rate": 1.0
+    },
+    {
+      "case_id": "qa_medication_metformin",
+      "context_sources": [
+        "medication_list_01.txt"
+      ],
+      "document_recall": 1.0,
+      "expected_evidence_retained": true,
+      "expected_sources": [
+        "medication_list_01.txt"
+      ],
+      "required_fact_survival_rate": 1.0
+    },
+    {
+      "case_id": "qa_medication_lisinopril",
+      "context_sources": [
+        "medication_list_01.txt"
+      ],
+      "document_recall": 1.0,
+      "expected_evidence_retained": true,
+      "expected_sources": [
+        "medication_list_01.txt"
+      ],
+      "required_fact_survival_rate": 1.0
+    },
+    {
+      "case_id": "comparison_hemoglobin",
+      "context_sources": [
+        "lab_report_01.txt",
+        "followup_lab_01.txt"
+      ],
+      "document_recall": 1.0,
+      "expected_evidence_retained": true,
+      "expected_sources": [
+        "lab_report_01.txt",
+        "followup_lab_01.txt"
+      ],
+      "required_fact_survival_rate": 1.0
+    },
+    {
+      "case_id": "comparison_glucose",
+      "context_sources": [
+        "lab_report_01.txt",
+        "followup_lab_01.txt"
+      ],
+      "document_recall": 1.0,
+      "expected_evidence_retained": true,
+      "expected_sources": [
+        "lab_report_01.txt",
+        "followup_lab_01.txt"
+      ],
+      "required_fact_survival_rate": 1.0
+    },
+    {
+      "case_id": "summary_discharge",
+      "context_sources": [
+        "discharge_summary_01.txt"
+      ],
+      "document_recall": 1.0,
+      "expected_evidence_retained": true,
+      "expected_sources": [
+        "discharge_summary_01.txt"
+      ],
+      "required_fact_survival_rate": 1.0
+    },
+    {
+      "case_id": "missing_blood_type",
+      "context_sources": [
+        "lab_report_01.txt"
+      ],
+      "document_recall": 1.0,
+      "expected_evidence_retained": true,
+      "expected_sources": [
+        "lab_report_01.txt"
+      ],
+      "required_fact_survival_rate": 1.0
+    },
+    {
+      "case_id": "missing_allergy",
+      "context_sources": [
+        "medication_list_01.txt"
+      ],
+      "document_recall": 1.0,
+      "expected_evidence_retained": true,
+      "expected_sources": [
+        "medication_list_01.txt"
+      ],
+      "required_fact_survival_rate": 1.0
+    },
+    {
+      "case_id": "distractor_glucose",
+      "context_sources": [
+        "lab_report_01.txt",
+        "followup_lab_01.txt"
+      ],
+      "document_recall": 1.0,
+      "expected_evidence_retained": true,
+      "expected_sources": [
+        "lab_report_01.txt"
+      ],
+      "required_fact_survival_rate": 1.0
+    }
+  ],
+  "context_token_budget": 12000,
+  "dataset_name": "mira_rag_eval_v1",
+  "dataset_version": "1.0.0",
+  "retrieval": {
+    "by_task": {
+      "qa": {
+        "case_count": 9,
+        "hit_rate_at_k": 1.0,
+        "mrr": 0.9444444444444444,
+        "recall_at_k": 1.0,
+        "wrong_document_rate": 0.037037037037037035
+      }
+    },
+    "case_count": 9,
+    "hit_rate_at_k": 1.0,
+    "mrr": 0.9444444444444444,
+    "recall_at_k": 1.0,
+    "wrong_document_rate": 0.037037037037037035
+  },
+  "retrieval_cases": [
+    {
+      "case_id": "qa_lab_hemoglobin",
+      "expected_sources": [
+        "lab_report_01.txt"
+      ],
+      "hit_at_k": true,
+      "k": 3,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "retrieved_sources": [
+        "lab_report_01.txt",
+        "lab_report_01.txt"
+      ],
+      "task": "qa",
+      "wrong_document_rate": 0.0
+    },
+    {
+      "case_id": "qa_lab_glucose",
+      "expected_sources": [
+        "lab_report_01.txt"
+      ],
+      "hit_at_k": true,
+      "k": 3,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "retrieved_sources": [
+        "lab_report_01.txt",
+        "lab_report_01.txt"
+      ],
+      "task": "qa",
+      "wrong_document_rate": 0.0
+    },
+    {
+      "case_id": "qa_discharge_diagnosis",
+      "expected_sources": [
+        "discharge_summary_01.txt"
+      ],
+      "hit_at_k": true,
+      "k": 3,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "retrieved_sources": [
+        "discharge_summary_01.txt",
+        "discharge_summary_01.txt",
+        "discharge_summary_01.txt"
+      ],
+      "task": "qa",
+      "wrong_document_rate": 0.0
+    },
+    {
+      "case_id": "qa_discharge_antibiotics",
+      "expected_sources": [
+        "discharge_summary_01.txt"
+      ],
+      "hit_at_k": true,
+      "k": 3,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "retrieved_sources": [
+        "discharge_summary_01.txt",
+        "discharge_summary_01.txt",
+        "discharge_summary_01.txt"
+      ],
+      "task": "qa",
+      "wrong_document_rate": 0.0
+    },
+    {
+      "case_id": "qa_medication_metformin",
+      "expected_sources": [
+        "medication_list_01.txt"
+      ],
+      "hit_at_k": true,
+      "k": 3,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "retrieved_sources": [
+        "medication_list_01.txt",
+        "medication_list_01.txt"
+      ],
+      "task": "qa",
+      "wrong_document_rate": 0.0
+    },
+    {
+      "case_id": "qa_medication_lisinopril",
+      "expected_sources": [
+        "medication_list_01.txt"
+      ],
+      "hit_at_k": true,
+      "k": 3,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "retrieved_sources": [
+        "medication_list_01.txt",
+        "medication_list_01.txt"
+      ],
+      "task": "qa",
+      "wrong_document_rate": 0.0
+    },
+    {
+      "case_id": "missing_blood_type",
+      "expected_sources": [
+        "lab_report_01.txt"
+      ],
+      "hit_at_k": true,
+      "k": 3,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "retrieved_sources": [
+        "lab_report_01.txt",
+        "lab_report_01.txt"
+      ],
+      "task": "qa",
+      "wrong_document_rate": 0.0
+    },
+    {
+      "case_id": "missing_allergy",
+      "expected_sources": [
+        "medication_list_01.txt"
+      ],
+      "hit_at_k": true,
+      "k": 3,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "retrieved_sources": [
+        "medication_list_01.txt",
+        "medication_list_01.txt"
+      ],
+      "task": "qa",
+      "wrong_document_rate": 0.0
+    },
+    {
+      "case_id": "distractor_glucose",
+      "expected_sources": [
+        "lab_report_01.txt"
+      ],
+      "hit_at_k": true,
+      "k": 3,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 0.5,
+      "retrieved_sources": [
+        "followup_lab_01.txt",
+        "lab_report_01.txt",
+        "lab_report_01.txt"
+      ],
+      "task": "qa",
+      "wrong_document_rate": 0.3333333333333333
+    }
+  ],
+  "top_k": 3,
+  "user_id": "9652ab58-dd97-4111-be79-4c438154c929"
+}
