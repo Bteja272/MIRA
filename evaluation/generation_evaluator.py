@@ -25,6 +25,11 @@ class GenerationEvaluator:
             r"\bnot documented\b",
             re.IGNORECASE,
         ),
+        
+        re.compile(
+            r"\bdoes not include any information\b",
+            re.IGNORECASE,
+        ),
         re.compile(
             r"\bno\b.{0,80}\bis documented\b",
             re.IGNORECASE,

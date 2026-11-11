@@ -76,3 +76,20 @@ def test_no_reference_to_allergies_is_abstention():
         result.abstention_correct
         is True
     )
+
+def test_does_not_include_any_information_is_abstention():
+    result = (
+        GenerationEvaluator.evaluate(
+            case=_case(),
+            answer=(
+                "The supplied laboratory report "
+                "does not include any information "
+                "about the patient's blood type. "
+                "[Source 1]"
+            ),
+            grounded_is_valid=True,
+        )
+    )
+
+    assert result.abstention_correct is True
+    assert result.case_passed is True
