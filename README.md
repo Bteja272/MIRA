@@ -220,10 +220,6 @@ The current end-to-end benchmark passes **10 of 12 cases**. The two known failur
 - `qa_medication_lisinopril` — answer omitted the documented frequency `once daily`
 - `distractor_glucose` — deterministic fallback included the distractor value `96 mg/dL`
 
-See:
-
-- [`evaluation/README.md`](evaluation/README.md)
-- [`evaluation/reports/RAG_EVALUATION_REPORT.md`](evaluation/reports/RAG_EVALUATION_REPORT.md)
 
 ### Benchmark scope
 
