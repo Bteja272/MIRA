@@ -3,1105 +3,531 @@
 ### Medical Intelligence and Retrieval Assistant
 
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python&logoColor=white)
-
 ![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?style=flat&logo=fastapi&logoColor=white)
-
 ![React](https://img.shields.io/badge/React-TypeScript-61DAFB?style=flat&logo=react&logoColor=black)
-
 ![LangGraph](https://img.shields.io/badge/LangGraph-Agent_Orchestration-FF6B6B?style=flat)
-
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791?style=flat&logo=postgresql&logoColor=white)
-
 ![Groq](https://img.shields.io/badge/Primary_LLM-Groq-orange?style=flat)
-
-![Ollama](https://img.shields.io/badge/Local_LLM-Ollama_%7C_llama3.2-black?style=flat)
-
-![Tavily](https://img.shields.io/badge/Search-Tavily-blue?style=flat)
-
-![Vitest](https://img.shields.io/badge/Vitest-Passing-6E9F18?style=flat&logo=vitest&logoColor=white)
-
+![Ollama](https://img.shields.io/badge/Local_LLM-Ollama%20%7C%20llama3.2-black?style=flat)
 ![Cypress](https://img.shields.io/badge/Cypress-E2E_Passing-17202C?style=flat&logo=cypress&logoColor=white)
-
 ![Status](https://img.shields.io/badge/Status-Active_Development-yellow?style=flat)
 
-> You upload a medical document. You ask: **"What medications and follow-up instructions are documented here?"** MIRA retrieves evidence from your selected record, explains it in plain English, cites the source, persists the conversation, and appends a deterministic medical disclaimer — without diagnosing you or recommending treatment changes.
-
----
-
-## What MIRA Is
-
-MIRA is a **safety-first medical document intelligence platform** for understanding personal medical records.
-
-It combines authenticated document ownership, retrieval-augmented generation, structured medical extraction, bounded conversation memory, deterministic safety checks, current-information web search, and a React + TypeScript interface with browser-native voice input and text-to-speech.
+MIRA is a **safety-first medical document intelligence platform** for understanding personal medical records through grounded retrieval, source-linked explanations, structured extraction, bounded conversation memory, and deterministic medical safety controls.
 
 > **MIRA explains what your documents say. It does not make new medical determinations.**
 
-### What MIRA does
+---
 
-- Register and authenticate users
+## Why MIRA
 
-- Keep each user's documents and conversations isolated
+Medical-document assistants need more than a chatbot interface. They need clear evidence boundaries, strong user isolation, reliable source attribution, and deterministic handling for high-risk medical requests.
 
-- Upload and index PDF or TXT medical records
+MIRA is designed around those constraints:
 
-- Summarize medical documents
-
-- Answer grounded questions using explicitly selected documents
-
-- Compare multiple documents while preserving source boundaries
-
-- Explain medical terminology
-
-- Search current public information through Tavily
-
-- Extract structured medical facts with supporting evidence
-
-- Persist bounded conversation history for follow-up questions
-
-- Keep document selection request-scoped
-
-- Accept speech-to-text input for question drafting
-
-- Read assistant responses aloud through browser text-to-speech
-
-- Permanently delete documents and associated indexed data
-
-### What MIRA never does
-
-- Diagnose conditions based on symptoms
-
-- Recommend changing, stopping, starting, or adjusting medication
-
-- Predict prognosis
-
-- Treat generated text as a substitute for a licensed professional
-
-- Allow cross-user access to documents or conversations
-
-- Treat prior assistant responses as medical evidence
-
-- Skip deterministic medical safety behavior
+- answers questions using explicitly selected user-owned documents
+- preserves document boundaries during comparison
+- links answers back to supporting evidence
+- keeps conversation memory separate from document authorization
+- blocks diagnosis, prognosis, emergency, and medication-change requests before LLM routing
+- appends medical disclaimers in application code rather than relying on the model
+- supports hosted and local LLM execution
+- evaluates retrieval and generation separately with a synthetic benchmark suite
 
 ---
 
-## Current User Experience
+## Core Capabilities
 
-### Frontend workflows
+### Document intelligence
 
-- Registration and login
+- Upload and index PDF or TXT medical records
+- SHA-256 duplicate detection
+- Medical document classification
+- Full-document summarization
+- Grounded document Q&A
+- Multi-document comparison
+- Structured medical fact extraction
+- Permanent document deletion
 
-- Protected routes
+### Retrieval and generation
 
-- Document upload, duplicate detection, review, and permanent deletion
+- Hybrid semantic + BM25 retrieval
+- Reciprocal Rank Fusion (RRF)
+- Cross-encoder reranking
+- PostgreSQL + pgvector with HNSW cosine indexing
+- `all-MiniLM-L6-v2` embeddings
+- Groq as the primary hosted LLM
+- Ollama `llama3.2` as a local fallback
+- Tavily for explicitly current/public-information queries
 
-- Multi-document selection
+### Conversations
 
-- Conversation creation, history, switching, and deletion
+- Persistent user-owned conversations
+- Bounded conversation history
+- Follow-up question support
+- Request-scoped document selection
+- No silent reactivation of documents from previous turns
+- Prior assistant responses are never treated as medical evidence
 
-- Bounded follow-up memory
-
-- Grounded Q&A with source cards
-
-- Current-information answers with web sources
-
-- Structured medical extraction and evidence review
+### Voice
 
 - Browser-native speech-to-text
-
+- Transcript review before submission
 - Browser-native text-to-speech
-
 - Listen / Pause / Resume / Stop / Replay
+- Source markers and Markdown removed from spoken text
+- Playback cancelled when conversations change
 
-- Session-expiration handling
+---
 
-- Offline/network feedback
+## Evidence-First UI
 
-- Accessible forms and navigation
+The frontend uses a calm navy/blue workspace designed around evidence rather than chat alone.
 
-### Voice behavior
+The **Ask MIRA** experience uses a split layout:
 
-**Speech-to-text**
+```text
+┌──────────────────────────────┬──────────────────────────────┐
+│ Evidence                     │ Ask MIRA                     │
+│                              │                              │
+│ Supporting source passage    │ User question                │
+│ highlighted in context       │                              │
+│                              │ Grounded answer [1]          │
+│ Source / document metadata   │                              │
+│                              │ Composer + voice controls    │
+└──────────────────────────────┴──────────────────────────────┘
+```
 
-- Uses the browser Web Speech API when available
+Citation badges in answers connect directly to the corresponding evidence shown in the left pane. This reduces source-card clutter while keeping the grounding visible.
 
-- Inserts recognized text into the composer
+Other UI workflows include:
 
-- Does **not** auto-submit medical questions
-
-- Leaves the transcript visible for review
-
-**Text-to-speech**
-
-- Reads only assistant answer text
-
-- Does not read source cards or route metadata
-
-- Removes source markers such as `[Source 1]`
-
-- Removes Markdown emphasis symbols before playback
-
-- Supports Listen, Pause, Resume, Stop, and Replay
-
-- Cancels playback when starting or switching conversations
-
-- Cancels previous speech before a new utterance begins
-
-### Main frontend routes
-
-| Route | Purpose |
-
-|---|---|
-
-| `/register` | Create an account |
-
-| `/login` | Authenticate |
-
-| `/` | Dashboard |
-
-| `/documents` | Upload, review, and delete documents |
-
-| `/ask` | Ask direct, grounded, current-information, or follow-up questions |
-
-| `/extractions` | Generate and review structured medical facts |
+- authentication and protected routes
+- document upload/review/deletion
+- dashboard overview
+- extraction review
+- medical intelligence summaries
+- conversation creation, switching, and deletion
+- responsive layouts
+- accessible form controls and navigation
 
 ---
 
 ## Safety Architecture
 
-Medical-risk queries are blocked **before** LangGraph routing, retrieval, or any LLM call.
+High-risk medical requests are handled **before** LangGraph routing, retrieval, or any LLM call.
 
 ```text
-
 User Query
-
-     ↓
-
+    ↓
 Deterministic Safety Guard
-
-     │
-
-     ├── Emergency request          → Immediate emergency guidance
-
-     ├── Self-harm indicator       → Crisis-oriented response
-
-     ├── Diagnosis request         → Redirect to a healthcare provider
-
-     ├── Prognosis request         → Decline outcome prediction
-
-     └── Medication-change request → Refuse medication-change guidance
-
-     ↓
-
+    ├── Emergency request          → Immediate emergency guidance
+    ├── Self-harm indicator        → Crisis-oriented response
+    ├── Diagnosis request          → Redirect to healthcare professional
+    ├── Prognosis request          → Decline outcome prediction
+    └── Medication-change request  → Refuse treatment-change guidance
+    ↓
 Allowed Query
-
-     ↓
-
+    ↓
 Conversation-aware LangGraph routing
-
-     │
-
-     ├── Selected documents        → pgvector RAG
-
-     ├── Multi-document comparison → Complete selected-document retrieval
-
-     ├── Explicit latest/current   → Tavily web search
-
-     └── General education         → Direct LLM generation
-
-     ↓
-
-Application validation
-
-     ↓
-
+    ├── Selected documents         → Grounded RAG
+    ├── Multi-document comparison  → Complete selected-document retrieval
+    ├── Explicit latest/current    → Tavily web search
+    └── General education          → Direct LLM
+    ↓
+Response validation / repair
+    ↓
 Deterministic medical disclaimer
-
-     ↓
-
+    ↓
 Conversation persistence
-
-     ↓
-
-Source-cited response
-
-     ↓
-
-Optional browser text-to-speech
-
+    ↓
+Source-linked response
 ```
-
-The disclaimer is appended by application code rather than generated conditionally by the model.
 
 ### Evidence boundary
 
-Conversation memory improves continuity, but it does not replace evidence.
-
-- Current document selection controls the document scope of the request
-
-- Historical document IDs are not silently reactivated
-
-- Prior user questions can help interpret a follow-up
-
-- Prior assistant answers are not treated as medical source evidence
-
----
-
-## Conversation Memory
-
-MIRA supports persistent, user-owned conversations.
-
-- Conversations and messages are stored in PostgreSQL
-
-- Access is scoped to the authenticated owner
-
-- Context is bounded before reuse
-
-- Follow-up questions can use prior conversational context
-
-- Document selection remains request-scoped
-
-- Starting a new conversation resets the active thread
-
-- Switching conversations clears current document selection
-
-- Deleting a conversation removes its stored messages
-
-- Cross-account conversation access is blocked
+Conversation memory improves continuity, but it never expands document authorization.
 
 ```text
-
-Conversation memory
-
-        ≠
-
-Document authorization / document selection
-
+Conversation memory ≠ document evidence
 ```
 
-This prevents a prior document from silently grounding a later medical answer.
+- current document selection controls the evidence scope
+- historical document IDs are not silently restored
+- prior user questions may help interpret follow-ups
+- prior assistant messages are not treated as source evidence
 
 ---
 
-## Authentication, Security, and Data Isolation
-
-### Implemented controls
-
-- Email/password registration
-
-- Argon2 password hashing
-
-- JWT authentication
-
-- Protected backend and frontend routes
-
-- Per-user document ownership
-
-- Per-user conversation ownership
-
-- Per-user duplicate detection
-
-- Authorization checks for query, extraction, conversation access, and deletion
-
-- Cross-user isolation
-
-- React Query cache clearing between users
-
-- Invalid/expired-session handling
-
-- Request rate limiting
-
-- Permanent deletion workflows
-
-- Deterministic medical safety guards
-
-MIRA remains a development system and is **not production-ready for real protected health information**.
-
----
-
-## What Makes This Different From Generic RAG
-
-| Problem | MIRA approach |
-
-|---|---|
-
-| Similarity search omits sections | Complete-document retrieval for summaries |
-
-| Multi-document facts become mixed | Document boundaries preserved in prompts |
-
-| Model independently labels lab values | Only documented flags are reproduced |
-
-| LLM could skip disclaimer | Disclaimer appended deterministically |
-
-| Emergency requests reach the LLM | Pre-routing safety guard blocks them first |
-
-| Duplicate files pollute retrieval | SHA-256 duplicate detection |
-
-| Cross-user data exposure | Ownership checks on documents and conversations |
-
-| Old documents affect follow-ups | Document selection remains request-scoped |
-
-| Assistant text becomes evidence | Generated assistant text is not medical evidence |
-
-| Citation markup sounds wrong in TTS | Spoken text is sanitized before synthesis |
-
-| Schema drift | Alembic migrations |
-
----
-
-## Routing Table
-
-| Request | Route | Reason |
-
-|---|---|---|
-
-| "Summarize this report" | Full-document RAG | Avoids missing sections |
-
-| "What medications are documented here?" | Selected-document RAG | Must remain grounded |
-
-| "Compare these reports" | Multi-document RAG | Preserves source boundaries |
-
-| Follow-up about selected medical evidence | Conversation-aware RAG | Uses bounded intent plus current selection |
-
-| "What does HbA1c mean?" | Direct LLM | General education |
-
-| "What are the latest public guidelines?" | Tavily web search | Requires current information |
-
-| "Should I stop this medication?" | Safety guard | Medication-change guidance blocked |
-
-| "I have chest pain right now" | Safety guard | Emergency handling occurs first |
-
----
-
-## Structured Medical Extraction
-
-MIRA can turn an owned document into persisted structured medical facts with evidence.
-
-Current categories include:
-
-- Patient information
-
-- Diagnoses
-
-- Medications
-
-- Allergies
-
-- Procedures
-
-- Follow-up instructions
-
-- Additional schema-supported facts
-
-Each fact may include normalized value, supporting evidence, source filename, document ID, and page/chunk position.
-
----
-
-## Document Ingestion Pipeline
+## Retrieval Pipeline
 
 ```text
-
 Authenticated PDF / TXT upload
-
-     ↓
-
-Filename and extension validation
-
-     ↓
-
-25 MB upload limit
-
-     ↓
-
-UUID-based stored filename
-
-     ↓
-
+        ↓
+Filename, extension, and size validation
+        ↓
 SHA-256 duplicate detection
-
-     ↓
-
-Text extraction
-
-     ↓
-
-Line-preserving cleaning
-
-     ↓
-
-Newline-aware overlapping chunking
-
-     ↓
-
+        ↓
+Text extraction and cleaning
+        ↓
+Overlapping chunk generation
+        ↓
 Medical document classification
-
-     ↓
-
-SentenceTransformers all-MiniLM-L6-v2 embeddings
-
-     ↓
-
-PostgreSQL + pgvector · HNSW cosine index
-
+        ↓
+SentenceTransformer embeddings
+        ↓
+PostgreSQL + pgvector
+        ↓
+Hybrid semantic + BM25 retrieval
+        ↓
+Reciprocal Rank Fusion
+        ↓
+Cross-encoder reranking
+        ↓
+Context construction
+        ↓
+Grounded generation + validation
 ```
 
-Supported document types:
-
-`lab_report` · `discharge_summary` · `prescription` · `imaging_report` · `pathology_report` · `visit_note` · `vaccination_record` · `insurance_document` · `unknown`
+For summaries and selected multi-document workflows, MIRA can use complete-document retrieval to avoid losing important sections to similarity search alone.
 
 ---
 
-## 🛠️ Tech Stack
+## RAG Evaluation
+
+MIRA includes a deterministic evaluation harness built on **12 synthetic cases across four synthetic medical documents**.
+
+The benchmark measures retrieval separately from final production-RAG behavior.
+
+| Metric | Result |
+|---|---:|
+| Retrieval Hit@3 | 1.000 |
+| Retrieval Recall@3 | 1.000 |
+| Retrieval MRR | 0.944 |
+| Wrong-document rate | 0.037 |
+| Context document recall | 1.000 |
+| Required-fact survival | 1.000 |
+| Evidence retention | 1.000 |
+| Final required-fact recall | 0.958 |
+| Abstention accuracy | 1.000 |
+| Grounded-answer pass rate | 1.000 |
+| Unsupported medical-value rate | 0.000 |
+| Invalid citation rate | 0.000 |
+| Misattributed medical-value rate | 0.000 |
+| End-to-end case success | 0.833 |
+
+The current end-to-end benchmark passes **10 of 12 cases**. The two known failures are intentionally retained rather than hidden:
+
+- `qa_medication_lisinopril` — answer omitted the documented frequency `once daily`
+- `distractor_glucose` — deterministic fallback included the distractor value `96 mg/dL`
+
+See:
+
+- [`evaluation/README.md`](evaluation/README.md)
+- [`evaluation/reports/RAG_EVALUATION_REPORT.md`](evaluation/reports/RAG_EVALUATION_REPORT.md)
+
+### Benchmark scope
+
+This is a small synthetic engineering benchmark, not a clinical validation study. Many cases operate over explicitly selected documents, so the results should not be presented as broad corpus-wide retrieval performance.
+
+---
+
+## Authentication, Privacy, and Isolation
+
+Implemented controls include:
+
+- email/password authentication
+- Argon2 password hashing
+- JWT-based authenticated sessions
+- HttpOnly authentication cookies in the browser workflow
+- protected frontend and backend routes
+- per-user document ownership
+- per-user conversation ownership
+- per-user duplicate detection
+- authorization checks for query, extraction, conversation access, and deletion
+- React Query cache clearing between users
+- request rate limiting
+- permanent deletion workflows
+- deterministic medical safety guards
+
+> MIRA is a development system and is **not production-ready for real protected health information**.
+
+Use synthetic medical documents during development.
+
+---
+
+## Observability
+
+MIRA includes Prometheus metrics and Grafana dashboards for service and RAG behavior.
+
+Observed areas include:
+
+- query execution
+- routing
+- retrieval
+- LLM/provider activity
+- safety decisions
+- service health
+
+Metrics are designed to remain low-cardinality and avoid medical text, filenames, document IDs, conversation IDs, prompts, or other sensitive values in labels.
+
+---
+
+## Tech Stack
 
 | Layer | Technology |
-
 |---|---|
-
 | Frontend | React, TypeScript, Vite |
-
 | Routing | React Router |
-
 | Server state | TanStack Query |
-
-| Styling | Plain CSS |
-
-| Voice input | Browser Web Speech API |
-
-| Text-to-speech | Browser Speech Synthesis API |
-
+| Styling | CSS |
 | Backend | FastAPI |
-
-| Authentication | JWT, Argon2 |
-
+| Authentication | JWT, HttpOnly cookies, Argon2 |
 | Agent orchestration | LangGraph |
-
-| Retrieval | Hybrid semantic + BM25 retrieval with RRF and cross-encoder reranking |
-
+| Retrieval | Semantic search + BM25 + RRF + cross-encoder reranking |
 | Embeddings | SentenceTransformers `all-MiniLM-L6-v2` |
-
 | Vector database | PostgreSQL + pgvector |
-
 | Vector index | HNSW cosine |
-
 | ORM | SQLAlchemy |
-
 | Migrations | Alembic |
-
-| Primary hosted LLM | Groq |
-
-| Local LLM | Ollama · `llama3.2` |
-
+| Hosted LLM | Groq |
+| Local LLM | Ollama `llama3.2` |
 | Web search | Tavily |
-
-| Document parsing | pypdf |
-
-| Database container | Docker Compose |
-
-| Frontend testing | Vitest, Testing Library |
-
-| E2E testing | Cypress |
-
-| Backend testing | Pytest |
-
+| PDF parsing | pypdf |
 | Observability | Prometheus, Grafana |
-
-| RAG evaluation | Deterministic synthetic benchmark harness |
-
-| Development | WSL2, Linux, Docker |
-
----
-
-## 🏗️ Key Technical Decisions
-
-**Why deterministic safety before LangGraph?**  
-
-Medical-risk handling should not depend on an LLM recognizing a dangerous request correctly.
-
-**Why complete-document retrieval for summaries?**  
-
-A semantic search query may not match every clinically relevant section.
-
-**Why preserve document boundaries?**  
-
-It reduces the risk of assigning a medication, date, lab value, or diagnosis to the wrong record.
-
-**Why keep document selection request-scoped?**  
-
-Conversation continuity should not silently reactivate evidence from an earlier turn.
-
-**Why not treat assistant messages as evidence?**  
-
-Generated text may contain interpretation. Original documents remain the grounding source.
-
-**Why does speech-to-text not auto-submit?**  
-
-Medical numbers, units, medication names, and terminology can be mistranscribed, so the transcript remains editable before submission.
-
-**Why sanitize TTS text?**  
-
-Citation markers and Markdown symbols are useful on screen but may be read literally by browser speech engines.
+| Backend tests | Pytest |
+| Frontend tests | Vitest, Testing Library |
+| E2E tests | Cypress |
+| Local development | WSL2, Linux, Docker |
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Clone
 
 ```bash
-
 git clone https://github.com/Bteja272/MIRA.git
-
 cd MIRA
-
 ```
 
 ### 2. Backend environment
 
 ```bash
-
 python3 -m venv .venv
-
 source .venv/bin/activate
-
 pip install -r requirements.txt
-
 cp .env.example .env
-
 ```
 
-Use `.env.example` as the source of truth for development configuration. Do not commit `.env`.
+Use `.env.example` as the development configuration reference. Do not commit `.env`.
 
-Typical local values include:
-
-```env
-
-DATABASE_URL=postgresql+psycopg://...
-
-TAVILY_API_KEY=...
-
-OLLAMA_BASE_URL=http://localhost:11434
-
-OLLAMA_MODEL=llama3.2
-
-```
-
-### 3. PostgreSQL + pgvector
+### 3. Start PostgreSQL + pgvector
 
 ```bash
-
 docker compose up -d
-
 docker compose ps
-
 ```
 
-### 4. Migrations
+### 4. Apply migrations
 
 ```bash
-
 python -m alembic -c alembic.ini upgrade head
-
 ```
 
-### 5. Local Ollama
+### 5. Optional local Ollama
 
 ```bash
-
 ollama pull llama3.2
-
 ollama serve
-
 ```
 
-### 6. Backend
+### 6. Start the backend
 
 ```bash
-
-python -m uvicorn app.main:app   --host 127.0.0.1   --port 8001   --reload
-
+python -m uvicorn app.main:app \
+  --host 127.0.0.1 \
+  --port 8001 \
+  --reload
 ```
 
-API: `http://127.0.0.1:8001`  
+API: `http://127.0.0.1:8001`  
+OpenAPI docs: `http://127.0.0.1:8001/docs`
 
-Docs: `http://127.0.0.1:8001/docs`
-
-### 7. Frontend
+### 7. Start the frontend
 
 ```bash
-
 cd frontend
-
 npm ci
-
 ```
 
 Create `frontend/.env`:
 
 ```env
-
 VITE_API_BASE_URL=http://127.0.0.1:8001
-
 ```
 
-Run:
+Then:
 
 ```bash
-
 npm run dev
-
 ```
 
 Frontend: `http://127.0.0.1:5173`
 
 ---
 
-## 🔌 API Examples
-
-### Register
-
-```bash
-
-curl -X POST http://127.0.0.1:8001/auth/register   -H "Content-Type: application/json"   -d '{
-
-    "email": "synthetic.user@example.com",
-
-    "password": "SyntheticPassword!2026"
-
-  }'
-
-```
-
-### Login
-
-```bash
-
-curl -X POST http://127.0.0.1:8001/auth/login   -H "Content-Type: application/x-www-form-urlencoded"   -d "username=synthetic.user@example.com&password=SyntheticPassword!2026"
-
-```
-
-### Query selected documents
-
-```bash
-
-curl -X POST http://127.0.0.1:8001/query   -H "Authorization: Bearer $MIRA_TOKEN"   -H "Content-Type: application/json"   -d '{
-
-    "query": "Summarize this document.",
-
-    "document_ids": ["DOCUMENT_ID"]
-
-  }'
-
-```
-
-### Continue a conversation
-
-```bash
-
-curl -X POST http://127.0.0.1:8001/query   -H "Authorization: Bearer $MIRA_TOKEN"   -H "Content-Type: application/json"   -d '{
-
-    "query": "What follow-up was documented?",
-
-    "document_ids": ["DOCUMENT_ID"],
-
-    "conversation_id": "CONVERSATION_ID"
-
-  }'
-
-```
-
-### Health
-
-```bash
-
-curl http://127.0.0.1:8001/health
-
-curl http://127.0.0.1:8001/health/ready
-
-```
-
----
-
-## 🧪 Testing
+## Testing
 
 ### Backend
 
 ```bash
-
 cd ~/Projects/MIRA
-
 source .venv/bin/activate
-
 pytest
-
 ```
 
-### RAG evaluation regression
-
-The RAG evaluation harness has a deterministic regression suite that does not require Groq or Ollama:
+### Deterministic RAG regression
 
 ```bash
-
 ./scripts/run_rag_eval_regression.sh
-
 ```
 
-Current synthetic benchmark results:
-Metric	Result
-Retrieval Hit@3	1.000
-Retrieval Recall@3	1.000
-Retrieval MRR	0.944
-Context required-fact survival	1.000
-Grounded answer pass rate	1.000
-Required fact recall	0.958
-End-to-end case success	0.833
+The current RAG regression suite contains **42 passing tests**.
 
-
-The benchmark uses 12 cases over four synthetic medical documents. It primarily measures selected-document RAG behavior and is not a clinical or corpus-wide retrieval benchmark.
-
-See `evaluation/README.md` and `evaluation/reports/RAG_EVALUATION_REPORT.md` for methodology, failure analysis, limitations, and reproducibility details.
-
-### Frontend unit/component suite
+### Frontend unit/component tests
 
 ```bash
-
 cd ~/Projects/MIRA/frontend
-
 npm run test -- --run
+```
 
+Current verified frontend suite:
+
+```text
+14 test files
+60 tests passed
 ```
 
 ### Production build
 
 ```bash
-
 npm run build
-
 ```
 
-### Cypress
+### Cypress E2E
 
-For development E2E runs that create many synthetic accounts, start the backend with local-only rate-limit overrides:
+For local E2E runs that create multiple synthetic accounts, use development-only rate-limit overrides:
 
 ```bash
-
-RATE_LIMIT_REGISTER_REQUESTS=100 RATE_LIMIT_REGISTER_WINDOW_SECONDS=60 RATE_LIMIT_LOGIN_REQUESTS=100 RATE_LIMIT_LOGIN_WINDOW_SECONDS=60 uvicorn app.main:app --reload --port 8001
-
+RATE_LIMIT_REGISTER_REQUESTS=100 \
+RATE_LIMIT_REGISTER_WINDOW_SECONDS=60 \
+RATE_LIMIT_LOGIN_REQUESTS=100 \
+RATE_LIMIT_LOGIN_WINDOW_SECONDS=60 \
+python -m uvicorn app.main:app \
+  --host 127.0.0.1 \
+  --port 8001 \
+  --reload
 ```
 
 Then:
 
 ```bash
-
 cd ~/Projects/MIRA/frontend
-
 npx cypress run
-
 ```
 
-Current E2E coverage includes authentication, document workflows, cross-account isolation, conversations, speech-to-text, text-to-speech, spoken-text sanitization, and conversation-transition playback cancellation.
+The current Cypress suite passes across authentication, session security, document workflows, cross-account isolation, conversations, medical intelligence, speech-to-text, text-to-speech, and combined voice interaction.
 
 Production rate-limit defaults should not be weakened for test convenience.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
-
 MIRA/
-
-├── alembic/
-
 ├── app/
-
-│   ├── api/routes/
-
-│   │   ├── auth.py
-
-│   │   ├── conversations.py
-
-│   │   ├── documents.py
-
-│   │   ├── extraction.py
-
-│   │   ├── health.py
-
-│   │   ├── ingest.py
-
-│   │   └── query.py
-
-│   ├── core/
-
-│   ├── db/
-
-│   └── services/
-
+│   ├── api/routes/
+│   ├── core/
+│   ├── db/
+│   └── services/
 ├── frontend/
-
-│   ├── cypress/e2e/
-
-│   │   ├── mira-workflow.cy.ts
-
-│   │   ├── mira-conversations.cy.ts
-
-│   │   ├── mira-voice.cy.ts
-
-│   │   └── mira-tts.cy.ts
-
-│   └── src/
-
-│       ├── api/
-
-│       ├── auth/
-
-│       ├── components/
-
-│       ├── hooks/
-
-│       ├── pages/
-
-│       ├── styles/
-
-│       ├── types/
-
-│       └── voice/
-
+│   ├── cypress/e2e/
+│   └── src/
+│       ├── api/
+│       ├── auth/
+│       ├── components/
+│       ├── hooks/
+│       ├── layout/
+│       ├── pages/
+│       ├── styles/
+│       ├── types/
+│       └── voice/
 ├── evaluation/
 │   ├── datasets/
-│   │   ├── rag_eval_cases.json
-│   │   └── synthetic_medical_docs/
 │   ├── reports/
 │   ├── end_to_end_evaluator.py
 │   ├── end_to_end_runner.py
 │   ├── final_rag_runner.py
 │   ├── generation_evaluator.py
 │   ├── live_retrieval_runner.py
-│   ├── rag_evaluation_report.py
-│   └── README.md
-├── sample_data/
-
+│   └── rag_evaluation_report.py
 ├── scripts/
 │   └── run_rag_eval_regression.sh
-
 ├── tests/
-
+├── alembic/
 ├── docker-compose.yml
-
 ├── alembic.ini
-
 ├── requirements.txt
-
 └── README.md
-
 ```
 
 ---
 
-## ✅ Status
+## Current Status
 
 ### Complete
 
-- [x] FastAPI backend
-
-- [x] PostgreSQL + pgvector + HNSW
-
-- [x] PDF/TXT ingestion
-
-- [x] Duplicate detection
-
-- [x] Medical document classification
-
-- [x] Source-cited RAG
-
-- [x] Complete-document summaries
-
-- [x] Multi-document comparison
-
-- [x] Tavily web search
-
-- [x] Deterministic safety guard
-
-- [x] Deterministic medical disclaimer
-
-- [x] JWT authentication + Argon2
-
-- [x] Per-user document isolation
-
-- [x] Structured medical extraction
-
-- [x] React + TypeScript frontend
-
-- [x] Alembic migrations
-
-- [x] Request rate limiting
-
-- [x] Persistent conversations
-
-- [x] Per-user conversation ownership
-
-- [x] Bounded conversation memory
-
-- [x] Request-scoped document selection
-
-- [x] Browser speech-to-text
-
-- [x] Browser text-to-speech
-
-- [x] Listen / Pause / Resume / Stop / Replay
-
-- [x] TTS source/Markdown sanitization
-
-- [x] Playback cancellation on conversation transitions
-
-- [x] Frontend unit/component coverage
-
-- [x] Cypress E2E coverage
-
-- [x] Hybrid BM25 + vector retrieval
-
-- [x] Cross-encoder reranking
-
-- [x] Prometheus metrics
-
-- [x] Grafana observability
-
-- [x] Synthetic RAG evaluation corpus
-
-- [x] Retrieval benchmarking
-
-- [x] Grounding and citation evaluation
-
-- [x] Deterministic abstention evaluation
-
-- [x] End-to-end RAG evaluation
-
-- [x] Reproducible RAG evaluation report
-
-### Current milestone
-
-- [x] Batch 11A — Observability
-
-- [x] Batch 11B — RAG evaluation
-
-- [ ] Batch 11C — Performance benchmarking
-
-- [ ] Batch 11D — Production hardening
-
-- [ ] Batch 11E — Deployment
-
-- [ ] Batch 11F — Portfolio and demo polish
-
-### Production milestone
-
-- [ ] Production environment separation
-
-- [ ] HTTPS
-
-- [ ] Secure HTTP-only cookie authentication
-
-- [ ] CSRF protection
-
-- [ ] Managed PostgreSQL + pgvector
-
-- [ ] Production file-storage strategy
-
-- [ ] Secret management
-
-- [ ] Encryption-at-rest strategy
-
-- [ ] Audit logging
-
-- [ ] Backup/restore validation
-
-- [x] Monitoring and observability
-
-- [ ] Deployment smoke tests
-
-- [ ] Production UI refinement
-
-### Future retrieval/evaluation roadmap
-
-- [ ] Expand corpus-wide retrieval benchmarking
-
-- [ ] Add more synthetic distractor documents and adversarial cases
-
-- [ ] Benchmark retrieval and generation latency
-
-- [ ] Benchmark LLM provider reliability and fallback behavior
-
-- [ ] Track evaluation regressions across future releases
-
-- [ ] Additional medical NER where useful
+- FastAPI backend
+- PostgreSQL + pgvector
+- PDF/TXT ingestion
+- source-grounded RAG
+- hybrid retrieval and reranking
+- complete-document summaries
+- multi-document comparison
+- deterministic medical safety guard
+- authentication and per-user isolation
+- persistent bounded conversations
+- structured medical extraction
+- React + TypeScript frontend
+- redesigned evidence-first UI
+- speech-to-text and text-to-speech
+- Prometheus + Grafana observability
+- deterministic RAG evaluation
+- frontend unit/component regression coverage
+- Cypress end-to-end coverage
+
+### Remaining roadmap
+
+- **11C — Performance benchmarking**
+- **11D — Production hardening**
+- **11E — Deployment**
+- **11F — Portfolio / demo polish**
+
+Production-readiness work still includes HTTPS, secrets management, encryption-at-rest strategy, backup/restore validation, security review, deployment smoke tests, and production infrastructure.
 
 ---
 
-## 🔒 Privacy Notice
-
-MIRA is an authenticated development system, but it is **not production-ready for real protected health information**.
-
-### Implemented
-
-- Password hashing
-
-- JWT authentication
-
-- Per-user document ownership
-
-- Per-user conversation ownership
-
-- Authorization checks
-
-- Cross-account isolation
-
-- Permanent deletion
-
-- Request rate limiting
-
-- Deterministic safety controls
-
-- Synthetic-data development workflow
-
-### Still required before real medical use
-
-- HTTPS
-
-- Secure HTTP-only cookies
-
-- CSRF protection
-
-- Encryption at rest
-
-- Secret management
-
-- Audit logging
-
-- Backup/recovery controls
-
-- Data-retention policies
-
-- Security review
-
-- Compliance assessment
-
-- Production monitoring
-
-- Incident-response procedures
-
-**Use only synthetic medical documents during development.**
-
----
-
-## Medical Notice
+## Medical and Privacy Notice
 
 MIRA provides educational explanations of supplied documents. It does not replace a licensed healthcare professional and must not be used for diagnosis, treatment decisions, medication changes, emergency triage, or prognosis.
+
+The project has not established HIPAA compliance, clinical efficacy, or suitability for autonomous medical decision-making.
 
 For urgent symptoms or emergencies, contact local emergency services immediately.
 
 ---
 
-## 📝 License
+## License
 
 MIT
-
----
-
-> Built as a safety-first medical document intelligence platform combining authenticated document ownership, bounded conversation memory, LangGraph routing, pgvector retrieval, structured extraction, deterministic safety guardrails, source-backed answers, React workflows, browser-native voice interaction, hosted/local LLM support, and medical disclaimers enforced by application code.
