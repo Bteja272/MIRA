@@ -1,119 +1,147 @@
 .intelligence-stack {
   display: grid;
-  gap: 1.5rem;
+  gap: 22px;
 }
 
 .intelligence-grid {
   display: grid;
-  grid-template-columns:
-    repeat(
-      auto-fit,
-      minmax(220px, 1fr)
-    );
-  gap: 1rem;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .intelligence-card,
 .guidance-card,
 .timeline-card,
 .longitudinal-result {
-  border: 1px solid
-    rgba(127, 127, 127, 0.25);
-  border-radius: 0.75rem;
-  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
 }
 
 .intelligence-card {
   display: grid;
-  gap: 0.6rem;
+  align-content: start;
+  gap: 8px;
+  padding: 14px 15px;
 }
 
 .intelligence-card h4,
 .guidance-card h4,
 .guidance-card h5 {
   margin: 0;
+  color: var(--text-primary);
 }
 
 .intelligence-card p,
 .guidance-card p,
 .timeline-card p {
   margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
 .intelligence-guidance-list {
   display: grid;
-  gap: 1rem;
+  gap: 12px;
 }
 
 .guidance-card {
   display: grid;
-  gap: 1rem;
+  gap: 14px;
+  padding: 16px 18px;
 }
 
 .guidance-card > header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 14px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--border);
 }
 
 .guidance-block {
   display: grid;
-  gap: 0.5rem;
+  gap: 5px;
+}
+
+.guidance-block h5 {
+  font-size: 0.78rem;
 }
 
 .guidance-block ul {
+  display: grid;
   margin: 0;
-  padding-left: 1.25rem;
+  padding-left: 18px;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
 .guidance-block--warning {
-  border-left: 3px solid
-    currentColor;
-  padding-left: 1rem;
+  border-left: 3px solid #e1b149;
+  border-radius: 0 8px 8px 0;
+  padding: 10px 12px;
+  background: var(--warning-bg);
 }
 
 .timeline-list {
   display: grid;
-  gap: 0.75rem;
+  gap: 8px;
 }
 
 .timeline-card {
   display: grid;
-  gap: 0.5rem;
+  gap: 6px;
+  padding: 13px 15px;
 }
 
 .timeline-card > div {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 12px;
 }
 
 .timeline-card > div span,
 .timeline-card time {
-  opacity: 0.75;
+  color: var(--text-muted);
+  font-size: 0.72rem;
 }
 
 .intelligence-document-picker {
   display: grid;
-  gap: 0.5rem;
-  margin: 1rem 0;
+  gap: 7px;
+  margin: 8px 0 0;
 }
 
 .intelligence-document-picker label {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 9px 10px;
+  color: var(--text-secondary);
+  background: #ffffff;
+  font-size: 0.8rem;
+}
+
+.intelligence-document-picker input {
+  accent-color: var(--blue-600);
 }
 
 .longitudinal-result {
   display: grid;
-  gap: 1rem;
-  margin-top: 1rem;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 16px;
 }
 
 .intelligence-notice {
   margin: 0;
-  font-size: 0.95rem;
-  opacity: 0.8;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
 }

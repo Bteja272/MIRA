@@ -267,13 +267,9 @@ function registerUser(
 
 
   cy.contains(
-    "Backend-connected workspace",
-    {
-      timeout: 30_000,
-    },
-  ).should(
-    "be.visible",
-  );
+    "Welcome back",
+    { timeout: 30000 },
+  ).should("be.visible");
 }
 
 

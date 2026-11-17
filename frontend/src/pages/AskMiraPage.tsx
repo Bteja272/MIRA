@@ -13,10 +13,9 @@ import { queryMira } from "../api/query";
 import { AssistantSpeechControls } from "../components/AssistantSpeechControls";
 import { ConversationPanel } from "../components/ConversationPanel";
 import { DocumentSelector } from "../components/DocumentSelector";
-import { SourceCard } from "../components/SourceCard";
 import { StatusBanner } from "../components/StatusBanner";
 import type { ConversationMessage } from "../types/conversation";
-import type { QueryResponse } from "../types/query";
+import type { QueryResponse, QuerySource } from "../types/query";
 
 import "../styles/query.css";
 
@@ -83,17 +82,89 @@ function errorMessageFrom(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function sourceString(source: QuerySource, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function sourceNumber(source: QuerySource, keys: string[]): number | null {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) {
+      return Number(value);
+    }
+  }
+  return null;
+}
+
+function AnswerContent({
+  content,
+  sources,
+  onSourceSelect,
+}: {
+  content: string;
+  sources: QuerySource[];
+  onSourceSelect: (index: number) => void;
+}) {
+  const paragraphs = content.split(/\n{2,}/);
+
+  return (
+    <div className="answer-text">
+      {paragraphs.map((paragraph, paragraphIndex) => {
+        const parts = paragraph.split(/(\[Source\s+\d+\])/gi);
+
+        return (
+          <p key={`${paragraphIndex}-${paragraph.slice(0, 20)}`}>
+            {parts.map((part, partIndex) => {
+              const match = part.match(/^\[Source\s+(\d+)\]$/i);
+              if (!match) {
+                return <span key={partIndex}>{part}</span>;
+              }
+
+              const sourceIndex = Number(match[1]) - 1;
+              if (sourceIndex < 0 || sourceIndex >= sources.length) {
+                return <span key={partIndex}>{part}</span>;
+              }
+
+              return (
+                <button
+                  key={partIndex}
+                  type="button"
+                  className="citation-badge"
+                  aria-label={`Show source ${sourceIndex + 1}`}
+                  onClick={() => onSourceSelect(sourceIndex)}
+                >
+                  {sourceIndex + 1}
+                </button>
+              );
+            })}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 function ConversationMessageCard({
   message,
   speech,
   onListen,
   onReplay,
+  onSourceSelect,
 }: {
   message: ConversationMessage;
   speech: UseSpeechSynthesisResult;
   onListen: (messageId: string, text: string) => void;
-
   onReplay: (messageId: string, text: string) => void;
+  onSourceSelect: (index: number, sources: QuerySource[]) => void;
 }) {
   return (
     <article
@@ -119,17 +190,17 @@ function ConversationMessageCard({
         </StatusBanner>
       ) : null}
 
-      <div className="answer-text">
-        {message.content ? (
-          message.content
-            .split(/\n{2,}/)
-            .map((paragraph, index) => (
-              <p key={`${index}-` + paragraph.slice(0, 20)}>{paragraph}</p>
-            ))
-        ) : (
+      {message.content ? (
+        <AnswerContent
+          content={message.content}
+          sources={message.sources}
+          onSourceSelect={(index) => onSourceSelect(index, message.sources)}
+        />
+      ) : (
+        <div className="answer-text">
           <p>MIRA returned no answer text.</p>
-        )}
-      </div>
+        </div>
+      )}
 
       {message.role === "assistant" && message.content ? (
         <AssistantSpeechControls
@@ -220,6 +291,12 @@ export function AskMiraPage() {
 
   const [latestResult, setLatestResult] = useState<QueryResponse | null>(null);
 
+  const [activeEvidenceIndex, setActiveEvidenceIndex] = useState(0);
+
+  const [activeEvidenceSourcesOverride, setActiveEvidenceSourcesOverride] = useState<
+    QuerySource[] | null
+  >(null);
+
   const [conversationActionError, setConversationActionError] = useState<
     string | null
   >(null);
@@ -253,6 +330,8 @@ export function AskMiraPage() {
       setConversationMessages(conversation.messages);
 
       setLatestResult(null);
+      setActiveEvidenceIndex(0);
+      setActiveEvidenceSourcesOverride(null);
 
       setConversationActionError(null);
     },
@@ -329,6 +408,8 @@ export function AskMiraPage() {
 
     onSuccess: async (response) => {
       setLatestResult(response);
+      setActiveEvidenceIndex(0);
+      setActiveEvidenceSourcesOverride(response.sources);
 
       setActiveConversationId(response.conversation_id);
 
@@ -377,6 +458,23 @@ export function AskMiraPage() {
   const documents = documentsQuery.data?.documents ?? [];
 
   const conversations = conversationsQuery.data?.conversations ?? [];
+
+  const mostRecentAssistantWithSources = [...conversationMessages]
+    .reverse()
+    .find((message) => message.role === "assistant" && message.sources.length > 0);
+
+  const evidenceSources = activeEvidenceSourcesOverride
+    ?? (latestResult?.sources.length
+      ? latestResult.sources
+      : mostRecentAssistantWithSources?.sources ?? []);
+
+  const activeEvidenceSource = evidenceSources[activeEvidenceIndex] ?? evidenceSources[0] ?? null;
+
+  useEffect(() => {
+    if (activeEvidenceIndex >= evidenceSources.length) {
+      setActiveEvidenceIndex(0);
+    }
+  }, [activeEvidenceIndex, evidenceSources.length]);
 
   const trimmedQuestion = question.trim();
 
@@ -439,6 +537,8 @@ export function AskMiraPage() {
     setConversationMessages([]);
 
     setLatestResult(null);
+    setActiveEvidenceIndex(0);
+    setActiveEvidenceSourcesOverride(null);
 
     setQuestion("");
 
@@ -465,6 +565,8 @@ export function AskMiraPage() {
     setSelectedDocumentIds([]);
 
     setLatestResult(null);
+    setActiveEvidenceIndex(0);
+    setActiveEvidenceSourcesOverride(null);
 
     setConversationActionError(null);
 
@@ -496,16 +598,13 @@ export function AskMiraPage() {
   }
 
   return (
-    <section className="page-stack">
-      <header className="page-header">
+    <section className="page-stack ask-page">
+      <header className="page-header ask-page__header">
         <div>
-          <p className="eyebrow">Grounded question answering</p>
-
+          <p className="eyebrow">Grounded workspace</p>
           <h2>Ask MIRA</h2>
-
           <p>
-            Select up to five owned documents for a source-grounded answer, or
-            leave the selection empty for a general educational question.
+            Ask questions, inspect supporting evidence, and keep document context explicit.
           </p>
         </div>
 
@@ -517,8 +616,8 @@ export function AskMiraPage() {
         </span>
       </header>
 
-      <div className="query-layout">
-        <aside className="query-sidebar">
+      <section className="query-control-strip">
+        <div className="query-control-card query-control-card--conversations">
           <ConversationPanel
             conversations={conversations}
             activeConversationId={activeConversationId}
@@ -534,15 +633,16 @@ export function AskMiraPage() {
             <StatusBanner tone="error">
               {errorMessageFrom(
                 conversationsQuery.error,
-                "The conversation " + "list could not " + "be loaded.",
+                "The conversation list could not be loaded.",
               )}
             </StatusBanner>
           ) : null}
+        </div>
 
+        <div className="query-control-card query-control-card--documents">
           <div className="section-heading">
             <div>
               <p className="eyebrow">Context</p>
-
               <h3>Select documents</h3>
             </div>
 
@@ -551,9 +651,7 @@ export function AskMiraPage() {
                 className="text-button"
                 type="button"
                 disabled={interfaceBusy}
-                onClick={() => {
-                  setSelectedDocumentIds([]);
-                }}
+                onClick={() => setSelectedDocumentIds([])}
               >
                 Clear
               </button>
@@ -570,7 +668,7 @@ export function AskMiraPage() {
             <StatusBanner tone="error">
               {documentsQuery.error instanceof ApiError
                 ? documentsQuery.error.message
-                : "The document list " + "could not be loaded."}
+                : "The document list could not be loaded."}
             </StatusBanner>
           ) : null}
 
@@ -583,32 +681,101 @@ export function AskMiraPage() {
               onChange={setSelectedDocumentIds}
             />
           ) : null}
+        </div>
+      </section>
 
-          <div className={"query-context-note"}>
-            {selectedDocumentIds.length > 0
-              ? "MIRA will answer from " +
-                "the currently selected " +
-                "document context and " +
-                "return supporting " +
-                "sources."
-              : "No document is selected. " +
-                "Conversation history " +
-                "may provide continuity, " +
-                "but previous documents " +
-                "are not automatically " +
-                "reused."}
-          </div>
-        </aside>
+      <div className="ask-split-workspace">
+        <aside className="evidence-pane" aria-label="Supporting evidence">
+          <header className="evidence-pane__header">
+            <div>
+              <p className="eyebrow">Document evidence</p>
+              <h3>
+                {activeEvidenceSource
+                  ? sourceString(activeEvidenceSource, [
+                      "title",
+                      "source_filename",
+                      "filename",
+                      "source",
+                      "document_name",
+                    ]) ?? "Supporting passage"
+                  : "Supporting passage"}
+              </h3>
+            </div>
 
-        <main className="query-workspace">
-          {activeConversationId ? (
-            <section className={"active-conversation-banner"}>
-              <div>
-                <p className="eyebrow">Active conversation</p>
+            {evidenceSources.length > 0 ? (
+              <span className="evidence-pane__count">
+                {activeEvidenceIndex + 1} / {evidenceSources.length}
+              </span>
+            ) : null}
+          </header>
 
-                <strong>Conversation memory enabled</strong>
+          {activeEvidenceSource ? (
+            <div className="evidence-document" key={activeEvidenceIndex}>
+              <div className="evidence-document__meta">
+                {sourceNumber(activeEvidenceSource, ["page_number", "page"]) !== null ? (
+                  <span>
+                    Page {sourceNumber(activeEvidenceSource, ["page_number", "page"])}
+                  </span>
+                ) : null}
+                {sourceNumber(activeEvidenceSource, ["chunk_index", "index"]) !== null ? (
+                  <span>
+                    Chunk {sourceNumber(activeEvidenceSource, ["chunk_index", "index"])}
+                  </span>
+                ) : null}
               </div>
 
+              <div className="evidence-document__paper">
+                <mark className="evidence-highlight">
+                  {sourceString(activeEvidenceSource, [
+                    "quoted_text",
+                    "content",
+                    "text",
+                    "chunk_text",
+                  ]) ?? "MIRA returned source metadata without an evidence excerpt."}
+                </mark>
+              </div>
+
+              <div className="evidence-source-tabs" aria-label="Available sources">
+                {evidenceSources.map((source, index) => (
+                  <button
+                    type="button"
+                    key={String(source.chunk_id ?? source.document_id ?? index)}
+                    className={
+                      index === activeEvidenceIndex
+                        ? "evidence-source-tab evidence-source-tab--active"
+                        : "evidence-source-tab"
+                    }
+                    aria-label={`Show source ${index + 1}`}
+                    onClick={() => setActiveEvidenceIndex(index)}
+                  >
+                    {index + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="evidence-empty">
+              <div className="evidence-empty__icon">⌁</div>
+              <h4>No evidence selected yet</h4>
+              <p>
+                {selectedDocumentIds.length > 0
+                  ? "Ask a document-grounded question. Supporting passages will appear here."
+                  : "Select a document for grounded Q&A, or ask a general educational question."}
+              </p>
+            </div>
+          )}
+        </aside>
+
+        <main className="query-workspace query-chat-pane">
+          <div className="chat-toolbar">
+            <div>
+              <p className="eyebrow">Conversation</p>
+              <strong>
+                {activeConversationId ? "Conversation memory enabled" : "New conversation"}
+              </strong>
+            </div>
+
+            {activeConversationId ? (
               <button
                 className="text-button"
                 type="button"
@@ -617,16 +784,14 @@ export function AskMiraPage() {
               >
                 Start new
               </button>
-            </section>
-          ) : null}
+            ) : null}
+          </div>
 
           {loadConversationMutation.isPending ? (
             <section className="query-progress" role="status">
               <div className="query-spinner" />
-
               <div>
                 <strong>Loading conversation…</strong>
-
                 <p>Restoring stored messages.</p>
               </div>
             </section>
@@ -636,76 +801,102 @@ export function AskMiraPage() {
             <StatusBanner tone="error">{conversationActionError}</StatusBanner>
           ) : null}
 
-          {conversationMessages.length > 0 ? (
-            <section
-              className={"conversation-history"}
-              aria-label={"Conversation history"}
-              aria-live="polite"
-            >
-              {conversationMessages.map((message) => (
+          <section
+            className="conversation-history"
+            aria-label="Conversation history"
+            aria-live="polite"
+          >
+            {conversationMessages.length > 0 ? (
+              conversationMessages.map((message) => (
                 <ConversationMessageCard
                   key={message.message_id}
                   message={message}
                   speech={speech}
                   onListen={handleSpeechListen}
                   onReplay={handleSpeechReplay}
+                  onSourceSelect={(index, sources) => {
+                    setActiveEvidenceSourcesOverride(sources);
+                    setActiveEvidenceIndex(index);
+                  }}
                 />
-              ))}
-            </section>
-          ) : (
-            <section className={"answer-empty " + "conversation-start"}>
-              <h3>Start a conversation</h3>
+              ))
+            ) : (
+              <div className="conversation-start">
+                <div className="conversation-start__mark">M</div>
+                <h3>Ask about your records</h3>
+                <p>
+                  MIRA keeps document selection explicit and shows supporting evidence beside the answer.
+                </p>
+              </div>
+            )}
+          </section>
 
-              <p>
-                Ask a general question or select documents for a grounded
-                answer. Follow-up questions can use bounded conversation
-                context.
-              </p>
+          {latestResult ? (
+            <section className="latest-response-meta">
+              <div className="latest-response-meta__row">
+                <span>{routeLabel(latestResult.route)}</span>
+                <span>
+                  {latestResult.sources.length} source
+                  {latestResult.sources.length === 1 ? "" : "s"}
+                </span>
+              </div>
+
+              {latestResult.sources.length > 0 ? (
+                <div className="latest-response-sources" aria-label="Response sources">
+                  {latestResult.sources.map((source, index) => (
+                    <button
+                      key={String(source.chunk_id ?? source.document_id ?? index)}
+                      type="button"
+                      className="citation-source-pill"
+                      onClick={() => {
+                        setActiveEvidenceSourcesOverride(latestResult.sources);
+                        setActiveEvidenceIndex(index);
+                      }}
+                    >
+                      <span>{index + 1}</span>
+                      {sourceString(source, [
+                        "source_filename",
+                        "filename",
+                        "title",
+                        "source",
+                      ]) ?? `Source ${index + 1}`}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </section>
-          )}
+          ) : null}
 
           <form className="question-form" onSubmit={handleSubmit}>
-            <label className="field" htmlFor="mira-question">
+            <label className="field question-field" htmlFor="mira-question">
               <span>Your question</span>
-
               <textarea
                 id="mira-question"
-                rows={7}
+                rows={4}
                 maxLength={MAX_QUERY_CHARACTERS}
                 value={question}
                 disabled={interfaceBusy}
                 placeholder={
                   selectedDocumentIds.length > 0
-                    ? "Example: What " +
-                      "medications and " +
-                      "follow-up " +
-                      "instructions " +
-                      "are listed?"
-                    : "Example: What is " +
-                      "the difference " +
-                      "between systolic " +
-                      "and diastolic " +
-                      "blood pressure?"
+                    ? "Ask about the selected document…"
+                    : "Ask MIRA a general educational question…"
                 }
-                onChange={(event) => {
-                  setQuestion(event.target.value);
-                }}
+                onChange={(event) => setQuestion(event.target.value)}
               />
             </label>
 
-            <div className={"question-form__footer"}>
+            <div className="question-form__footer">
               <span
                 className={
                   charactersRemaining < 200
-                    ? "character-count " + "character-count--warning"
+                    ? "character-count character-count--warning"
                     : "character-count"
                 }
               >
-                {charactersRemaining}
-                {" characters remaining"}
+                {charactersRemaining} characters remaining
               </span>
 
-              <div className={"question-actions"}>
+              <div className="question-actions">
                 <VoiceInputButton
                   ref={voiceInputRef}
                   disabled={interfaceBusy}
@@ -713,9 +904,10 @@ export function AskMiraPage() {
                   onTranscript={handleVoiceTranscript}
                   onListeningChange={setVoiceListening}
                 />
+
                 {queryMutation.isPending ? (
                   <button
-                    className={"button " + "button--secondary"}
+                    className="button button--secondary"
                     type="button"
                     onClick={cancelRequest}
                   >
@@ -724,7 +916,7 @@ export function AskMiraPage() {
                 ) : null}
 
                 <button
-                  className={"button " + "button--primary"}
+                  className="button button--primary"
                   type="submit"
                   disabled={!trimmedQuestion || interfaceBusy || voiceListening}
                 >
@@ -735,20 +927,11 @@ export function AskMiraPage() {
           </form>
 
           {queryMutation.isPending ? (
-            <section
-              className="query-progress"
-              role="status"
-              aria-live="polite"
-            >
+            <section className="query-progress" role="status" aria-live="polite">
               <div className="query-spinner" />
-
               <div>
                 <strong>{elapsedLabel(elapsedSeconds)}</strong>
-
-                <p>
-                  Elapsed time: {elapsedSeconds}
-                  {" seconds"}
-                </p>
+                <p>Elapsed time: {elapsedSeconds} seconds</p>
               </div>
             </section>
           ) : null}
@@ -756,71 +939,12 @@ export function AskMiraPage() {
           {queryErrorMessage ? (
             <StatusBanner tone="error">{queryErrorMessage}</StatusBanner>
           ) : null}
-
-          {latestResult ? (
-            <section className={"latest-response-meta"}>
-              <header className={"answer-panel__header"}>
-                <div>
-                  <p className="eyebrow">Latest response</p>
-
-                  <h3>{routeLabel(latestResult.route)}</h3>
-                </div>
-
-                <span className="route-badge">{latestResult.route}</span>
-              </header>
-
-              <div className={"answer-summary"}>
-                <span>
-                  {latestResult.selected_document_count}
-                  {" document"}
-                  {latestResult.selected_document_count === 1 ? "" : "s"}
-                  {" used"}
-                </span>
-
-                <span>
-                  {latestResult.sources.length}
-                  {" source"}
-                  {latestResult.sources.length === 1 ? "" : "s"}
-                </span>
-              </div>
-
-              {latestResult.sources.length > 0 ? (
-                <section className={"sources-section"}>
-                  <div>
-                    <p className="eyebrow">Supporting context</p>
-
-                    <h4>Sources</h4>
-                  </div>
-
-                  <div className="source-list">
-                    {latestResult.sources.map((source, index) => (
-                      <SourceCard
-                        key={String(source.chunk_id ?? index)}
-                        source={source}
-                        index={index}
-                      />
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-            </section>
-          ) : null}
         </main>
       </div>
 
-      <section className="safety-panel">
-        <div>
-          <p className="eyebrow">Medical safety</p>
-
-          <h3>Educational support only</h3>
-        </div>
-
-        <p>
-          MIRA does not diagnose, prescribe, or replace professional medical
-          judgment. Document-grounded answers are limited to the uploaded text
-          and should be reviewed with a licensed healthcare professional.
-        </p>
-      </section>
+      <p className="ask-safety-note">
+        MIRA explains supplied documents for educational purposes and does not diagnose or recommend treatment changes.
+      </p>
     </section>
   );
 }

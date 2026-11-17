@@ -15,12 +15,15 @@ import {
 import {
   useAuth,
 } from "../auth/useAuth";
-import {
-  StatusBanner,
-} from "../components/StatusBanner";
 import type {
   SessionEndReason,
 } from "../auth/authContext";
+import {
+  MiraBrand,
+} from "../components/MiraBrand";
+import {
+  StatusBanner,
+} from "../components/StatusBanner";
 
 interface LocationState {
   from?: string;
@@ -162,19 +165,26 @@ export function LoginPage() {
       className="auth-page"
       tabIndex={-1}
     >
-      <section className="auth-panel">
-        <div className="auth-copy">
-          <p className="eyebrow">
-            Medical document intelligence
-          </p>
+      <section className="auth-panel auth-panel--calm">
+        <div className="auth-brand-panel">
+          <MiraBrand inverted />
 
-          <h1>Welcome to MIRA</h1>
+          <div className="auth-brand-panel__copy">
+            <p className="eyebrow">
+              Medical document intelligence
+            </p>
 
-          <p>
-            Review uploaded medical documents,
-            ask grounded questions, and inspect
-            structured facts with source evidence.
-          </p>
+            <h1>
+              Understand your records with evidence
+              beside every answer.
+            </h1>
+
+            <p>
+              Private, source-grounded document Q&amp;A
+              for synthetic medical records during
+              development.
+            </p>
+          </div>
         </div>
 
         <form
@@ -182,12 +192,17 @@ export function LoginPage() {
           onSubmit={handleSubmit}
           aria-busy={isSubmitting}
         >
-          <div>
+          <div className="auth-form__heading">
             <p className="eyebrow">
-              Secure account access
+              Welcome back
             </p>
 
-            <h2>Log in</h2>
+            <h2>Log in to MIRA</h2>
+
+            <p>
+              Continue to your private document
+              workspace.
+            </p>
           </div>
 
           {endedSessionMessage && (
@@ -217,6 +232,7 @@ export function LoginPage() {
               required
               disabled={isSubmitting}
               value={email}
+              placeholder="you@example.com"
               onChange={(event) =>
                 setEmail(
                   event.target.value,
@@ -238,6 +254,7 @@ export function LoginPage() {
               required
               disabled={isSubmitting}
               value={password}
+              placeholder="Enter your password"
               onChange={(event) =>
                 setPassword(
                   event.target.value,
@@ -247,7 +264,7 @@ export function LoginPage() {
           </label>
 
           <button
-            className="button button--primary"
+            className="button button--primary auth-submit"
             type="submit"
             disabled={isSubmitting}
           >

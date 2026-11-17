@@ -67,13 +67,9 @@ describe(
         ).click();
 
         cy.contains(
-          "Backend-connected workspace",
-          {
-            timeout: 30_000,
-          },
-        ).should(
-          "be.visible",
-        );
+          "Welcome back",
+          { timeout: 30000 },
+        ).should("be.visible");
 
         cy.getCookie(
           "mira_access",
@@ -123,10 +119,13 @@ describe(
           },
         );
 
-        cy.contains(
-          "button",
-          "Log out",
-        ).click();
+        cy.get(
+          'button[aria-label="Log out"]',
+        )
+          .should(
+            "be.visible",
+          )
+          .click();
 
         cy.contains(
           "h2",

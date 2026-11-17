@@ -93,13 +93,9 @@ function registerUser(
     );
 
   cy.contains(
-    "Backend-connected workspace",
-    {
-      timeout: 30_000,
-    },
-  ).should(
-    "be.visible",
-  );
+    "Welcome back",
+    { timeout: 30000 },
+  ).should("be.visible");
 }
 
 
@@ -164,7 +160,7 @@ function loginUser(
     );
 
   cy.contains(
-    "Backend-connected workspace",
+    "Welcome back",
     {
       timeout: 30_000,
     },
@@ -176,11 +172,12 @@ function loginUser(
 
 function logout():
   void {
-  cy.contains(
-    "button",
-    "Log out",
+  cy.get(
+    'button[aria-label="Log out"]',
   )
-    .should("be.visible")
+    .should(
+      "be.visible",
+    )
     .click();
 
   cy.contains(
@@ -417,14 +414,17 @@ describe(
         );
 
 
-        cy.contains(
-          followUp,
+        cy.get(
+          '[data-testid="conversation-message-user"]',
           {
             timeout: 30_000,
           },
-        ).should(
-          "be.visible",
-        );
+        )
+          .last()
+          .should(
+            "contain.text",
+            followUp,
+          );
 
 
         cy.get(
@@ -501,14 +501,17 @@ describe(
           .click();
 
 
-        cy.contains(
-          followUp,
+        cy.get(
+          '[data-testid="conversation-message-user"]',
           {
             timeout: 30_000,
           },
-        ).should(
-          "be.visible",
-        );
+        )
+          .last()
+          .should(
+            "contain.text",
+            followUp,
+          );
 
 
         cy.get(
@@ -586,7 +589,7 @@ describe(
 
 
         cy.contains(
-          "Start a conversation",
+          "Ask about your records",
         ).should(
           "be.visible",
         );

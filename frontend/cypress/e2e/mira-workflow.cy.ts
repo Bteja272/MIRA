@@ -110,13 +110,9 @@ function registerUser(
     );
 
   cy.contains(
-    "Backend-connected workspace",
-    {
-      timeout: 30_000,
-    },
-  ).should(
-    "be.visible",
-  );
+    "Welcome back",
+    { timeout: 30000 },
+  ).should("be.visible");
 }
 
 function uploadSyntheticDocument():
@@ -397,9 +393,8 @@ describe(
         // LOG OUT USER A
         // -------------------------------------------------
 
-        cy.contains(
-          "button",
-          "Log out",
+        cy.get(
+          'button[aria-label="Log out"]',
         )
           .should(
             "be.visible",
@@ -449,9 +444,8 @@ describe(
         // LOG OUT USER B
         // -------------------------------------------------
 
-        cy.contains(
-          "button",
-          "Log out",
+        cy.get(
+          'button[aria-label="Log out"]',
         )
           .should(
             "be.visible",

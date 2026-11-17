@@ -416,7 +416,7 @@ export function ExtractionsPage() {
       <header className="page-header">
         <div>
           <p className="eyebrow">
-            Structured medical data
+            Structured data
           </p>
 
           <h2>
@@ -424,9 +424,7 @@ export function ExtractionsPage() {
           </h2>
 
           <p>
-            Generate a validated, evidence-backed
-            structured view of one owned medical
-            document.
+            Review structured facts and their supporting evidence.
           </p>
         </div>
 
@@ -528,12 +526,6 @@ export function ExtractionsPage() {
               </span>
             </div>
 
-            <code>
-              {
-                selectedDocument
-                  .document_id
-              }
-            </code>
           </div>
         )}
 

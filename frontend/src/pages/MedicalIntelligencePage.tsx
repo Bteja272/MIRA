@@ -304,9 +304,7 @@ export function MedicalIntelligencePage() {
           </h2>
 
           <p>
-            Understand documented findings,
-            review safe general guidance, and
-            compare selected records over time.
+            Review normalized findings, explanations, and record changes over time.
           </p>
         </div>
 

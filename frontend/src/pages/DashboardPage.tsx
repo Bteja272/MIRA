@@ -9,37 +9,57 @@ import {
 const cards = [
   {
     title: "Documents",
-    body: (
-      "Upload PDF or TXT medical documents, "
-      + "review metadata, and permanently delete "
-      + "stored records."
-    ),
-    phase: "Available",
+    body: "Upload, review, and manage your indexed medical records.",
     path: "/documents",
     linkLabel: "Open documents",
+    icon: "document",
   },
   {
     title: "Ask MIRA",
-    body: (
-      "Select up to five owned documents and ask "
-      + "source-grounded questions."
-    ),
-    phase: "Available",
+    body: "Ask grounded questions about the documents you select.",
     path: "/ask",
     linkLabel: "Ask a question",
+    icon: "chat",
   },
   {
     title: "Structured extraction",
-    body: (
-      "Generate patient, diagnosis, medication, "
-      + "provider, laboratory, procedure, follow-up, "
-      + "confidence, and evidence fields."
-    ),
-    phase: "Available",
+    body: "Review extracted facts with supporting source evidence.",
     path: "/extractions",
     linkLabel: "Open extractions",
+    icon: "extract",
   },
 ];
+
+function CardIcon({
+  name,
+}: {
+  name: string;
+}) {
+  if (name === "chat") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-5 4v-4.6A2.5 2.5 0 0 1 4 13.5z" />
+      </svg>
+    );
+  }
+
+  if (name === "extract") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8 5h12M8 12h12M8 19h12" />
+        <path d="m3.5 5 1.2 1.2L6.8 4M3.5 12l1.2 1.2L6.8 11M3.5 19l1.2 1.2L6.8 18" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 3h8l4 4v14H6z" />
+      <path d="M14 3v5h5" />
+      <path d="M9 12h6M9 16h6" />
+    </svg>
+  );
+}
 
 export function DashboardPage() {
   const {
@@ -47,71 +67,75 @@ export function DashboardPage() {
   } = useAuth();
 
   return (
-    <section className="page-stack">
-      <header className="page-header">
+    <section className="page-stack dashboard-page">
+      <header className="page-header page-header--compact">
         <div>
           <p className="eyebrow">
-            Frontend workspace
+            Overview
           </p>
 
-          <h2>
-            Backend-connected workspace
-          </h2>
+          <h2>Welcome back</h2>
 
           <p>
-            Signed in as {user?.email}.
-            Authentication and protected routing
-            are active.
+            Your medical records, grounded answers,
+            and extracted facts in one workspace.
           </p>
         </div>
 
         <span className="connection-badge">
-          API session active
+          Session active
         </span>
       </header>
 
+      <section className="dashboard-summary" aria-label="Workspace summary">
+        <div className="summary-tile">
+          <span className="summary-tile__label">Documents</span>
+          <strong>Private</strong>
+        </div>
+        <div className="summary-tile">
+          <span className="summary-tile__label">Grounding</span>
+          <strong>Source-backed</strong>
+        </div>
+        <div className="summary-tile">
+          <span className="summary-tile__label">Account</span>
+          <strong>{user?.email ?? "Signed in"}</strong>
+        </div>
+      </section>
+
       <div className="feature-grid">
-        {cards.map(
-          (card) => (
-            <article
-              className="feature-card"
-              key={card.title}
+        {cards.map((card) => (
+          <article
+            className="feature-card"
+            key={card.title}
+          >
+            <span className="feature-card__icon">
+              <CardIcon name={card.icon} />
+            </span>
+
+            <h3>{card.title}</h3>
+            <p>{card.body}</p>
+
+            <Link
+              className="feature-card__link"
+              to={card.path}
             >
-              <span className="feature-card__phase">
-                {card.phase}
-              </span>
-
-              <h3>{card.title}</h3>
-
-              <p>{card.body}</p>
-
-              <Link
-                className="feature-card__link"
-                to={card.path}
-              >
-                {card.linkLabel}
-              </Link>
-            </article>
-          ),
-        )}
+              {card.linkLabel}
+              <span aria-hidden="true">→</span>
+            </Link>
+          </article>
+        ))}
       </div>
 
-      <section className="safety-panel">
+      <section className="safety-panel safety-panel--quiet">
         <div>
           <p className="eyebrow">
             Development boundary
           </p>
-
-          <h3>
-            Use synthetic documents only
-          </h3>
+          <h3>Use synthetic medical records only</h3>
         </div>
-
         <p>
-          MIRA is still a development system. Do not
-          upload real patient information until
-          production privacy, security, audit, and
-          deployment controls are complete.
+          MIRA is still a development system and is not
+          ready for real protected health information.
         </p>
       </section>
     </section>
